@@ -1,0 +1,2 @@
+# One line-ending convention everywhere, so a checkout on Windows compiles to the same bytes as one on macOS or Linux.
+* text=auto eol=lf
