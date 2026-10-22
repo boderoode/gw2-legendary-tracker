@@ -187,11 +187,18 @@ Dit is wat er in `artifacts\` komt, en wat de CI ook doet. Handmatig:
 dotnet publish src/Gw2LegendaryTracker.App -c Release -r win-x64 --self-contained -o artifacts/win-x64
 ```
 
-**Reproduceerbaarheid.** De pakketversies staan vast in `packages.lock.json` (de CI herstelt in vergrendelde modus en
-faalt als er iets afwijkt), de SDK-versie in `global.json`, en voor release-builds worden bronpaden vervangen door een
-vaste waarde. Gecontroleerd: dezelfde broncode, gebouwd vanuit twee verschillende mappen, geeft voor alle 412 bestanden
-van de publish dezelfde SHA256. Niet beloofd: bit-voor-bit gelijke bestanden tussen verschillende besturingssystemen of
-SDK-patchversies, en het zipbestand zelf (tijdstempels).
+**Reproduceerbaarheid.** Dezelfde invoer geeft dezelfde bestanden: de pakketversies en hashes staan vast in
+`packages.lock.json` (de CI herstelt in vergrendelde modus en faalt als er iets afwijkt), de SDK-versie in
+`global.json`, release-builds vervangen bronpaden door een vaste waarde, en `.gitattributes` zorgt voor dezelfde
+regeleinden in elke checkout. Gecontroleerd:
+
+- dezelfde broncode, gebouwd vanuit twee verschillende mappen: alle 412 bestanden van de publish hebben dezelfde SHA256;
+- twee afzonderlijke Windows-runs van de CI op dezelfde commit: ook alle 412 bestanden gelijk.
+
+Niet beloofd: het **zipbestand en de installer zelf** (die bevatten tijdstempels; hun inhoud is wel gelijk), en
+bit-voor-bit gelijke bestanden tussen **verschillende besturingssystemen** of SDK-versies. Een build op macOS en een
+op Windows verschillen onder andere in padscheidingstekens in de assemblies, in bestandsversies in `deps.json` en in de
+opmaak van `runtimeconfig.json`. De bestanden uit de release zijn dus die van de Windows-CI.
 
 ### Een release maken
 
