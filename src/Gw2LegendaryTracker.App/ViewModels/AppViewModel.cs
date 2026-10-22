@@ -29,9 +29,16 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     private string? _connectMessage;
     private bool _connectMessageIsError;
 
-    public AppViewModel(AppState state, ConnectionService connection, SyncService sync, InventoryViewModel inventory, Dispatcher dispatcher)
+    public AppViewModel(
+        AppState state,
+        ConnectionService connection,
+        SyncService sync,
+        InventoryViewModel inventory,
+        GoalsViewModel goals,
+        Dispatcher dispatcher)
     {
         Inventory = inventory;
+        Goals = goals;
         _state = state;
         _connection = connection;
         _sync = sync;
@@ -68,6 +75,8 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     public ICommand SyncNowCommand { get; }
 
     public InventoryViewModel Inventory { get; }
+
+    public GoalsViewModel Goals { get; }
 
     public OverlaySettings Overlay => _state.Settings.Overlay;
 
@@ -125,8 +134,6 @@ public sealed class AppViewModel : ObservableObject, IDisposable
             }
         }
     }
-
-    public string SelectedLegendaryName => _state.Settings.SelectedLegendaryId ?? "Geen Legendary geselecteerd";
 
     public string HotkeyText => FormatHotkey(Overlay.ToggleHotkey);
 
@@ -223,6 +230,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     /// <summary>Loads connection state and syncs in the background; offline start-up still shows stored data.</summary>
     public async Task InitializeAsync()
     {
+        await Goals.InitializeAsync();
         await _sync.RestoreStatusAsync();
         HasApiKey = await _connection.HasKeyAsync();
         if (HasApiKey)
@@ -295,6 +303,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         _state.SettingsChanged -= OnSettingsChanged;
         _state.SyncStatusChanged -= OnSyncStatusChanged;
         Inventory.Dispose();
+        Goals.Dispose();
     }
 
     /// <summary>Persists window bounds chosen by the user (move/resize).</summary>

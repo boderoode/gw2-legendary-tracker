@@ -16,8 +16,8 @@ Dit project wordt in fases opgebouwd. Een fase is pas klaar als de build en test
 | 4 | API-keyvalidatie en synchronisatie | Klaar, UI **nog niet getest op Windows** |
 | 5 | Inventorymodel | Klaar, UI **nog niet getest op Windows** |
 | 6 | Crafting-engine en materiaalberekeningen | Klaar (engine en data; nog geen scherm) |
-| 7 | Legendary-doelen en handmatige progress | Gepland |
-| 8 | Compacte en uitgebreide overlay | Gepland |
+| 7 | Legendary-doelen en handmatige progress | Klaar, UI **nog niet getest op Windows** |
+| 8 | Compacte en uitgebreide overlay | Gedeeltelijk: de overlay toont al naam, voortgang, volgende stap en tekorten |
 | 9 | Export/import, foutafhandeling, extra tests | Gepland |
 | 10 | Reproduceerbare Windows-build en installer | Gepland |
 
@@ -47,6 +47,31 @@ currency-kosten (recepten in de API kennen alleen items). Die stappen moeten uit
 
 Ids van lokale recepten zijn negatief, zodat ze nooit botsen met API-recepten. Ongeldige regels worden overgeslagen en
 gemeld; de rest van het bestand blijft werken. Recepten die guild-upgrades vereisen worden niet gebruikt.
+Receptbestanden worden gelezen uit `data\recipes` naast het programma en uit `%LOCALAPPDATA%\Gw2LegendaryTracker\recipes`.
+
+### Receptdata maken en controleren
+
+Het bestand `data/recipes/legendary.json` wordt niet met de hand getypt maar gegenereerd en gecontroleerd:
+
+```powershell
+$env:GW2TREASURES_KEY = "<key van api.gw2treasures.com>"
+dotnet run --project tools/Gw2LegendaryTracker.PackBuilder -- --root 30704   # 30704 = Twilight; herhaal --root voor meer
+```
+
+Het hulpprogramma volgt de Mystic Forge-recepten van het opgegeven item naar beneden (gw2treasures-API), slaat
+recepten met een willekeurige uitkomst en ruwe materialen over, en controleert het resultaat tegen de officiële API:
+
+- elk item-id moet bestaan en de naam in het bestand hebben (vangt een verkeerd id voor een bestaand item);
+- staat het recept in de officiële itembeschrijving ("Made by combining these items in the Mystic Forge"), dan moeten
+  ingrediënten en aantallen ook kloppen; zo'n recept krijgt de status `verified-by-official-description`;
+- alle andere recepten hebben één bron en blijven `unreviewed`; de app meldt dat in het scherm.
+
+Bij een probleem schrijft het hulpprogramma niets. De key wordt alleen uit de omgeving gelezen en nergens opgeslagen;
+de app zelf gebruikt gw2treasures niet. Het hulpprogramma wacht minstens 1,5 seconde tussen verzoeken
+(de site vraagt een crawl-delay van 5 seconden voor zijn pagina's; de API heeft een eigen limiet per key).
+
+Let op: de data komt van gw2treasures, een community-project. Controleer hun voorwaarden voordat je de app of dit
+bestand deelt buiten privégebruik.
 
 ## Bekende beperkingen van de overlay
 

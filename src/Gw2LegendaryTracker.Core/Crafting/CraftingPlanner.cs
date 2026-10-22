@@ -43,6 +43,7 @@ public static class CraftingPlanner
                 throw new ArgumentOutOfRangeException(nameof(request), "A goal needs a positive quantity.");
             }
 
+            context.Completed = goal.Completed;
             var root = Build(MaterialKey.Item(goal.ItemId), goal.Quantity, ledger, [], context);
             plans.Add(Summarize(goal, root));
         }
@@ -56,6 +57,13 @@ public static class CraftingPlanner
     private static PlanNode Build(MaterialKey key, long required, Ledger ledger, List<int> path, Context context)
     {
         context.Spend();
+
+        // Marked done by hand (never the goal itself): covered without touching stock.
+        if (path.Count > 0 && key.Kind == MaterialKind.Item && context.Completed?.Contains(key.Id) == true)
+        {
+            var hidden = context.StructureSize(key.Id);
+            return new PlanNode(key, required, required, 0, null, 0, [], [], hidden, hidden, 0, 0, IsManual: true);
+        }
 
         var taken = ledger.Take(key, required);
         var deficit = required - taken;
@@ -171,7 +179,7 @@ public static class CraftingPlanner
                 Walk(child);
             }
 
-            if (node.FromStock > 0)
+            if (node.FromStock > 0 && !node.IsManual)
             {
                 used[node.Key] = used.GetValueOrDefault(node.Key) + node.FromStock;
             }
@@ -258,6 +266,9 @@ public static class CraftingPlanner
         private readonly PlanRequest _request;
         private readonly Dictionary<int, int> _structure = [];
         private int _budget;
+
+        /// <summary>The manual completion marks of the goal currently being planned.</summary>
+        public IReadOnlySet<int>? Completed { get; set; }
 
         public Context(PlanRequest request)
         {

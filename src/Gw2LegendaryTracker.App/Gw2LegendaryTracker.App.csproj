@@ -12,6 +12,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Recipe data that the official API does not contain; read at startup from data\recipes next to the exe. -->
+    <Content Include="..\..\data\recipes\*.json" Link="data\recipes\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Gw2LegendaryTracker.Core\Gw2LegendaryTracker.Core.csproj" />
     <ProjectReference Include="..\Gw2LegendaryTracker.Infrastructure\Gw2LegendaryTracker.Infrastructure.csproj" />
   </ItemGroup>

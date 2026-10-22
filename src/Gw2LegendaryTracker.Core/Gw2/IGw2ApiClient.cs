@@ -18,4 +18,7 @@ public interface IGw2ApiClient
 
     /// <summary>Recipes by id (public). At most 200 ids per call. Malformed recipes are left out.</summary>
     Task<IReadOnlyList<Recipe>> GetRecipesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>Item ids of every Legendary in the game (public, no key needed).</summary>
+    Task<IReadOnlyList<int>> GetLegendaryItemIdsAsync(CancellationToken cancellationToken = default);
 }

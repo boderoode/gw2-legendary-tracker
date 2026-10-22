@@ -7,4 +7,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Gw2LegendaryTracker.Tests/Gw2LegendaryTracker.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Gw2LegendaryTracker.PackBuilder/Gw2LegendaryTracker.PackBuilder.csproj" />
+  </Folder>
 </Solution>

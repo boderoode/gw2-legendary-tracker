@@ -5,7 +5,7 @@
         Title="GW2 Legendary Tracker overlay"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanResizeWithGrip" Topmost="True" ShowInTaskbar="False" ShowActivated="False"
-        MinWidth="220" MinHeight="90" Width="280" Height="130"
+        MinWidth="240" MinHeight="120" Width="300" Height="230"
         Opacity="{Binding Opacity}">
     <Border Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1" CornerRadius="8" Padding="10">
@@ -21,7 +21,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding SelectedLegendaryName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                <TextBlock Text="{Binding Goals.SelectedName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="{Binding IsExpanded, Converter={x:Static local:ExpandGlyphConverter.Instance}}"
                             Command="{Binding ToggleExpandedCommand}" Padding="6,0" Margin="6,0,0,0"
@@ -36,7 +36,40 @@
             </Grid>
 
             <StackPanel Grid.Row="1" Margin="0,8,0,0">
-                <StackPanel Orientation="Horizontal">
+                <StackPanel.Resources>
+                    <Style x:Key="OverlayIfSelected" TargetType="FrameworkElement">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Goals.HasSelection}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Resources>
+
+                <StackPanel Style="{StaticResource OverlayIfSelected}">
+                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding Goals.SelectedProgress, Mode=OneWay}" Height="6"
+                                 Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceBrush}"
+                                 BorderThickness="0" AutomationProperties.Name="Voortgang" />
+                    <TextBlock Text="{Binding Goals.SelectedProgressText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    <TextBlock Text="{Binding Goals.NextStepText}" FontWeight="SemiBold" Margin="0,6,0,0" />
+                    <ItemsControl ItemsSource="{Binding Goals.OverlayShortages}" Margin="0,6,0,0" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" FontSize="12" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Text}" Style="{StaticResource MutedText}" Margin="8,0,0,0" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <Ellipse Style="{StaticResource SyncDot}" Margin="0,0,6,0" />
                     <TextBlock Text="{Binding SyncText}" Style="{StaticResource MutedText}" />
                 </StackPanel>

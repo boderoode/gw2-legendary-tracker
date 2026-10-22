@@ -211,4 +211,17 @@ public class Gw2ApiClientTests
         Assert.Empty(await client.GetRecipesAsync([]));
         Assert.Empty(handler.Requests);
     }
+
+    [Fact]
+    public async Task Legendary_ids_come_from_the_public_endpoint_without_credentials()
+    {
+        var handler = new StubHandler(_ => StubHandler.Json("[83162,106658,93105]"));
+
+        var ids = await CreateClient(handler).GetLegendaryItemIdsAsync();
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Null(request.Headers.Authorization);
+        Assert.Equal("/v2/legendaryarmory", request.RequestUri!.PathAndQuery);
+        Assert.Equal([83162, 106658, 93105], ids);
+    }
 }

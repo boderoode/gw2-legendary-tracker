@@ -1,6 +1,13 @@
 namespace Gw2LegendaryTracker.Core.Crafting;
 
-public sealed record CraftGoal(int ItemId, int Quantity = 1);
+public sealed record CraftGoal(int ItemId, int Quantity = 1)
+{
+    /// <summary>
+    /// Items the user marked as done by hand for this goal (e.g. something the inventory cannot show).
+    /// They count as owned without using up real stock, and nothing below them is planned.
+    /// </summary>
+    public IReadOnlySet<int>? Completed { get; init; }
+}
 
 /// <summary>One way to make an item, as evaluated for a plan. Shown so the user can see and choose alternatives.</summary>
 public sealed record RouteOption(Recipe Recipe, long MissingUnits, long CraftActions, bool IsChosen);
@@ -25,7 +32,8 @@ public sealed record PlanNode(
     int NodeCount,
     int SatisfiedCount,
     long MissingUnits,
-    long CraftActions)
+    long CraftActions,
+    bool IsManual = false)
 {
     /// <summary>True when the stock covers this position completely, so nothing below it is needed.</summary>
     public bool IsCoveredByStock => FromStock == Required;

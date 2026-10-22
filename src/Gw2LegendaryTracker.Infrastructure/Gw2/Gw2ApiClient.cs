@@ -72,9 +72,12 @@ public sealed class Gw2ApiClient : IGw2ApiClient
         var items = await GetAsync<List<ItemDto>>($"v2/items?ids={query}&lang=en", apiKey: null, cancellationToken, notFoundIsEmpty: true).ConfigureAwait(false);
         return (items ?? [])
             .Where(i => !string.IsNullOrWhiteSpace(i.Name))
-            .Select(i => new ItemInfo(i.Id, i.Name!, i.Icon, i.Rarity ?? "Basic"))
+            .Select(i => new ItemInfo(i.Id, i.Name!, i.Icon, i.Rarity ?? "Basic", i.Description))
             .ToList();
     }
+
+    public async Task<IReadOnlyList<int>> GetLegendaryItemIdsAsync(CancellationToken cancellationToken = default) =>
+        await GetAsync<List<int>>("v2/legendaryarmory", apiKey: null, cancellationToken).ConfigureAwait(false);
 
     public async Task<IReadOnlyList<int>> GetRecipeIdsAsync(CancellationToken cancellationToken = default) =>
         await GetAsync<List<int>>("v2/recipes", apiKey: null, cancellationToken).ConfigureAwait(false);
@@ -193,7 +196,7 @@ public sealed class Gw2ApiClient : IGw2ApiClient
 
     private sealed record TokenInfoDto(string? Id, string? Name, List<string>? Permissions);
 
-    private sealed record ItemDto(int Id, string? Name, string? Icon, string? Rarity);
+    private sealed record ItemDto(int Id, string? Name, string? Icon, string? Rarity, string? Description);
 
     private sealed record RecipeDto(
         int Id,

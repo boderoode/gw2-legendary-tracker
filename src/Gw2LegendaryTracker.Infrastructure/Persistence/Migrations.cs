@@ -67,5 +67,25 @@ internal static class Migrations
         );
         CREATE INDEX ix_recipe_ingredient_recipe ON recipe_ingredient (recipe_id);
         """,
+
+        // v5: Legendary list (public data) and the user's goals (user data).
+        """
+        CREATE TABLE legendary_item (
+            item_id INTEGER PRIMARY KEY NOT NULL
+        );
+
+        CREATE TABLE goal (
+            item_id  INTEGER PRIMARY KEY NOT NULL,
+            position INTEGER NOT NULL,
+            quantity INTEGER NOT NULL,
+            note     TEXT NOT NULL
+        );
+
+        CREATE TABLE goal_completed (
+            goal_item_id INTEGER NOT NULL REFERENCES goal (item_id) ON DELETE CASCADE,
+            item_id      INTEGER NOT NULL,
+            PRIMARY KEY (goal_item_id, item_id)
+        ) WITHOUT ROWID;
+        """,
     ];
 }

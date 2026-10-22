@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Gw2LegendaryTracker.Core.Crafting;
+using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Core.Settings;
@@ -75,6 +76,16 @@ internal sealed class FakeApiClient : IGw2ApiClient
 
     public List<IReadOnlyCollection<int>> ItemRequests { get; } = [];
 
+    /// <summary>When set, only these items exist (id to name); otherwise every id resolves to a synthetic item.</summary>
+    public Dictionary<int, string>? KnownItems { get; set; }
+
+    public Dictionary<int, string>? ItemDescriptions { get; set; }
+
+    public List<int> LegendaryIds { get; set; } = [];
+
+    public Task<IReadOnlyList<int>> GetLegendaryItemIdsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<int>>(LegendaryIds);
+
     public List<int> RecipeIds { get; set; } = [];
 
     public Dictionary<int, Recipe> Recipes { get; } = [];
@@ -98,6 +109,11 @@ internal sealed class FakeApiClient : IGw2ApiClient
         if (ItemFailure is not null)
         {
             return Task.FromException<IReadOnlyList<ItemInfo>>(ItemFailure);
+        }
+
+        if (KnownItems is not null)
+        {
+            return Task.FromResult<IReadOnlyList<ItemInfo>>([.. ids.Where(KnownItems.ContainsKey).Select(id => new ItemInfo(id, KnownItems[id], null, "Basic", ItemDescriptions?.GetValueOrDefault(id)))]);
         }
 
         return Task.FromResult<IReadOnlyList<ItemInfo>>([.. ids.Select(id => new ItemInfo(id, $"Item {id}", $"https://icons/{id}.png", "Rare"))]);
@@ -193,4 +209,42 @@ internal sealed class FakeRecipeStore : IRecipeStore
 
     public Task<IReadOnlyList<Recipe>> LoadAllAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Recipe>>([.. Recipes.Values]);
+}
+
+internal sealed class FakeGoalStore : IGoalStore
+{
+    public IReadOnlyList<Goal> Saved { get; set; } = [];
+
+    public int SaveCount { get; private set; }
+
+    public Exception? Failure { get; set; }
+
+    public Task<IReadOnlyList<Goal>> LoadAsync(CancellationToken cancellationToken = default) => Task.FromResult(Saved);
+
+    public Task SaveAsync(IReadOnlyList<Goal> goals, CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
+        Saved = goals;
+        SaveCount++;
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeLegendaryStore : ILegendaryStore
+{
+    public List<int> Ids { get; } = [];
+
+    public Task<IReadOnlyList<int>> LoadAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<int>>([.. Ids]);
+
+    public Task SaveAsync(IReadOnlyCollection<int> itemIds, CancellationToken cancellationToken = default)
+    {
+        Ids.Clear();
+        Ids.AddRange(itemIds);
+        return Task.CompletedTask;
+    }
 }
