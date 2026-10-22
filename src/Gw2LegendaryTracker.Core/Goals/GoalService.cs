@@ -30,6 +30,13 @@ public sealed class GoalService : IDisposable
     public Task AddAsync(int itemId, CancellationToken cancellationToken = default) =>
         UpdateAsync(goals => goals.Any(g => g.ItemId == itemId) ? goals : [.. goals, new Goal(itemId)], cancellationToken);
 
+    /// <summary>Replaces the whole list, e.g. after an import. The new list is stored before anyone is told.</summary>
+    public Task ReplaceAsync(IReadOnlyList<Goal> goals, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(goals);
+        return UpdateAsync(_ => [.. goals], cancellationToken);
+    }
+
     public Task RemoveAsync(int itemId, CancellationToken cancellationToken = default) =>
         UpdateAsync(goals => [.. goals.Where(g => g.ItemId != itemId)], cancellationToken);
 

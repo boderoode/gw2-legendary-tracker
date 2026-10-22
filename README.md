@@ -18,7 +18,7 @@ Dit project wordt in fases opgebouwd. Een fase is pas klaar als de build en test
 | 6 | Crafting-engine en materiaalberekeningen | Klaar (engine en data; nog geen scherm) |
 | 7 | Legendary-doelen en handmatige progress | Klaar, UI **nog niet getest op Windows** |
 | 8 | Compacte en uitgebreide overlay | Klaar, **nog niet getest op Windows** (zie `docs/overlay-test-plan.md`) |
-| 9 | Export/import, foutafhandeling, extra tests | Gepland |
+| 9 | Export/import, foutafhandeling, extra tests | Klaar |
 | 10 | Reproduceerbare Windows-build en installer | Gepland |
 
 ## Crafting-engine en receptdata
@@ -93,6 +93,38 @@ de app of dit bestand deelt buiten privégebruik.
   materialen krijgt. De uitgebreide weergave laat zien wat Legendaries hoger in de lijst al van jouw voorraad gebruiken.
 - Wat de overlay toont, komt uit dezelfde planning als het hoofdvenster; een wijziging in het ene venster is direct
   zichtbaar in het andere.
+
+## Gegevens en back-up
+
+Onder "Gegevens en back-up" in het hoofdvenster kun je je eigen gegevens exporteren en importeren: je Legendaries,
+hun volgorde, afvinkingen, notities en je instellingen. Dat is handig om van pc te wisselen of vóór een grote wijziging.
+
+- **API-keys zitten nooit in een export.** Ook de inventaris en de gedownloade spelgegevens niet: die haalt de app
+  opnieuw op.
+- **Importeren vervangt** je huidige Legendaries en instellingen. De app controleert het bestand eerst volledig en
+  vraagt bevestiging; een ongeldig bestand verandert niets en kost ook geen back-up.
+- **Automatische back-up:** vlak voor een import bewaart de app wat je nu hebt in
+  `%LOCALAPPDATA%\Gw2LegendaryTracker\backups` (de laatste vijf). Een vergissing is dus terug te draaien door die
+  back-up te importeren.
+- Kleine fouten in een verder geldig bestand (een dubbel doel, een ongeldig item) worden overgeslagen en gemeld; een
+  bestand dat geen geldige export is of van een nieuwere versie komt, wordt als geheel geweigerd.
+
+## Problemen en logbestanden
+
+De app schrijft een logbestand in `%LOCALAPPDATA%\Gw2LegendaryTracker\logs` (één bestand per dag, een week bewaard,
+hooguit 1 MB per dag). Open de map met de knop **Logmap openen** in het hoofdvenster.
+
+**Veilig delen:** voordat iets in het logbestand terechtkomt, worden Guild Wars 2-keys, gw2treasures-keys,
+bearer-tokens, key-achtige waarden in webadressen en je Windows-gebruikersnaam in paden verwijderd. De app logt geen
+accountnaam, inventaris of notities. Het is toch verstandig het bestand even door te lezen voordat je het deelt. Een
+logregel bevat een tijdstip, een niveau (INF, WRN, ERR) en een korte tekst, bijvoorbeeld:
+
+```
+2026-10-22T19:30:00.0000000+00:00 [WRN] Synchronisatie mislukt: Geen verbinding met de Guild Wars 2-servers.
+```
+
+Onverwachte fouten in het scherm worden gelogd en gemeld; je gegevens zijn dan veilig, want alles wordt direct
+opgeslagen. Blijven er binnen een minuut meerdere fouten komen, dan sluit de app zichzelf af.
 
 ## Bekende beperkingen van de overlay
 

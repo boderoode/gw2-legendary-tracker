@@ -402,6 +402,53 @@
                 </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource CardBorder}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="Gegevens en back-up" Style="{StaticResource HeadingText}" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                               Text="Sla je Legendaries, hun volgorde, afvinkingen, notities en instellingen op in een bestand, bijvoorbeeld om ze op een andere pc te gebruiken. API-keys zitten er nooit in. Bij het importeren maakt de app eerst zelf een back-up van wat je nu hebt." />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Content="Exporteren…" Click="OnExportClick" />
+                        <Button Content="Importeren…" Click="OnImportClick" Margin="8,0,0,0" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding DataTransfer.Message}" Margin="0,8,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataTransfer.HasMessage}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding DataTransfer.IsError}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding DataTransfer.Warnings}" Style="{StaticResource MutedText}" Margin="0,4,0,0">
+                        <TextBlock.Visibility>
+                            <Binding Path="DataTransfer.HasWarnings" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                        </TextBlock.Visibility>
+                    </TextBlock>
+
+                    <TextBlock Text="Problemen" Style="{StaticResource MutedText}" Margin="0,16,0,2" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="De app schrijft een logbestand zonder API-keys of je Windows-gebruikersnaam. Je kunt zo'n bestand veilig delen als er iets misgaat." />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Logmap openen" Click="OnOpenLogFolderClick" />
+                        <Button Content="Back-upmap openen" Click="OnOpenBackupFolderClick" Margin="8,0,0,0" />
+                    </StackPanel>
+
+                    <TextBlock Margin="0,12,0,0" Style="{StaticResource MutedText}">
+                        <Run Text="Versie" />
+                        <Run Text="{Binding AppVersion, Mode=OneWay}" />
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
             <Border Margin="0,16,0,0" Padding="12" CornerRadius="6" Background="#33E5605A" BorderBrush="{StaticResource DangerBrush}" BorderThickness="1">
                 <Border.Style>
                     <Style TargetType="Border">

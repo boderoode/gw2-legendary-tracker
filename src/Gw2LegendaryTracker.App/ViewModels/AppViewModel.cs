@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Gw2LegendaryTracker.Core.Logging;
 using Gw2LegendaryTracker.Core.Settings;
 using Gw2LegendaryTracker.Core.State;
 using Gw2LegendaryTracker.Core.Sync;
@@ -18,6 +19,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     private readonly AppState _state;
     private readonly ConnectionService _connection;
     private readonly SyncService _sync;
+    private readonly IAppLog _log;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _opacityTimer;
     private double? _pendingOpacity;
@@ -36,11 +38,15 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         InventoryViewModel inventory,
         GoalsViewModel goals,
         RecipeDataViewModel recipeData,
+        DataTransferViewModel dataTransfer,
+        IAppLog log,
         Dispatcher dispatcher)
     {
         Inventory = inventory;
         Goals = goals;
         RecipeData = recipeData;
+        DataTransfer = dataTransfer;
+        _log = log;
         _state = state;
         _connection = connection;
         _sync = sync;
@@ -81,6 +87,11 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     public GoalsViewModel Goals { get; }
 
     public RecipeDataViewModel RecipeData { get; }
+
+    public DataTransferViewModel DataTransfer { get; }
+
+    /// <summary>Shown in the main window so a problem report can say which version it is about.</summary>
+    public string AppVersion { get; } = AppInfo.Version;
 
     public OverlaySettings Overlay => _state.Settings.Overlay;
 
@@ -270,6 +281,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
             ConnectMessage = result.IsConnected ? $"{result.Message} Gegevens worden opgehaald…" : result.Message;
             ConnectMessageIsError = !result.IsConnected;
             HasApiKey = result.IsConnected;
+            _log.Info(result.IsConnected ? "GW2-key gecontroleerd: verbonden" : $"GW2-key geweigerd: {result.Message}");
             if (result.IsConnected)
             {
                 _ = SyncAsync();
@@ -280,6 +292,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
             // e.g. the encrypted key file could not be written.
             ConnectMessage = $"De key kon niet veilig worden opgeslagen: {ex.Message}";
             ConnectMessageIsError = true;
+            _log.Failure("GW2-key opslaan mislukt", ex);
         }
         finally
         {
@@ -292,6 +305,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         try
         {
             await _connection.DisconnectAsync();
+            _log.Info("GW2-key verwijderd");
             HasApiKey = false;
             ConnectMessage = "De key is verwijderd van deze computer.";
             ConnectMessageIsError = false;

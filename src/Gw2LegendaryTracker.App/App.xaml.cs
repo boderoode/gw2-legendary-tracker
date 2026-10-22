@@ -1,18 +1,22 @@
 using System.IO;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Threading;
 using Gw2LegendaryTracker.App.Services;
 using Gw2LegendaryTracker.App.ViewModels;
 using Gw2LegendaryTracker.App.Views;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Crafting.Forge;
+using Gw2LegendaryTracker.Core.Export;
 using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Inventory;
 using Gw2LegendaryTracker.Core.Items;
+using Gw2LegendaryTracker.Core.Logging;
 using Gw2LegendaryTracker.Core.State;
 using Gw2LegendaryTracker.Core.Sync;
 using Gw2LegendaryTracker.Infrastructure.Gw2;
+using Gw2LegendaryTracker.Infrastructure.Logging;
 using Gw2LegendaryTracker.Infrastructure.Security;
 using Gw2LegendaryTracker.Infrastructure.Persistence;
 
@@ -34,6 +38,8 @@ public partial class App : Application
     private PlanningService? _planning;
     private HotkeyService? _hotkey;
     private OverlayController? _overlay;
+    private FileAppLog? _log;
+    private readonly List<DateTimeOffset> _recentFailures = [];
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -49,6 +55,10 @@ public partial class App : Application
             return;
         }
 
+        _log = new FileAppLog(DataPath("logs"));
+        _log.Info($"Start, versie {AppInfo.Version}, {Environment.OSVersion}");
+        RegisterExceptionHandlers();
+
         try
         {
             await StartAsync();
@@ -56,13 +66,19 @@ public partial class App : Application
         catch (Exception ex)
         {
             // Startup failures (e.g. unreadable database) must be visible; there is no window to report them in yet.
-            MessageBox.Show($"De applicatie kon niet starten:\n\n{ex.Message}", "GW2 Legendary Tracker", MessageBoxButton.OK, MessageBoxImage.Error);
+            _log.Failure("Starten mislukt", ex);
+            MessageBox.Show(
+                $"De applicatie kon niet starten:\n\n{ex.Message}\n\nDetails staan in het logbestand in:\n{_log.Directory}",
+                "GW2 Legendary Tracker",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
             Shutdown(1);
         }
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _log?.Info("Afgesloten");
         _overlay?.Dispose();
         _hotkey?.Dispose();
         _viewModel?.Dispose();
@@ -81,6 +97,50 @@ public partial class App : Application
         base.OnExit(e);
     }
 
+    /// <summary>
+    /// Last line of defence: unexpected errors are logged and reported instead of silently closing the app.
+    /// Everything is stored before it is shown, so continuing is safe; after repeated failures the app stops.
+    /// </summary>
+    private void RegisterExceptionHandlers()
+    {
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            _log?.Failure("Niet-afgehandelde fout in een achtergrondtaak", e.Exception);
+            e.SetObserved();
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            _log?.Failure("Fatale fout, de app stopt", e.ExceptionObject as Exception);
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        _log?.Failure("Onverwachte fout in het scherm", e.Exception);
+        e.Handled = true;
+
+        var now = DateTimeOffset.UtcNow;
+        _recentFailures.RemoveAll(at => now - at > TimeSpan.FromMinutes(1));
+        _recentFailures.Add(now);
+
+        var folder = _log?.Directory ?? "het logbestand";
+        if (_recentFailures.Count >= 3)
+        {
+            MessageBox.Show(
+                $"Er blijven fouten optreden, dus de app sluit af. Je gegevens zijn bewaard.\n\nDetails staan in het logbestand in:\n{folder}",
+                "GW2 Legendary Tracker",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown(1);
+            return;
+        }
+
+        MessageBox.Show(
+            $"Er ging iets onverwachts mis. Je gegevens zijn veilig: alles wordt direct opgeslagen.\n\nDetails staan in het logbestand in:\n{folder}\n(In het hoofdvenster vind je een knop om die map te openen.)",
+            "GW2 Legendary Tracker",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
     private static string DataPath(string fileName) => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Gw2LegendaryTracker",
@@ -91,6 +151,18 @@ public partial class App : Application
         var database = new SqliteDatabase(DataPath("tracker.db"));
         await database.MigrateAsync();
         _state = await AppState.LoadAsync(new SqliteSettingsStore(database));
+        var log = _log ?? throw new InvalidOperationException("The log is created before the app starts.");
+        _state.SyncStatusChanged += (_, status) =>
+        {
+            if (status.Phase == SyncPhase.Failed)
+            {
+                log.Warning($"Synchronisatie mislukt: {status.Error}");
+            }
+            else if (status.Phase == SyncPhase.Succeeded)
+            {
+                log.Info("Synchronisatie gelukt");
+            }
+        };
 
         _http = new HttpClient { BaseAddress = new Uri("https://api.guildwars2.com/"), Timeout = TimeSpan.FromSeconds(30) };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("Gw2LegendaryTracker/0.1");
@@ -120,7 +192,8 @@ public partial class App : Application
         var forgeKeys = new DpapiApiKeyStore(DataPath("forgekey.bin"));
         var forge = new ForgeRecipeCatalog(forgeClient, forgeKeys, new SqliteForgeRecipeStore(database), api);
         var provider = new RecipeBookProvider(recipes, forge, token => LocalRecipeFiles.LoadAsync(RecipeFolders(), token));
-        var recipeData = new RecipeDataViewModel(new ForgeConnectionService(forgeClient, forgeKeys), forge, provider, _planning, goals, Dispatcher);
+        var recipeData = new RecipeDataViewModel(new ForgeConnectionService(forgeClient, forgeKeys), forge, provider, _planning, goals, log, Dispatcher);
+        var transfer = new DataTransferViewModel(new UserDataTransferService(_state, _goalService), log, DataPath("backups"), log is FileAppLog file ? file.Directory : DataPath("logs"));
 
         _viewModel = new AppViewModel(
             _state,
@@ -129,6 +202,8 @@ public partial class App : Application
             new InventoryViewModel(inventory, catalog, Dispatcher),
             goals,
             recipeData,
+            transfer,
+            log,
             Dispatcher);
         _overlay = new OverlayController(_viewModel);
 
@@ -158,7 +233,7 @@ public partial class App : Application
         DataPath("recipes"),
     ];
 
-    private static async Task LoadRecipesAsync(RecipeCatalog catalog, RecipeDataViewModel recipeData, GoalsViewModel goals)
+    private async Task LoadRecipesAsync(RecipeCatalog catalog, RecipeDataViewModel recipeData, GoalsViewModel goals)
     {
         try
         {
@@ -177,14 +252,17 @@ public partial class App : Application
 
             await forgeRun;
             goals.StatusText = "Receptdata is actueel.";
+            _log?.Info("Officiële recepten bijgewerkt");
         }
         catch (Gw2ApiException ex)
         {
             goals.StatusText = $"Recepten konden niet worden bijgewerkt: {ex.Message} De opgeslagen recepten blijven bruikbaar.";
+            _log?.Warning($"Recepten bijwerken mislukt: {ex.Message}");
         }
         catch (Exception ex)
         {
             goals.StatusText = $"Recepten konden niet worden geladen: {ex.Message}";
+            _log?.Failure("Recepten laden mislukt", ex);
         }
     }
 

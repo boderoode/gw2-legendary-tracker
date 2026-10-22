@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Crafting.Forge;
 using Gw2LegendaryTracker.Core.Goals;
+using Gw2LegendaryTracker.Core.Logging;
 
 namespace Gw2LegendaryTracker.App.ViewModels;
 
@@ -18,6 +19,7 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
     private readonly RecipeBookProvider _provider;
     private readonly PlanningService _planning;
     private readonly GoalsViewModel _goals;
+    private readonly IAppLog _log;
     private readonly Dispatcher _dispatcher;
     private readonly SemaphoreSlim _bookGate = new(1, 1);
     private CancellationTokenSource? _run;
@@ -35,6 +37,7 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
         RecipeBookProvider provider,
         PlanningService planning,
         GoalsViewModel goals,
+        IAppLog log,
         Dispatcher dispatcher)
     {
         _connection = connection;
@@ -42,6 +45,7 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
         _provider = provider;
         _planning = planning;
         _goals = goals;
+        _log = log;
         _dispatcher = dispatcher;
 
         _goals.PropertyChanged += OnGoalsPropertyChanged;
@@ -253,6 +257,7 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
             }
 
             FetchText = Describe(result);
+            LogResult(goalId, result);
         }
         catch (OperationCanceledException)
         {
@@ -261,6 +266,7 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             FetchText = $"Recepten ophalen is mislukt: {ex.Message}";
+            _log.Failure("Recepten ophalen mislukt", ex);
         }
     }
 
@@ -270,6 +276,28 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
         _run?.Cancel();
         _run?.Dispose();
         _bookGate.Dispose();
+    }
+
+    private void LogResult(int goalId, ForgeFetchResult result)
+    {
+        var summary = $"Recepten voor item {goalId}: {result.Fetched} opgehaald, {result.FromCache} uit cache, {result.RandomSkipped} willekeurige overgeslagen, {result.Rejected.Count} afgewezen";
+        if (result.Error is not null)
+        {
+            _log.Warning($"{summary}; gestopt: {result.Error}");
+        }
+        else if (result.Truncated)
+        {
+            _log.Warning($"{summary}; afgebroken bij het maximum aantal aanroepen");
+        }
+        else
+        {
+            _log.Info(summary);
+        }
+
+        foreach (var rejected in result.Rejected)
+        {
+            _log.Warning(rejected);
+        }
     }
 
     private static string Describe(ForgeFetchResult result)
