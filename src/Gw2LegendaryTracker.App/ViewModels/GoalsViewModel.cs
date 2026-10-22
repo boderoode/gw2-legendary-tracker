@@ -296,7 +296,8 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
 
         try
         {
-            await ReloadOptionsAsync(await _legendaries.RefreshAsync());
+            // The list changes rarely, so it is fetched at most once a day.
+            await ReloadOptionsAsync(await _legendaries.RefreshIfStaleAsync());
         }
         catch (Gw2ApiException)
         {

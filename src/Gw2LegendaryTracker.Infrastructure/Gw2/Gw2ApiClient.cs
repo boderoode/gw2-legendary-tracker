@@ -76,6 +76,12 @@ public sealed class Gw2ApiClient : IGw2ApiClient
             .ToList();
     }
 
+    public async Task<IReadOnlyList<int>> GetMaterialItemIdsAsync(CancellationToken cancellationToken = default)
+    {
+        var categories = await GetAsync<List<MaterialCategoryDto>>("v2/materials?ids=all", apiKey: null, cancellationToken).ConfigureAwait(false);
+        return [.. categories.SelectMany(c => c.Items ?? []).Distinct()];
+    }
+
     public async Task<IReadOnlyList<int>> GetLegendaryItemIdsAsync(CancellationToken cancellationToken = default) =>
         await GetAsync<List<int>>("v2/legendaryarmory", apiKey: null, cancellationToken).ConfigureAwait(false);
 
@@ -207,6 +213,8 @@ public sealed class Gw2ApiClient : IGw2ApiClient
         [property: JsonPropertyName("guild_ingredients")] List<JsonElement>? GuildIngredients);
 
     private sealed record RecipeIngredientDto([property: JsonPropertyName("item_id")] int ItemId, long Count);
+
+    private sealed record MaterialCategoryDto(List<int>? Items);
 
     private sealed record AccountDto(string? Name);
 

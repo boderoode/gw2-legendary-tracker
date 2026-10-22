@@ -34,6 +34,28 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OnForgeConnectClick(object sender, RoutedEventArgs e) => await ConnectForgeAsync();
+
+    private async void OnForgeKeyBoxKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            await ConnectForgeAsync();
+        }
+    }
+
+    private async Task ConnectForgeAsync()
+    {
+        await ViewModel.RecipeData.ConnectAsync(ForgeKeyBox.Password);
+        if (ViewModel.RecipeData.HasKey)
+        {
+            ForgeKeyBox.Clear();
+        }
+    }
+
+    private async void OnForgeDisconnectClick(object sender, RoutedEventArgs e) => await ViewModel.RecipeData.DisconnectAsync();
+
     private async void OnDisconnectClick(object sender, RoutedEventArgs e) => await ViewModel.DisconnectAsync();
 
     private void OnLinkNavigate(object sender, RequestNavigateEventArgs e)

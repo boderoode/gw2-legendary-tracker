@@ -31,8 +31,11 @@ Meerdere doelen delen één voorraad; een doel eerder in de lijst heeft voorrang
   helemaal uit je bezit maken. 100% betekent dat je het doel nu kunt afronden.
 - **Beste route:** de route met de minste ontbrekende stuks, daarna de minste craftacties, daarna het laagste receptnummer.
   Je kunt een route altijd zelf forceren.
-- **Receptdata** komt uit de officiële API (alle ~13.200 recepten, eenmalig gedownload en lokaal bewaard; de eerste
-  keer duurt dat ongeveer twee minuten) en uit lokale bestanden (zie hieronder).
+- **Receptdata** komt uit drie bronnen, die samen één receptboek vormen:
+  1. de officiële API: alle ~13.200 gewone recepten, eenmalig gedownload en lokaal bewaard (de eerste keer duurt
+     dat ongeveer twee minuten);
+  2. gw2treasures, voor de Mystic Forge-recepten van Legendaries (zie hieronder);
+  3. lokale bestanden in `data\recipes` (meegeleverd) en `%LOCALAPPDATA%\Gw2LegendaryTracker\recipes` (van jezelf).
 
 ### Belangrijke beperking: Legendary-recepten
 
@@ -49,29 +52,34 @@ Ids van lokale recepten zijn negatief, zodat ze nooit botsen met API-recepten. O
 gemeld; de rest van het bestand blijft werken. Recepten die guild-upgrades vereisen worden niet gebruikt.
 Receptbestanden worden gelezen uit `data\recipes` naast het programma en uit `%LOCALAPPDATA%\Gw2LegendaryTracker\recipes`.
 
-### Receptdata maken en controleren
+### Recepten van een Legendary ophalen (gw2treasures)
 
-Het bestand `data/recipes/legendary.json` wordt niet met de hand getypt maar gegenereerd en gecontroleerd:
+Zodra je een Legendary kiest, haalt de app de Mystic Forge-recepten van die Legendary en van al zijn onderdelen op
+bij de API van gw2treasures. Daarvoor is een gratis key nodig die je zelf aanmaakt (de stappen staan in het scherm).
+
+- **Per onderdeel, met cache:** het endpoint geeft één item per aanroep, dus de app loopt de boom af en onthoudt elk
+  onderdeel zeven dagen. Gedeelde onderdelen (Gift of Fortune, Gift of Mastery, ...) worden maar één keer opgehaald:
+  Twilight kostte 13 aanroepen, Bifrost daarna 6. Zonder internet blijven opgeslagen recepten werken.
+- **Rustig:** minstens 1,6 seconde tussen aanroepen en hooguit 150 per keer. Ruwe materialen worden niet opgezocht.
+- **Controle:** elk recept wordt vergeleken met de officiële itembeschrijving ("Made by combining these items in the
+  Mystic Forge"). Wijkt het af, dan wordt het niet gebruikt en meldt de app dat. Staat er geen beschrijving, dan wordt
+  het recept bewaard maar gemeld als "één bron, niet gecontroleerd".
+- **Lijst van Legendaries:** `/v2/legendaryarmory`, hooguit eens per 24 uur ververst.
+- De key staat versleuteld (Windows DPAPI) in `%LOCALAPPDATA%\Gw2LegendaryTracker\forgekey.bin`, nooit in de
+  database of in logs. Het kan zijn dat gw2treasures dit endpoint later alleen na goedkeuring van je applicatie
+  openstelt; de app meldt dat dan en gebruikt wat is opgeslagen.
+
+Het bestand `data/recipes/legendary.json` (Twilight) is een terugval en testgeval. Het kan met een hulpprogramma
+opnieuw worden gegenereerd en gecontroleerd; dat is alleen voor ontwikkelaars:
 
 ```powershell
 $env:GW2TREASURES_KEY = "<key van api.gw2treasures.com>"
 dotnet run --project tools/Gw2LegendaryTracker.PackBuilder -- --root 30704   # 30704 = Twilight; herhaal --root voor meer
 ```
 
-Het hulpprogramma volgt de Mystic Forge-recepten van het opgegeven item naar beneden (gw2treasures-API), slaat
-recepten met een willekeurige uitkomst en ruwe materialen over, en controleert het resultaat tegen de officiële API:
-
-- elk item-id moet bestaan en de naam in het bestand hebben (vangt een verkeerd id voor een bestaand item);
-- staat het recept in de officiële itembeschrijving ("Made by combining these items in the Mystic Forge"), dan moeten
-  ingrediënten en aantallen ook kloppen; zo'n recept krijgt de status `verified-by-official-description`;
-- alle andere recepten hebben één bron en blijven `unreviewed`; de app meldt dat in het scherm.
-
-Bij een probleem schrijft het hulpprogramma niets. De key wordt alleen uit de omgeving gelezen en nergens opgeslagen;
-de app zelf gebruikt gw2treasures niet. Het hulpprogramma wacht minstens 1,5 seconde tussen verzoeken
-(de site vraagt een crawl-delay van 5 seconden voor zijn pagina's; de API heeft een eigen limiet per key).
-
-Let op: de data komt van gw2treasures, een community-project. Controleer hun voorwaarden voordat je de app of dit
-bestand deelt buiten privégebruik.
+Het hulpprogramma schrijft niets als een id of naam niet klopt met de officiële API of een recept de officiële
+beschrijving tegenspreekt. De data komt van gw2treasures, een community-project. Controleer hun voorwaarden voordat je
+de app of dit bestand deelt buiten privégebruik.
 
 ## Bekende beperkingen van de overlay
 

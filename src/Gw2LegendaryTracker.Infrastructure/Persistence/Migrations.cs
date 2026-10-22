@@ -87,5 +87,34 @@ internal static class Migrations
             PRIMARY KEY (goal_item_id, item_id)
         ) WITHOUT ROWID;
         """,
+
+        // v6: when public lists were last fetched, and the forge recipes fetched per item (public data).
+        // forge_lookup also records items that turned out to have no recipe, so they are not asked for again.
+        """
+        CREATE TABLE public_data_meta (
+            key         TEXT PRIMARY KEY NOT NULL,
+            fetched_utc TEXT NOT NULL
+        ) WITHOUT ROWID;
+
+        CREATE TABLE forge_lookup (
+            item_id     INTEGER PRIMARY KEY NOT NULL,
+            fetched_utc TEXT NOT NULL
+        );
+
+        CREATE TABLE forge_recipe (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            output_item_id INTEGER NOT NULL,
+            output_count   INTEGER NOT NULL,
+            is_verified    INTEGER NOT NULL
+        );
+        CREATE INDEX ix_forge_recipe_output ON forge_recipe (output_item_id);
+
+        CREATE TABLE forge_recipe_ingredient (
+            recipe_id INTEGER NOT NULL REFERENCES forge_recipe (id) ON DELETE CASCADE,
+            item_id   INTEGER NOT NULL,
+            count     INTEGER NOT NULL
+        );
+        CREATE INDEX ix_forge_recipe_ingredient_recipe ON forge_recipe_ingredient (recipe_id);
+        """,
     ];
 }

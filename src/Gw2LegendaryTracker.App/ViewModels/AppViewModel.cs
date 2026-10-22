@@ -35,10 +35,12 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         SyncService sync,
         InventoryViewModel inventory,
         GoalsViewModel goals,
+        RecipeDataViewModel recipeData,
         Dispatcher dispatcher)
     {
         Inventory = inventory;
         Goals = goals;
+        RecipeData = recipeData;
         _state = state;
         _connection = connection;
         _sync = sync;
@@ -77,6 +79,8 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     public InventoryViewModel Inventory { get; }
 
     public GoalsViewModel Goals { get; }
+
+    public RecipeDataViewModel RecipeData { get; }
 
     public OverlaySettings Overlay => _state.Settings.Overlay;
 
@@ -230,6 +234,8 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     /// <summary>Loads connection state and syncs in the background; offline start-up still shows stored data.</summary>
     public async Task InitializeAsync()
     {
+        // The key state must be known before the first goal is selected, or the first selection would not fetch anything.
+        await RecipeData.InitializeAsync();
         await Goals.InitializeAsync();
         await _sync.RestoreStatusAsync();
         HasApiKey = await _connection.HasKeyAsync();
@@ -303,6 +309,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         _state.SettingsChanged -= OnSettingsChanged;
         _state.SyncStatusChanged -= OnSyncStatusChanged;
         Inventory.Dispose();
+        RecipeData.Dispose();
         Goals.Dispose();
     }
 

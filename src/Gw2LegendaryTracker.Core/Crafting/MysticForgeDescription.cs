@@ -51,6 +51,17 @@ public static partial class MysticForgeDescription
         return string.Join(' ', words.Select(w => w.Length > 3 && w.EndsWith('s') ? w[..^1] : w));
     }
 
+    /// <summary>True when the two lists hold the same items in the same quantities, ignoring order and plural forms.</summary>
+    public static bool Matches(IEnumerable<(int Count, string Name)> stated, IEnumerable<(string Name, long Count)> actual)
+    {
+        ArgumentNullException.ThrowIfNull(stated);
+        ArgumentNullException.ThrowIfNull(actual);
+
+        var theirs = stated.Select(i => $"{i.Count}|{Normalize(i.Name)}").Order(StringComparer.Ordinal);
+        var mine = actual.Select(i => $"{i.Count}|{Normalize(i.Name)}").Order(StringComparer.Ordinal);
+        return mine.SequenceEqual(theirs);
+    }
+
     [GeneratedRegex(@"^\s*[•\-\*]\s*(?:(?<count>\d+)\s+)?(?<name>.+?)\s*$", RegexOptions.CultureInvariant)]
     private static partial Regex Bullet();
 

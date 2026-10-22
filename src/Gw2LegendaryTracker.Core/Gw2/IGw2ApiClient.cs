@@ -21,4 +21,7 @@ public interface IGw2ApiClient
 
     /// <summary>Item ids of every Legendary in the game (public, no key needed).</summary>
     Task<IReadOnlyList<int>> GetLegendaryItemIdsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Item ids of all raw crafting materials (public). These are bought or gathered, never forged.</summary>
+    Task<IReadOnlyList<int>> GetMaterialItemIdsAsync(CancellationToken cancellationToken = default);
 }

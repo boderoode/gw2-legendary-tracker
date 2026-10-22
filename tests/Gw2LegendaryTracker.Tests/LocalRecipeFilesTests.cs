@@ -35,7 +35,7 @@ public sealed class LocalRecipeFilesTests : IDisposable
 
         Assert.Empty(result.Errors);
         Assert.Equal([-1, -2, -3], result.Recipes.Select(r => r.Id));
-        Assert.Equal(1, result.UnreviewedCount);
+        Assert.Equal([-3], result.UnreviewedIds);
     }
 
     [Fact]

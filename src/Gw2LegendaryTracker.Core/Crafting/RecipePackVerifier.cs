@@ -109,13 +109,8 @@ public static class RecipePackVerifier
             return false;
         }
 
-        static string Key((long Count, string Name) i) => $"{i.Count}|{MysticForgeDescription.Normalize(i.Name)}";
-
-        var mine = recipe.Ingredients
-            .Select(i => (i.Count, Name: actualNames.GetValueOrDefault(i.Key.Id, string.Empty)))
-            .Select(Key)
-            .Order(StringComparer.Ordinal);
-        var theirs = stated.Select(i => Key((i.Count, i.Name))).Order(StringComparer.Ordinal);
-        return mine.SequenceEqual(theirs);
+        return MysticForgeDescription.Matches(
+            stated,
+            recipe.Ingredients.Select(i => (actualNames.GetValueOrDefault(i.Key.Id, string.Empty), i.Count)));
     }
 }

@@ -5,6 +5,7 @@ using Gw2LegendaryTracker.App.Services;
 using Gw2LegendaryTracker.App.ViewModels;
 using Gw2LegendaryTracker.App.Views;
 using Gw2LegendaryTracker.Core.Crafting;
+using Gw2LegendaryTracker.Core.Crafting.Forge;
 using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Inventory;
@@ -28,6 +29,7 @@ public partial class App : Application
     private AppState? _state;
     private AppViewModel? _viewModel;
     private HttpClient? _http;
+    private HttpClient? _forgeHttp;
     private GoalService? _goalService;
     private PlanningService? _planning;
     private HotkeyService? _hotkey;
@@ -67,6 +69,7 @@ public partial class App : Application
         _planning?.Dispose();
         _goalService?.Dispose();
         _http?.Dispose();
+        _forgeHttp?.Dispose();
         _state?.Dispose();
         if (_ownsMutex)
         {
@@ -108,12 +111,22 @@ public partial class App : Application
             _state,
             Dispatcher);
 
+        // gw2treasures: the Mystic Forge recipes of Legendaries, which the official API does not have.
+        _forgeHttp = new HttpClient { BaseAddress = new Uri("https://api.gw2treasures.com/"), Timeout = TimeSpan.FromSeconds(30) };
+        _forgeHttp.DefaultRequestHeaders.UserAgent.ParseAdd("Gw2LegendaryTracker/0.1");
+        var forgeClient = new ForgeApiClient(_forgeHttp);
+        var forgeKeys = new DpapiApiKeyStore(DataPath("forgekey.bin"));
+        var forge = new ForgeRecipeCatalog(forgeClient, forgeKeys, new SqliteForgeRecipeStore(database), api);
+        var provider = new RecipeBookProvider(recipes, forge, token => LocalRecipeFiles.LoadAsync(RecipeFolders(), token));
+        var recipeData = new RecipeDataViewModel(new ForgeConnectionService(forgeClient, forgeKeys), forge, provider, _planning, goals, Dispatcher);
+
         _viewModel = new AppViewModel(
             _state,
             new ConnectionService(api, keys),
             sync,
             new InventoryViewModel(inventory, catalog, Dispatcher),
             goals,
+            recipeData,
             Dispatcher);
         _overlay = new OverlayController(_viewModel);
 
@@ -134,7 +147,7 @@ public partial class App : Application
         await _viewModel.InitializeAsync();
 
         // Recipes are public data: use what is cached right away, then refresh in the background.
-        _ = LoadRecipesAsync(recipes, _planning, goals);
+        _ = LoadRecipesAsync(recipes, recipeData, goals);
     }
 
     private static string[] RecipeFolders() =>
@@ -143,35 +156,29 @@ public partial class App : Application
         DataPath("recipes"),
     ];
 
-    private static async Task LoadRecipesAsync(RecipeCatalog catalog, PlanningService planning, GoalsViewModel goals)
+    private static async Task LoadRecipesAsync(RecipeCatalog catalog, RecipeDataViewModel recipeData, GoalsViewModel goals)
     {
-        var notice = string.Empty;
         try
         {
-            var local = await LocalRecipeFiles.LoadAsync(RecipeFolders());
-            if (local.Errors.Count > 0)
-            {
-                notice += $" Let op: {local.Errors.Count} probleem(en) in de receptbestanden, bijvoorbeeld: {local.Errors[0]}";
-            }
+            // Use what is cached right away, then refresh the official recipes in the background.
+            await recipeData.RebuildBookAsync();
+            goals.StatusText = "Recepten bijwerken… (de eerste keer duurt dit enkele minuten)";
 
-            if (local.UnreviewedCount > 0)
-            {
-                notice += $" {local.UnreviewedCount} lokaal(e) recept(en) hebben maar één bron en zijn nog niet nagelopen.";
-            }
-
-            planning.SetRecipes(await catalog.LoadBookAsync(local.Recipes));
-            goals.StatusText = "Recepten bijwerken… (de eerste keer duurt dit enkele minuten)" + notice;
-
+            // The forge recipes of the selected goal are fetched in parallel; they need the official recipes
+            // to know which other components to look at, so this runs again once those are complete.
+            var forgeRun = recipeData.RecheckSelectedAsync();
             if (await catalog.RefreshAsync() > 0)
             {
-                planning.SetRecipes(await catalog.LoadBookAsync(local.Recipes));
+                await recipeData.RebuildBookAsync();
+                forgeRun = recipeData.RecheckSelectedAsync();
             }
 
-            goals.StatusText = "Receptdata is actueel." + notice;
+            await forgeRun;
+            goals.StatusText = "Receptdata is actueel.";
         }
         catch (Gw2ApiException ex)
         {
-            goals.StatusText = $"Recepten konden niet worden bijgewerkt: {ex.Message} De opgeslagen recepten blijven bruikbaar.{notice}";
+            goals.StatusText = $"Recepten konden niet worden bijgewerkt: {ex.Message} De opgeslagen recepten blijven bruikbaar.";
         }
         catch (Exception ex)
         {

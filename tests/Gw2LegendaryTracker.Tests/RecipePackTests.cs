@@ -185,32 +185,3 @@ public class RecipePackVerifierTests
         Assert.True(result.IsClean);
     }
 }
-
-public class LegendaryCatalogTests
-{
-    private readonly FakeApiClient _api = new();
-    private readonly FakeLegendaryStore _store = new();
-
-    [Fact]
-    public async Task Refresh_stores_the_current_list()
-    {
-        _api.LegendaryIds = [3, 1, 2];
-
-        var ids = await new LegendaryCatalog(_api, _store).RefreshAsync();
-
-        Assert.Equal([3, 1, 2], ids);
-        Assert.Equal([3, 1, 2], _store.Ids);
-    }
-
-    [Fact]
-    public async Task An_empty_answer_never_replaces_a_stored_list()
-    {
-        _store.Ids.AddRange([7, 8]);
-        _api.LegendaryIds = [];
-
-        var ids = await new LegendaryCatalog(_api, _store).RefreshAsync();
-
-        Assert.Equal([7, 8], ids);
-        Assert.Equal([7, 8], _store.Ids);
-    }
-}

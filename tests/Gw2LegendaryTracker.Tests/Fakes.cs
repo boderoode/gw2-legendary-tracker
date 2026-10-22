@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Gw2LegendaryTracker.Core.Crafting;
+using Gw2LegendaryTracker.Core.Crafting.Forge;
 using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
@@ -80,6 +81,11 @@ internal sealed class FakeApiClient : IGw2ApiClient
     public Dictionary<int, string>? KnownItems { get; set; }
 
     public Dictionary<int, string>? ItemDescriptions { get; set; }
+
+    public List<int> Materials { get; set; } = [];
+
+    public Task<IReadOnlyList<int>> GetMaterialItemIdsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<int>>(Materials);
 
     public List<int> LegendaryIds { get; set; } = [];
 
@@ -238,13 +244,86 @@ internal sealed class FakeLegendaryStore : ILegendaryStore
 {
     public List<int> Ids { get; } = [];
 
+    public DateTimeOffset? FetchedUtc { get; set; }
+
     public Task<IReadOnlyList<int>> LoadAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<int>>([.. Ids]);
 
-    public Task SaveAsync(IReadOnlyCollection<int> itemIds, CancellationToken cancellationToken = default)
+    public Task<DateTimeOffset?> GetFetchedUtcAsync(CancellationToken cancellationToken = default) => Task.FromResult(FetchedUtc);
+
+    public Task SaveAsync(IReadOnlyCollection<int> itemIds, DateTimeOffset fetchedUtc, CancellationToken cancellationToken = default)
     {
         Ids.Clear();
         Ids.AddRange(itemIds);
+        FetchedUtc = fetchedUtc;
         return Task.CompletedTask;
     }
+}
+
+/// <summary>A clock the test moves by hand.</summary>
+internal sealed class ManualTime : TimeProvider
+{
+    private DateTimeOffset _now;
+
+    public ManualTime(DateTimeOffset? start = null) => _now = start ?? new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero);
+
+    public override DateTimeOffset GetUtcNow() => _now;
+
+    public void Advance(TimeSpan by) => _now += by;
+}
+
+internal sealed class FakeForgeApiClient : IForgeApiClient
+{
+    public Dictionary<int, List<ForgeRecipe>> Recipes { get; } = [];
+
+    public List<int> Requests { get; } = [];
+
+    public string? LastKey { get; private set; }
+
+    /// <summary>Thrown for every request, or only for the given item when <see cref="FailOnItem"/> is set.</summary>
+    public Exception? Failure { get; set; }
+
+    public int? FailOnItem { get; set; }
+
+    public Task<IReadOnlyList<ForgeRecipe>> GetRecipesAsync(int itemId, string apiKey, CancellationToken cancellationToken = default)
+    {
+        Requests.Add(itemId);
+        LastKey = apiKey;
+        if (Failure is not null && (FailOnItem is null || FailOnItem == itemId))
+        {
+            return Task.FromException<IReadOnlyList<ForgeRecipe>>(Failure);
+        }
+
+        return Task.FromResult<IReadOnlyList<ForgeRecipe>>([.. Recipes.GetValueOrDefault(itemId) ?? []]);
+    }
+}
+
+internal sealed class FakeForgeRecipeStore : IForgeRecipeStore
+{
+    private readonly Dictionary<int, DateTimeOffset> _lookups = [];
+    private readonly Dictionary<int, List<(Recipe Recipe, bool Verified)>> _recipes = [];
+    private int _next = 1;
+
+    public Task<DateTimeOffset?> GetFetchedUtcAsync(int itemId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_lookups.TryGetValue(itemId, out var at) ? (DateTimeOffset?)at : null);
+
+    public Task SaveAsync(int itemId, IReadOnlyList<ForgeRecipeDraft> recipes, DateTimeOffset fetchedUtc, CancellationToken cancellationToken = default)
+    {
+        _lookups[itemId] = fetchedUtc;
+        _recipes[itemId] = [.. recipes.Select(r => (new Recipe(-(IForgeRecipeStore.IdBase + _next++), itemId, r.OutputCount, r.Ingredients, [], RecipeSource.Local), r.IsVerified))];
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<Recipe>> GetRecipesForAsync(int itemId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Recipe>>([.. _recipes.GetValueOrDefault(itemId)?.Select(r => r.Recipe) ?? []]);
+
+    public Task<ForgeRecipeSet> LoadAllAsync(CancellationToken cancellationToken = default)
+    {
+        var all = _recipes.Values.SelectMany(x => x).ToList();
+        return Task.FromResult(new ForgeRecipeSet([.. all.Select(r => r.Recipe)], all.Where(r => !r.Verified).Select(r => r.Recipe.Id).ToHashSet()));
+    }
+
+    public bool HasLookup(int itemId) => _lookups.ContainsKey(itemId);
+
+    public IReadOnlyList<(Recipe Recipe, bool Verified)> Stored(int itemId) => _recipes.GetValueOrDefault(itemId) ?? [];
 }

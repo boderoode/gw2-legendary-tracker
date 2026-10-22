@@ -63,16 +63,21 @@ public class SqliteGoalStoreTests
     }
 
     [Fact]
-    public async Task Legendary_list_round_trips_and_is_replaced()
+    public async Task Legendary_list_round_trips_is_replaced_and_remembers_when_it_was_fetched()
     {
         using var temp = new TempDatabase();
         await temp.Database.MigrateAsync();
         var store = new SqliteLegendaryStore(temp.Database);
+        var first = new DateTimeOffset(2026, 3, 1, 8, 0, 0, TimeSpan.Zero);
+        var second = first.AddDays(1);
+        Assert.Null(await store.GetFetchedUtcAsync());
 
-        await store.SaveAsync([5, 3, 4, 3]);
+        await store.SaveAsync([5, 3, 4, 3], first);
         Assert.Equal([3, 4, 5], await store.LoadAsync());
+        Assert.Equal(first, await store.GetFetchedUtcAsync());
 
-        await store.SaveAsync([9]);
+        await store.SaveAsync([9], second);
         Assert.Equal([9], await store.LoadAsync());
+        Assert.Equal(second, await store.GetFetchedUtcAsync());
     }
 }

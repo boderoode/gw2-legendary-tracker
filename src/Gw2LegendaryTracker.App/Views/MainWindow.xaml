@@ -79,6 +79,72 @@
                 </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Recepten van de Legendaries" Style="{StaticResource HeadingText}" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                               Text="Het spel geeft de recepten van de Legendaries zelf (de Gifts en de Mystic Forge-stappen) niet vrij. De app haalt ze daarom op bij de website gw2treasures.com en controleert ze met de officiële gegevens. Daarvoor is een gratis key nodig." />
+
+                    <StackPanel>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RecipeData.NeedsKey}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <TextBlock Margin="0,12,0,0">
+                            <Run Text="1. Open" />
+                            <Hyperlink NavigateUri="https://en.gw2treasures.com/dev/api" RequestNavigate="OnLinkNavigate">en.gw2treasures.com/dev/api</Hyperlink>
+                            <Run Text="en log in (rechtsboven)." />
+                        </TextBlock>
+                        <TextBlock Text="2. Open in het menu bovenaan &quot;Developer&quot; en registreer een applicatie, bijvoorbeeld &quot;Legendary Tracker&quot;." Margin="0,2,0,0" />
+                        <TextBlock Text="3. Kopieer de key die je krijgt en plak hem hieronder." Margin="0,2,0,8" />
+
+                        <PasswordBox x:Name="ForgeKeyBox" Padding="8" FontSize="14" MaxLength="100"
+                                     AutomationProperties.Name="gw2treasures-key" KeyDown="OnForgeKeyBoxKeyDown" />
+                        <Button Content="Verbinden" Click="OnForgeConnectClick" IsEnabled="{Binding RecipeData.IsNotBusy}"
+                                HorizontalAlignment="Left" Margin="0,8,0,0" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RecipeData.HasKey}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <Button Content="Recepten opnieuw ophalen" Command="{Binding RecipeData.RefreshCommand}"
+                                ToolTip="Haalt de recepten van de gekozen Legendary opnieuw op, ook als ze recent zijn opgehaald." />
+                        <Button Content="Key verwijderen" Click="OnForgeDisconnectClick" Margin="8,0,0,0" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding RecipeData.ConnectMessage}" Margin="0,8,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RecipeData.HasConnectMessage}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding RecipeData.ConnectMessageIsError}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="12">
                 <StackPanel Orientation="Horizontal">
                     <Ellipse Style="{StaticResource SyncDot}" Margin="0,0,8,0" />
@@ -90,6 +156,16 @@
                 <StackPanel>
                     <TextBlock Text="Mijn Legendaries" Style="{StaticResource HeadingText}" />
                     <TextBlock Text="{Binding Goals.StatusText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                    <TextBlock Text="{Binding RecipeData.FetchText}" Style="{StaticResource MutedText}" Margin="0,2,0,0">
+                        <TextBlock.Visibility>
+                            <Binding Path="RecipeData.HasFetchText" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                        </TextBlock.Visibility>
+                    </TextBlock>
+                    <TextBlock Text="{Binding RecipeData.Notice}" Style="{StaticResource MutedText}" Margin="0,2,0,0">
+                        <TextBlock.Visibility>
+                            <Binding Path="RecipeData.HasNotice" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                        </TextBlock.Visibility>
+                    </TextBlock>
 
                     <TextBlock Text="Voeg een Legendary toe" Style="{StaticResource MutedText}" Margin="0,12,0,4" />
                     <TextBox Text="{Binding Goals.AddSearchText, UpdateSourceTrigger=PropertyChanged}"
