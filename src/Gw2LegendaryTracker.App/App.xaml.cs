@@ -4,6 +4,8 @@ using System.Windows;
 using Gw2LegendaryTracker.App.Services;
 using Gw2LegendaryTracker.App.ViewModels;
 using Gw2LegendaryTracker.App.Views;
+using Gw2LegendaryTracker.Core.Inventory;
+using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Core.State;
 using Gw2LegendaryTracker.Core.Sync;
 using Gw2LegendaryTracker.Infrastructure.Gw2;
@@ -84,9 +86,16 @@ public partial class App : Application
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("Gw2LegendaryTracker/0.1");
         var api = new Gw2ApiClient(_http);
         var keys = new DpapiApiKeyStore(DataPath("apikey.bin"));
-        var sync = new SyncService(api, keys, new SqliteSnapshotStore(database), _state);
+        var inventory = new InventoryProvider();
+        var sync = new SyncService(api, keys, new SqliteSnapshotStore(database), _state, inventory);
+        var catalog = new ItemCatalog(api, new SqliteItemInfoStore(database));
 
-        _viewModel = new AppViewModel(_state, new ConnectionService(api, keys), sync, Dispatcher);
+        _viewModel = new AppViewModel(
+            _state,
+            new ConnectionService(api, keys),
+            sync,
+            new InventoryViewModel(inventory, catalog, Dispatcher),
+            Dispatcher);
         _overlay = new OverlayController(_viewModel);
 
         var mainWindow = new MainWindow { DataContext = _viewModel };

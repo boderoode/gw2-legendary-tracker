@@ -37,6 +37,38 @@
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
+    <Style TargetType="TextBox">
+        <Setter Property="Background" Value="{StaticResource BackgroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="CaretBrush" Value="{StaticResource TextBrush}" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="FontSize" Value="14" />
+    </Style>
+
+    <Style TargetType="PasswordBox">
+        <Setter Property="Background" Value="{StaticResource BackgroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="CaretBrush" Value="{StaticResource TextBrush}" />
+    </Style>
+
+    <!-- A list that only shows rows: no selection chrome, since rows are not clickable yet. -->
+    <Style x:Key="PlainListBoxItem" TargetType="ListBoxItem">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsHitTestVisible" Value="True" />
+        <Setter Property="Padding" Value="0,6" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="CheckBox">
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         <Setter Property="FontSize" Value="14" />

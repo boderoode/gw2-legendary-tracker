@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Gw2LegendaryTracker.Core.Gw2;
+using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Core.Settings;
 using Gw2LegendaryTracker.Core.Sync;
 
@@ -71,6 +72,21 @@ internal sealed class FakeApiClient : IGw2ApiClient
 
     public int SnapshotCalls { get; private set; }
 
+    public List<IReadOnlyCollection<int>> ItemRequests { get; } = [];
+
+    public Exception? ItemFailure { get; set; }
+
+    public Task<IReadOnlyList<ItemInfo>> GetItemsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        ItemRequests.Add(ids);
+        if (ItemFailure is not null)
+        {
+            return Task.FromException<IReadOnlyList<ItemInfo>>(ItemFailure);
+        }
+
+        return Task.FromResult<IReadOnlyList<ItemInfo>>([.. ids.Select(id => new ItemInfo(id, $"Item {id}", $"https://icons/{id}.png", "Rare"))]);
+    }
+
     public Task<Gw2TokenInfo> GetTokenInfoAsync(string apiKey, CancellationToken cancellationToken = default) =>
         Failure is null ? Task.FromResult(Token) : Task.FromException<Gw2TokenInfo>(Failure);
 
@@ -119,4 +135,25 @@ internal sealed class ThrowingHandler : HttpMessageHandler
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
         Task.FromException<HttpResponseMessage>(_exception);
+}
+
+internal sealed class FakeItemInfoStore : IItemInfoStore
+{
+    public Dictionary<int, ItemInfo> Items { get; } = [];
+
+    public int SaveCalls { get; private set; }
+
+    public Task<IReadOnlyDictionary<int, ItemInfo>> GetAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyDictionary<int, ItemInfo>>(ids.Where(Items.ContainsKey).ToDictionary(id => id, id => Items[id]));
+
+    public Task SaveAsync(IReadOnlyCollection<ItemInfo> items, CancellationToken cancellationToken = default)
+    {
+        SaveCalls++;
+        foreach (var item in items)
+        {
+            Items[item.Id] = item;
+        }
+
+        return Task.CompletedTask;
+    }
 }

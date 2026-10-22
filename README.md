@@ -14,7 +14,7 @@ Dit project wordt in fases opgebouwd. Een fase is pas klaar als de build en test
 | 2 | Overlay met toggle-sneltoets | Klaar, **nog niet getest op Windows** |
 | 3 | Lokale opslag en gedeelde applicatiestatus | Klaar |
 | 4 | API-keyvalidatie en synchronisatie | Klaar, UI **nog niet getest op Windows** |
-| 5 | Inventorymodel | Gepland |
+| 5 | Inventorymodel | Klaar, UI **nog niet getest op Windows** |
 | 6 | Crafting-engine en materiaalberekeningen | Gepland |
 | 7 | Legendary-doelen en handmatige progress | Gepland |
 | 8 | Compacte en uitgebreide overlay | Gepland |
@@ -72,4 +72,5 @@ De database staat in `%LOCALAPPDATA%\Gw2LegendaryTracker\tracker.db`. Het schema
 De API-key staat **niet** in de database, in instellingen of in logs. Hij wordt versleuteld met Windows DPAPI
 (huidige Windows-gebruiker) opgeslagen in `%LOCALAPPDATA%\Gw2LegendaryTracker\apikey.bin`; alleen jouw
 Windows-account op deze computer kan hem ontsleutelen. Zonder internet blijft de laatst opgehaalde
-inventaris beschikbaar.
+inventaris beschikbaar. Namen en iconen van items worden uit de publieke API gehaald (zonder key) en lokaal
+bewaard in een aparte cachetabel; die kan veilig worden gewist.

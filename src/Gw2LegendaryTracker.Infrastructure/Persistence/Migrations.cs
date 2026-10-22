@@ -37,5 +37,16 @@ internal static class Migrations
             value       INTEGER NOT NULL
         );
         """,
+
+        // v3: public item data cache. Separate from user data; safe to refresh or clear.
+        """
+        CREATE TABLE item_info (
+            item_id     INTEGER PRIMARY KEY NOT NULL,
+            name        TEXT NOT NULL,
+            icon_url    TEXT NULL,
+            rarity      TEXT NOT NULL,
+            fetched_utc TEXT NOT NULL
+        );
+        """,
     ];
 }

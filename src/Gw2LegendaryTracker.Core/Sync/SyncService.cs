@@ -1,4 +1,5 @@
 using Gw2LegendaryTracker.Core.Gw2;
+using Gw2LegendaryTracker.Core.Inventory;
 using Gw2LegendaryTracker.Core.State;
 
 namespace Gw2LegendaryTracker.Core.Sync;
@@ -13,15 +14,17 @@ public sealed class SyncService
     private readonly IApiKeyStore _keys;
     private readonly ISnapshotStore _snapshots;
     private readonly AppState _state;
+    private readonly InventoryProvider _inventory;
     private readonly TimeProvider _time;
     private int _running;
 
-    public SyncService(IGw2ApiClient api, IApiKeyStore keys, ISnapshotStore snapshots, AppState state, TimeProvider? time = null)
+    public SyncService(IGw2ApiClient api, IApiKeyStore keys, ISnapshotStore snapshots, AppState state, InventoryProvider inventory, TimeProvider? time = null)
     {
         _api = api;
         _keys = keys;
         _snapshots = snapshots;
         _state = state;
+        _inventory = inventory;
         _time = time ?? TimeProvider.System;
     }
 
@@ -31,6 +34,7 @@ public sealed class SyncService
         var snapshot = await _snapshots.LoadAsync(cancellationToken).ConfigureAwait(false);
         if (snapshot is not null)
         {
+            _inventory.Update(snapshot);
             _state.ReportSyncStatus(new SyncStatus(SyncPhase.Succeeded, snapshot.CapturedUtc));
         }
     }
@@ -65,6 +69,9 @@ public sealed class SyncService
 
             var snapshot = await _api.GetAccountSnapshotAsync(key, _time.GetUtcNow(), cancellationToken).ConfigureAwait(false);
             await _snapshots.SaveAsync(snapshot, cancellationToken).ConfigureAwait(false);
+
+            // Data is stored before anything observes it; the inventory is replaced before "success" is announced.
+            _inventory.Update(snapshot);
             _state.ReportSyncStatus(new SyncStatus(SyncPhase.Succeeded, snapshot.CapturedUtc));
         }
         catch (OperationCanceledException)

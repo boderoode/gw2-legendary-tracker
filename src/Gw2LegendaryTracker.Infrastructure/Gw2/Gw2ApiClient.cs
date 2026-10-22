@@ -2,13 +2,17 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Globalization;
 using Gw2LegendaryTracker.Core.Gw2;
+using Gw2LegendaryTracker.Core.Items;
 
 namespace Gw2LegendaryTracker.Infrastructure.Gw2;
 
 /// <summary>Read-only client for the official API. The key is sent only in the Authorization header, never in URLs or messages.</summary>
 public sealed class Gw2ApiClient : IGw2ApiClient
 {
+    private const int MaxItemsPerRequest = 200;
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly HttpClient _http;
@@ -47,13 +51,39 @@ public sealed class Gw2ApiClient : IGw2ApiClient
             wallet.Select(w => new WalletEntry(w.Id, w.Value)).ToList());
     }
 
+    public async Task<IReadOnlyList<ItemInfo>> GetItemsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        if (ids.Count > MaxItemsPerRequest)
+        {
+            throw new ArgumentException($"At most {MaxItemsPerRequest} ids per request.", nameof(ids));
+        }
+
+        var query = string.Join(',', ids.Select(id => id.ToString(CultureInfo.InvariantCulture)));
+
+        // The API answers 404 when none of the ids exist and 206 when only some do; both are normal for us.
+        var items = await GetAsync<List<ItemDto>>($"v2/items?ids={query}&lang=en", apiKey: null, cancellationToken, notFoundIsEmpty: true).ConfigureAwait(false);
+        return (items ?? [])
+            .Where(i => !string.IsNullOrWhiteSpace(i.Name))
+            .Select(i => new ItemInfo(i.Id, i.Name!, i.Icon, i.Rarity ?? "Basic"))
+            .ToList();
+    }
+
     private static IEnumerable<InventoryEntry> ToEntries(IEnumerable<StackDto?> stacks, InventorySource source, string character = "") =>
         stacks.Where(s => s is { Count: > 0 }).Select(s => new InventoryEntry(s!.Id, s.Count, source, character));
 
-    private async Task<T> GetAsync<T>(string path, string apiKey, CancellationToken cancellationToken)
+    private async Task<T> GetAsync<T>(string path, string? apiKey, CancellationToken cancellationToken, bool notFoundIsEmpty = false)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        if (apiKey is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        }
 
         HttpResponseMessage response;
         try
@@ -71,6 +101,11 @@ public sealed class Gw2ApiClient : IGw2ApiClient
 
         using (response)
         {
+            if (notFoundIsEmpty && response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return default!;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 throw await ToExceptionAsync(response, cancellationToken).ConfigureAwait(false);
@@ -122,6 +157,8 @@ public sealed class Gw2ApiClient : IGw2ApiClient
     }
 
     private sealed record TokenInfoDto(string? Id, string? Name, List<string>? Permissions);
+
+    private sealed record ItemDto(int Id, string? Name, string? Icon, string? Rarity);
 
     private sealed record AccountDto(string? Name);
 

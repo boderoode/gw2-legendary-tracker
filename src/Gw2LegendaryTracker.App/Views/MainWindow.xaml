@@ -89,6 +89,40 @@
                 </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Wat heb ik?" Style="{StaticResource HeadingText}" />
+                    <TextBlock Text="{Binding Inventory.StatusText}" Style="{StaticResource MutedText}" Margin="0,4,0,8" />
+                    <TextBox Text="{Binding Inventory.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Zoek in je spullen" ToolTip="Typ een deel van een itemnaam" />
+                    <ListBox ItemsSource="{Binding Inventory.VisibleRows}" MaxHeight="320" Margin="0,8,0,0"
+                             Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}"
+                             ItemContainerStyle="{StaticResource PlainListBoxItem}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             AutomationProperties.Name="Lijst met je spullen">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Margin="8,0">
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                        <TextBlock Text="{Binding WhereText}" Style="{StaticResource MutedText}"
+                                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{Binding TotalText}" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource CardBorder}">
                 <StackPanel>
                     <TextBlock Text="Overlay" Style="{StaticResource HeadingText}" />

@@ -1,5 +1,6 @@
 using System.Net;
 using Gw2LegendaryTracker.Core.Gw2;
+using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Infrastructure.Gw2;
 
 namespace Gw2LegendaryTracker.Tests;
@@ -102,5 +103,45 @@ public class Gw2ApiClientTests
             ],
             snapshot.Items);
         Assert.Equal([new WalletEntry(1, 99999), new WalletEntry(23, 7)], snapshot.Wallet);
+    }
+
+    [Fact]
+    public async Task Items_are_requested_without_credentials_and_mapped()
+    {
+        var handler = new StubHandler(_ => StubHandler.Json("""[{"id":1,"name":"Mystic Coin","icon":"https://i/1.png","rarity":"Rare"},{"id":2,"name":"","icon":null}]"""));
+
+        var items = await CreateClient(handler).GetItemsAsync([1, 2]);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Null(request.Headers.Authorization);
+        Assert.Equal("/v2/items?ids=1,2&lang=en", request.RequestUri!.PathAndQuery);
+        Assert.Equal([new ItemInfo(1, "Mystic Coin", "https://i/1.png", "Rare")], items);
+    }
+
+    [Fact]
+    public async Task Items_not_found_is_an_empty_result()
+    {
+        var client = CreateClient(new StubHandler(_ => StubHandler.Json("""{"text":"all ids provided are invalid"}""", HttpStatusCode.NotFound)));
+
+        Assert.Empty(await client.GetItemsAsync([999999999]));
+    }
+
+    [Fact]
+    public async Task Items_partial_content_is_accepted()
+    {
+        var client = CreateClient(new StubHandler(_ => StubHandler.Json("""[{"id":1,"name":"Only One","rarity":"Basic"}]""", HttpStatusCode.PartialContent)));
+
+        Assert.Single(await client.GetItemsAsync([1, 999999999]));
+    }
+
+    [Fact]
+    public async Task Items_rejects_more_than_200_ids_and_skips_the_call_for_none()
+    {
+        var handler = new StubHandler(_ => StubHandler.Json("[]"));
+        var client = CreateClient(handler);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetItemsAsync([.. Enumerable.Range(1, 201)]));
+        Assert.Empty(await client.GetItemsAsync([]));
+        Assert.Empty(handler.Requests);
     }
 }

@@ -1,4 +1,5 @@
 using Gw2LegendaryTracker.Core.Gw2;
+using Gw2LegendaryTracker.Core.Inventory;
 using Gw2LegendaryTracker.Core.State;
 using Gw2LegendaryTracker.Core.Sync;
 
@@ -9,12 +10,13 @@ public sealed class SyncServiceTests : IDisposable
     private readonly FakeApiClient _api = new();
     private readonly FakeApiKeyStore _keys = new() { Key = TestData.Key };
     private readonly FakeSnapshotStore _snapshots = new();
+    private readonly InventoryProvider _inventory = new();
     private readonly AppState _state = new(new FakeSettingsStore(), new Gw2LegendaryTracker.Core.Settings.AppSettings());
 
     public void Dispose() => _state.Dispose();
 
     private SyncService CreateService(FakeSnapshotStore? snapshots = null) =>
-        new(_api, _keys, snapshots ?? _snapshots, _state, new FixedTime(new DateTimeOffset(2026, 3, 4, 5, 6, 7, TimeSpan.Zero)));
+        new(_api, _keys, snapshots ?? _snapshots, _state, _inventory, new FixedTime(new DateTimeOffset(2026, 3, 4, 5, 6, 7, TimeSpan.Zero)));
 
     [Fact]
     public async Task Successful_sync_stores_snapshot_and_reports_success()
@@ -24,6 +26,35 @@ public sealed class SyncServiceTests : IDisposable
         Assert.NotNull(_snapshots.Saved);
         Assert.Equal(SyncPhase.Succeeded, _state.SyncStatus.Phase);
         Assert.Equal(new DateTimeOffset(2026, 3, 4, 5, 6, 7, TimeSpan.Zero), _state.SyncStatus.LastSuccessUtc);
+    }
+
+    [Fact]
+    public async Task Successful_sync_updates_inventory_before_announcing_success()
+    {
+        long? ownedWhenAnnounced = null;
+        _state.SyncStatusChanged += (_, status) =>
+        {
+            if (status.Phase == SyncPhase.Succeeded)
+            {
+                ownedWhenAnnounced = _inventory.Current.CountOf(19721);
+            }
+        };
+
+        await CreateService().SyncAsync();
+
+        Assert.Equal(250, ownedWhenAnnounced);
+    }
+
+    [Fact]
+    public async Task Failed_sync_keeps_the_previous_inventory()
+    {
+        var service = CreateService();
+        await service.SyncAsync();
+        _api.Failure = new Gw2ApiException(Gw2ApiErrorKind.Offline, "Geen verbinding.");
+
+        await service.SyncAsync();
+
+        Assert.Equal(250, _inventory.Current.CountOf(19721));
     }
 
     [Fact]
@@ -107,6 +138,7 @@ public sealed class SyncServiceTests : IDisposable
 
         Assert.Equal(SyncPhase.Succeeded, _state.SyncStatus.Phase);
         Assert.Equal(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), _state.SyncStatus.LastSuccessUtc);
+        Assert.Equal(250, _inventory.Current.CountOf(19721));
     }
 
     private sealed class FixedTime : TimeProvider

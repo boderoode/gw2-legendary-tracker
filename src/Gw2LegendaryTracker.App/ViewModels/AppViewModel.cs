@@ -29,8 +29,9 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     private string? _connectMessage;
     private bool _connectMessageIsError;
 
-    public AppViewModel(AppState state, ConnectionService connection, SyncService sync, Dispatcher dispatcher)
+    public AppViewModel(AppState state, ConnectionService connection, SyncService sync, InventoryViewModel inventory, Dispatcher dispatcher)
     {
+        Inventory = inventory;
         _state = state;
         _connection = connection;
         _sync = sync;
@@ -65,6 +66,8 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     public ICommand HideOverlayCommand { get; }
 
     public ICommand SyncNowCommand { get; }
+
+    public InventoryViewModel Inventory { get; }
 
     public OverlaySettings Overlay => _state.Settings.Overlay;
 
@@ -291,6 +294,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         _opacityTimer.Stop();
         _state.SettingsChanged -= OnSettingsChanged;
         _state.SyncStatusChanged -= OnSyncStatusChanged;
+        Inventory.Dispose();
     }
 
     /// <summary>Persists window bounds chosen by the user (move/resize).</summary>
