@@ -9,11 +9,21 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <Deterministic>true</Deterministic>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- Pins every package version and hash in packages.lock.json; CI restores in locked mode (RestoreLockedMode). -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- Declared for every project so a restore with or without a runtime sees the same lock file. -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <RootNamespace>Gw2LegendaryTracker</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- Release builds must not depend on the folder they were built in: source paths are replaced by a fixed one.
+       Local debugging keeps the real paths, so this only applies to ContinuousIntegrationBuild. -->
+  <PropertyGroup Condition="'$(ContinuousIntegrationBuild)' == 'true'">
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
   </PropertyGroup>
 
 </Project>

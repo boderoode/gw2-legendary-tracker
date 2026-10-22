@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "GW2 Legendary Tracker (Windows)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/Gw2LegendaryTracker.App/bin/Debug/net10.0-windows10.0.19041.0/Gw2LegendaryTracker.exe",
+      "cwd": "${workspaceFolder}/src/Gw2LegendaryTracker.App",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    }
+  ]
+}
