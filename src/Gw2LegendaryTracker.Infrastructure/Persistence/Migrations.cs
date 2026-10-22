@@ -48,5 +48,24 @@ internal static class Migrations
             fetched_utc TEXT NOT NULL
         );
         """,
+
+        // v4: public recipe cache (API recipes only; locally imported recipes are loaded from files).
+        """
+        CREATE TABLE recipe (
+            recipe_id               INTEGER PRIMARY KEY NOT NULL,
+            output_item_id          INTEGER NOT NULL,
+            output_count            INTEGER NOT NULL,
+            disciplines             TEXT NOT NULL,
+            requires_guild_upgrades INTEGER NOT NULL
+        );
+        CREATE INDEX ix_recipe_output ON recipe (output_item_id);
+
+        CREATE TABLE recipe_ingredient (
+            recipe_id INTEGER NOT NULL REFERENCES recipe (recipe_id) ON DELETE CASCADE,
+            item_id   INTEGER NOT NULL,
+            count     INTEGER NOT NULL
+        );
+        CREATE INDEX ix_recipe_ingredient_recipe ON recipe_ingredient (recipe_id);
+        """,
     ];
 }

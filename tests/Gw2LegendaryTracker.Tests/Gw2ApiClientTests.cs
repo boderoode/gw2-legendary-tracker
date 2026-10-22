@@ -1,4 +1,5 @@
 using System.Net;
+using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Infrastructure.Gw2;
@@ -142,6 +143,72 @@ public class Gw2ApiClientTests
 
         await Assert.ThrowsAsync<ArgumentException>(() => client.GetItemsAsync([.. Enumerable.Range(1, 201)]));
         Assert.Empty(await client.GetItemsAsync([]));
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task Recipe_ids_come_from_the_public_endpoint_without_credentials()
+    {
+        var handler = new StubHandler(_ => StubHandler.Json("[1,2,3]"));
+
+        var ids = await CreateClient(handler).GetRecipeIdsAsync();
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Null(request.Headers.Authorization);
+        Assert.Equal("/v2/recipes", request.RequestUri!.PathAndQuery);
+        Assert.Equal([1, 2, 3], ids);
+    }
+
+    [Fact]
+    public async Task Recipes_map_snake_case_fields_and_flag_guild_recipes()
+    {
+        var handler = new StubHandler(_ => StubHandler.Json("""
+            [
+              {"id":1,"type":"Weapon","output_item_id":100,"output_item_count":3,"time_to_craft_ms":1000,
+               "disciplines":["Weaponsmith"],"min_rating":400,"flags":["AutoLearned"],
+               "ingredients":[{"item_id":10,"count":2},{"item_id":11,"count":1}],"guild_ingredients":[],"chat_link":"x"},
+              {"id":2,"type":"GuildDecoration","output_item_id":200,"output_item_count":1,
+               "disciplines":[],"ingredients":[{"item_id":10,"count":1}],"guild_ingredients":[{"upgrade_id":5,"count":1}]}
+            ]
+            """));
+
+        var recipes = await CreateClient(handler).GetRecipesAsync([1, 2]);
+
+        Assert.Equal("/v2/recipes?ids=1,2", Assert.Single(handler.Requests).RequestUri!.PathAndQuery);
+        var plain = recipes[0];
+        Assert.Equal((1, 100, 3), (plain.Id, plain.OutputItemId, plain.OutputCount));
+        Assert.Equal([new Ingredient(MaterialKey.Item(10), 2), new Ingredient(MaterialKey.Item(11), 1)], plain.Ingredients);
+        Assert.Equal(["Weaponsmith"], plain.Disciplines);
+        Assert.False(plain.RequiresGuildUpgrades);
+        Assert.True(recipes[1].RequiresGuildUpgrades);
+    }
+
+    [Fact]
+    public async Task Recipes_that_cannot_be_interpreted_completely_are_dropped()
+    {
+        var handler = new StubHandler(_ => StubHandler.Json("""
+            [
+              {"id":1,"output_item_id":100,"output_item_count":1,"ingredients":[{"item_id":10,"count":1}]},
+              {"id":2,"output_item_id":100,"output_item_count":1,"ingredients":[{"count":1}]},
+              {"id":3,"output_item_id":100,"output_item_count":1,"ingredients":[{"item_id":10,"count":0}]},
+              {"id":4,"output_item_id":100,"output_item_count":0,"ingredients":[{"item_id":10,"count":1}]},
+              {"id":5,"output_item_id":100,"output_item_count":1,"ingredients":[]}
+            ]
+            """));
+
+        var recipes = await CreateClient(handler).GetRecipesAsync([1, 2, 3, 4, 5]);
+
+        Assert.Equal([1], recipes.Select(r => r.Id));
+    }
+
+    [Fact]
+    public async Task Recipes_rejects_more_than_200_ids_and_skips_the_call_for_none()
+    {
+        var handler = new StubHandler(_ => StubHandler.Json("[]"));
+        var client = CreateClient(handler);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetRecipesAsync([.. Enumerable.Range(1, 201)]));
+        Assert.Empty(await client.GetRecipesAsync([]));
         Assert.Empty(handler.Requests);
     }
 }

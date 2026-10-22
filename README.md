@@ -15,11 +15,38 @@ Dit project wordt in fases opgebouwd. Een fase is pas klaar als de build en test
 | 3 | Lokale opslag en gedeelde applicatiestatus | Klaar |
 | 4 | API-keyvalidatie en synchronisatie | Klaar, UI **nog niet getest op Windows** |
 | 5 | Inventorymodel | Klaar, UI **nog niet getest op Windows** |
-| 6 | Crafting-engine en materiaalberekeningen | Gepland |
+| 6 | Crafting-engine en materiaalberekeningen | Klaar (engine en data; nog geen scherm) |
 | 7 | Legendary-doelen en handmatige progress | Gepland |
 | 8 | Compacte en uitgebreide overlay | Gepland |
 | 9 | Export/import, foutafhandeling, extra tests | Gepland |
 | 10 | Reproduceerbare Windows-build en installer | Gepland |
+
+## Crafting-engine en receptdata
+
+De engine rekent een crafting tree recursief door: eerst gebruikt hij wat je bezit, daarna craft hij de rest.
+Hij bepaalt tekorten, kiest bij meerdere recepten de beste route, en wijst de eerstvolgende stap aan.
+Meerdere doelen delen één voorraad; een doel eerder in de lijst heeft voorrang.
+
+- **Voortgang** is het aandeel posities in de crafting tree dat klaar is: je hebt er genoeg van, of je kunt het
+  helemaal uit je bezit maken. 100% betekent dat je het doel nu kunt afronden.
+- **Beste route:** de route met de minste ontbrekende stuks, daarna de minste craftacties, daarna het laagste receptnummer.
+  Je kunt een route altijd zelf forceren.
+- **Receptdata** komt uit de officiële API (alle ~13.200 recepten, eenmalig gedownload en lokaal bewaard; de eerste
+  keer duurt dat ongeveer twee minuten) en uit lokale bestanden (zie hieronder).
+
+### Belangrijke beperking: Legendary-recepten
+
+De API bevat de onderdelen van Legendaries, maar niet de Legendaries zelf. Van de 206 Legendaries heeft de API alleen
+recepten voor de 18 Obsidian-harnasstukken; de Legendary-wapens, Gifts en Mystic Forge-stappen ontbreken, net als
+currency-kosten (recepten in de API kennen alleen items). Die stappen moeten uit **lokale receptdata** komen:
+
+```json
+{ "recipes": [ { "id": -1, "output": { "itemId": 100, "count": 1 },
+                 "ingredients": [ { "itemId": 5, "count": 2 }, { "currencyId": 23, "count": 250 } ] } ] }
+```
+
+Ids van lokale recepten zijn negatief, zodat ze nooit botsen met API-recepten. Ongeldige regels worden overgeslagen en
+gemeld; de rest van het bestand blijft werken. Recepten die guild-upgrades vereisen worden niet gebruikt.
 
 ## Bekende beperkingen van de overlay
 

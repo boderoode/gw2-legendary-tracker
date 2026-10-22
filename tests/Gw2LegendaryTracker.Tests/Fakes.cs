@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Core.Settings;
@@ -73,6 +74,21 @@ internal sealed class FakeApiClient : IGw2ApiClient
     public int SnapshotCalls { get; private set; }
 
     public List<IReadOnlyCollection<int>> ItemRequests { get; } = [];
+
+    public List<int> RecipeIds { get; set; } = [];
+
+    public Dictionary<int, Recipe> Recipes { get; } = [];
+
+    public List<IReadOnlyCollection<int>> RecipeRequests { get; } = [];
+
+    public Task<IReadOnlyList<int>> GetRecipeIdsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<int>>(RecipeIds);
+
+    public Task<IReadOnlyList<Recipe>> GetRecipesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        RecipeRequests.Add(ids);
+        return Task.FromResult<IReadOnlyList<Recipe>>([.. ids.Where(Recipes.ContainsKey).Select(id => Recipes[id])]);
+    }
 
     public Exception? ItemFailure { get; set; }
 
@@ -156,4 +172,25 @@ internal sealed class FakeItemInfoStore : IItemInfoStore
 
         return Task.CompletedTask;
     }
+}
+
+internal sealed class FakeRecipeStore : IRecipeStore
+{
+    public Dictionary<int, Recipe> Recipes { get; } = [];
+
+    public Task<IReadOnlySet<int>> GetKnownIdsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlySet<int>>(Recipes.Keys.ToHashSet());
+
+    public Task SaveAsync(IReadOnlyCollection<Recipe> recipes, CancellationToken cancellationToken = default)
+    {
+        foreach (var recipe in recipes)
+        {
+            Recipes[recipe.Id] = recipe;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<Recipe>> LoadAllAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Recipe>>([.. Recipes.Values]);
 }

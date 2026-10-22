@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Globalization;
+using System.Text.Json.Serialization;
+using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
 
@@ -71,6 +73,39 @@ public sealed class Gw2ApiClient : IGw2ApiClient
         return (items ?? [])
             .Where(i => !string.IsNullOrWhiteSpace(i.Name))
             .Select(i => new ItemInfo(i.Id, i.Name!, i.Icon, i.Rarity ?? "Basic"))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<int>> GetRecipeIdsAsync(CancellationToken cancellationToken = default) =>
+        await GetAsync<List<int>>("v2/recipes", apiKey: null, cancellationToken).ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<Recipe>> GetRecipesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        if (ids.Count > MaxItemsPerRequest)
+        {
+            throw new ArgumentException($"At most {MaxItemsPerRequest} ids per request.", nameof(ids));
+        }
+
+        var query = string.Join(',', ids.Select(id => id.ToString(CultureInfo.InvariantCulture)));
+        var dtos = await GetAsync<List<RecipeDto>>($"v2/recipes?ids={query}", apiKey: null, cancellationToken, notFoundIsEmpty: true).ConfigureAwait(false);
+
+        // A recipe we cannot interpret completely is dropped rather than planned with wrong numbers.
+        return (dtos ?? [])
+            .Where(r => r.OutputItemId > 0 && r.OutputItemCount > 0 && r.Ingredients is { Count: > 0 } && r.Ingredients.All(i => i.ItemId > 0 && i.Count > 0))
+            .Select(r => new Recipe(
+                r.Id,
+                r.OutputItemId,
+                r.OutputItemCount,
+                [.. r.Ingredients!.Select(i => new Ingredient(MaterialKey.Item(i.ItemId), i.Count))],
+                r.Disciplines ?? [],
+                RecipeSource.Api,
+                RequiresGuildUpgrades: r.GuildIngredients is { Count: > 0 }))
             .ToList();
     }
 
@@ -159,6 +194,16 @@ public sealed class Gw2ApiClient : IGw2ApiClient
     private sealed record TokenInfoDto(string? Id, string? Name, List<string>? Permissions);
 
     private sealed record ItemDto(int Id, string? Name, string? Icon, string? Rarity);
+
+    private sealed record RecipeDto(
+        int Id,
+        [property: JsonPropertyName("output_item_id")] int OutputItemId,
+        [property: JsonPropertyName("output_item_count")] int OutputItemCount,
+        List<string>? Disciplines,
+        List<RecipeIngredientDto>? Ingredients,
+        [property: JsonPropertyName("guild_ingredients")] List<JsonElement>? GuildIngredients);
+
+    private sealed record RecipeIngredientDto([property: JsonPropertyName("item_id")] int ItemId, long Count);
 
     private sealed record AccountDto(string? Name);
 

@@ -1,3 +1,4 @@
+using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Items;
 
 namespace Gw2LegendaryTracker.Core.Gw2;
@@ -11,4 +12,10 @@ public interface IGw2ApiClient
 
     /// <summary>Public item data (no API key needed). At most 200 ids per call; unknown ids are left out of the result.</summary>
     Task<IReadOnlyList<ItemInfo>> GetItemsAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>Ids of all recipes in the game (public, no key needed).</summary>
+    Task<IReadOnlyList<int>> GetRecipeIdsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Recipes by id (public). At most 200 ids per call. Malformed recipes are left out.</summary>
+    Task<IReadOnlyList<Recipe>> GetRecipesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
 }
