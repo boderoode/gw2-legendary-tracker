@@ -26,6 +26,8 @@
                     <Button Content="{Binding IsExpanded, Converter={x:Static local:ExpandGlyphConverter.Instance}}"
                             Command="{Binding ToggleExpandedCommand}" Padding="6,0" Margin="6,0,0,0"
                             ToolTip="In- of uitklappen" AutomationProperties.Name="In- of uitklappen" />
+                    <Button Content="⟳" Command="{Binding SyncNowCommand}" Padding="6,0" Margin="4,0,0,0"
+                            ToolTip="Nu synchroniseren" AutomationProperties.Name="Nu synchroniseren" />
                     <Button Content="⌂" Command="{Binding ShowMainWindowCommand}" Padding="6,0" Margin="4,0,0,0"
                             ToolTip="Hoofdvenster openen" AutomationProperties.Name="Hoofdvenster openen" />
                     <Button Content="✕" Command="{Binding HideOverlayCommand}" Padding="6,0" Margin="4,0,0,0"

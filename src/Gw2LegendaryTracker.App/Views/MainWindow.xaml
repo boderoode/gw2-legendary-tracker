@@ -14,6 +14,72 @@
 
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
                 <StackPanel>
+                    <TextBlock Text="Verbind je Guild Wars 2-account" Style="{StaticResource HeadingText}" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                               Text="De app leest alleen mee: zo weet hij welke materialen je al hebt. Er wordt niets in het spel gewijzigd." />
+
+                    <StackPanel x:Name="ConnectForm">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding NeedsApiKey}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <TextBlock Margin="0,12,0,0">
+                            <Run Text="1. Open" />
+                            <Hyperlink NavigateUri="https://account.arena.net/applications" RequestNavigate="OnLinkNavigate">account.arena.net/applications</Hyperlink>
+                            <Run Text="en log in." />
+                        </TextBlock>
+                        <TextBlock Text="2. Klik op &quot;New Key&quot; en geef de key een naam, bijvoorbeeld &quot;Legendary Tracker&quot;." Margin="0,2,0,0" />
+                        <TextBlock Text="3. Zet een vinkje bij: account, inventories, characters en wallet. Meer is niet nodig." Margin="0,2,0,0" />
+                        <TextBlock Text="4. Kopieer de key en plak hem hieronder." Margin="0,2,0,8" />
+
+                        <PasswordBox x:Name="ApiKeyBox" Padding="8" FontSize="14" MaxLength="100"
+                                     AutomationProperties.Name="API-key" KeyDown="OnApiKeyBoxKeyDown" />
+                        <Button Content="Verbinden" Click="OnConnectClick" IsEnabled="{Binding IsNotBusy}"
+                                HorizontalAlignment="Left" Margin="0,8,0,0" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasApiKey}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <Button Content="Nu synchroniseren" Command="{Binding SyncNowCommand}" />
+                        <Button Content="Key verwijderen" Click="OnDisconnectClick" Margin="8,0,0,0" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding ConnectMessage}" Margin="0,8,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasConnectMessage}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding ConnectMessageIsError}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                <StackPanel>
                     <TextBlock Text="Geselecteerd doel" Style="{StaticResource MutedText}" />
                     <TextBlock Text="{Binding SelectedLegendaryName}" Style="{StaticResource HeadingText}" Margin="0,2,0,12" />
                     <StackPanel Orientation="Horizontal">

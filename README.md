@@ -13,7 +13,7 @@ Dit project wordt in fases opgebouwd. Een fase is pas klaar als de build en test
 | 1 | Desktopapp en hoofdvenster | Klaar |
 | 2 | Overlay met toggle-sneltoets | Klaar, **nog niet getest op Windows** |
 | 3 | Lokale opslag en gedeelde applicatiestatus | Klaar |
-| 4 | API-keyvalidatie en synchronisatie | Gepland |
+| 4 | API-keyvalidatie en synchronisatie | Klaar, UI **nog niet getest op Windows** |
 | 5 | Inventorymodel | Gepland |
 | 6 | Crafting-engine en materiaalberekeningen | Gepland |
 | 7 | Legendary-doelen en handmatige progress | Gepland |
@@ -54,8 +54,22 @@ src/Gw2LegendaryTracker.App             WPF: hoofdvenster, overlay, sneltoets
 tests/Gw2LegendaryTracker.Tests         xUnit
 ```
 
+## API-key instellen
+
+1. Ga naar <https://account.arena.net/applications> en log in.
+2. Klik op **New Key** en geef de key een naam.
+3. Vink alleen deze rechten aan: **account**, **inventories**, **characters**, **wallet**.
+4. Kopieer de key, plak hem in het hoofdvenster en klik op **Verbinden**.
+
+De app controleert de key via `/v2/tokeninfo` en weigert hem als er rechten ontbreken.
+De app gebruikt de key uitsluitend voor leesverzoeken. Je kunt de key altijd verwijderen in het hoofdvenster
+of intrekken op de ArenaNet-site.
+
 ## Lokale opslag
 
 De database staat in `%LOCALAPPDATA%\Gw2LegendaryTracker\tracker.db`. Het schema is geversioneerd
 (`PRAGMA user_version`) en wordt bij het starten gemigreerd; bestaande gegevens blijven behouden.
-Een API-key wordt **nooit** in de database of in logs opgeslagen (zie fase 4).
+De API-key staat **niet** in de database, in instellingen of in logs. Hij wordt versleuteld met Windows DPAPI
+(huidige Windows-gebruiker) opgeslagen in `%LOCALAPPDATA%\Gw2LegendaryTracker\apikey.bin`; alleen jouw
+Windows-account op deze computer kan hem ontsleutelen. Zonder internet blijft de laatst opgehaalde
+inventaris beschikbaar.

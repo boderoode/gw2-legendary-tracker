@@ -15,5 +15,27 @@ internal static class Migrations
             value TEXT NOT NULL
         ) WITHOUT ROWID;
         """,
+
+        // v2: latest account snapshot (replaced as a whole on every successful sync).
+        """
+        CREATE TABLE sync_state (
+            id           INTEGER PRIMARY KEY CHECK (id = 1),
+            account_name TEXT NOT NULL,
+            captured_utc TEXT NOT NULL
+        );
+
+        CREATE TABLE inventory_item (
+            source         TEXT NOT NULL,
+            character_name TEXT NOT NULL,
+            item_id        INTEGER NOT NULL,
+            count          INTEGER NOT NULL
+        );
+        CREATE INDEX ix_inventory_item_item ON inventory_item (item_id);
+
+        CREATE TABLE wallet_currency (
+            currency_id INTEGER PRIMARY KEY NOT NULL,
+            value       INTEGER NOT NULL
+        );
+        """,
     ];
 }

@@ -1,9 +1,13 @@
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using Gw2LegendaryTracker.App.Services;
 using Gw2LegendaryTracker.App.ViewModels;
 using Gw2LegendaryTracker.App.Views;
 using Gw2LegendaryTracker.Core.State;
+using Gw2LegendaryTracker.Core.Sync;
+using Gw2LegendaryTracker.Infrastructure.Gw2;
+using Gw2LegendaryTracker.Infrastructure.Security;
 using Gw2LegendaryTracker.Infrastructure.Persistence;
 
 namespace Gw2LegendaryTracker.App;
@@ -18,6 +22,7 @@ public partial class App : Application
     private bool _ownsMutex;
     private AppState? _state;
     private AppViewModel? _viewModel;
+    private HttpClient? _http;
     private HotkeyService? _hotkey;
     private OverlayController? _overlay;
 
@@ -52,6 +57,7 @@ public partial class App : Application
         _overlay?.Dispose();
         _hotkey?.Dispose();
         _viewModel?.Dispose();
+        _http?.Dispose();
         _state?.Dispose();
         if (_ownsMutex)
         {
@@ -63,18 +69,24 @@ public partial class App : Application
         base.OnExit(e);
     }
 
-    private static string DatabasePath() => Path.Combine(
+    private static string DataPath(string fileName) => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Gw2LegendaryTracker",
-        "tracker.db");
+        fileName);
 
     private async Task StartAsync()
     {
-        var database = new SqliteDatabase(DatabasePath());
+        var database = new SqliteDatabase(DataPath("tracker.db"));
         await database.MigrateAsync();
         _state = await AppState.LoadAsync(new SqliteSettingsStore(database));
 
-        _viewModel = new AppViewModel(_state, Dispatcher);
+        _http = new HttpClient { BaseAddress = new Uri("https://api.guildwars2.com/"), Timeout = TimeSpan.FromSeconds(30) };
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("Gw2LegendaryTracker/0.1");
+        var api = new Gw2ApiClient(_http);
+        var keys = new DpapiApiKeyStore(DataPath("apikey.bin"));
+        var sync = new SyncService(api, keys, new SqliteSnapshotStore(database), _state);
+
+        _viewModel = new AppViewModel(_state, new ConnectionService(api, keys), sync, Dispatcher);
         _overlay = new OverlayController(_viewModel);
 
         var mainWindow = new MainWindow { DataContext = _viewModel };
@@ -90,6 +102,8 @@ public partial class App : Application
         {
             _overlay.Show();
         }
+
+        await _viewModel.InitializeAsync();
     }
 
     private static void ShowMainWindow(Window window)
