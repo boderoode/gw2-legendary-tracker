@@ -1,0 +1,80 @@
+<Window x:Class="Gw2LegendaryTracker.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="GW2 Legendary Tracker"
+        Width="720" Height="560" MinWidth="480" MinHeight="420"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BackgroundBrush}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="24" MaxWidth="640">
+
+            <TextBlock Text="Legendary Tracker" Style="{StaticResource HeadingText}" FontSize="24" />
+            <TextBlock Margin="0,4,0,20" Style="{StaticResource MutedText}"
+                       Text="Houd je Legendary-voortgang bij, in dit venster of in de overlay boven Guild Wars 2." />
+
+            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Geselecteerd doel" Style="{StaticResource MutedText}" />
+                    <TextBlock Text="{Binding SelectedLegendaryName}" Style="{StaticResource HeadingText}" Margin="0,2,0,12" />
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Style="{StaticResource SyncDot}" Margin="0,0,8,0" />
+                        <TextBlock Text="{Binding SyncText}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardBorder}">
+                <StackPanel>
+                    <TextBlock Text="Overlay" Style="{StaticResource HeadingText}" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
+                        <Button Content="Overlay tonen/verbergen" Command="{Binding ToggleOverlayCommand}" />
+                        <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource MutedText}">
+                            <Run Text="Sneltoets:" />
+                            <Run Text="{Binding HotkeyText, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                    <TextBlock Text="{Binding HotkeyError, StringFormat=Sneltoets niet beschikbaar: {0}}"
+                               Foreground="{StaticResource DangerBrush}" Margin="0,4,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasHotkeyError}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <TextBlock Text="Transparantie" Margin="0,16,0,4" Style="{StaticResource MutedText}" />
+                    <Slider Minimum="0.2" Maximum="1" LargeChange="0.1" SmallChange="0.05" TickFrequency="0.1"
+                            Value="{Binding Opacity, Mode=TwoWay}" AutomationProperties.Name="Transparantie van de overlay" />
+
+                    <CheckBox Content="Overlay uitgebreid weergeven" IsChecked="{Binding IsExpanded, Mode=TwoWay}" Margin="0,12,0,4" />
+                    <CheckBox Content="Overlay vergrendelen tegen verslepen" IsChecked="{Binding IsLocked, Mode=TwoWay}" />
+                    <CheckBox Content="Overlay automatisch tonen bij het starten" IsChecked="{Binding ShowOverlayOnStartup, Mode=TwoWay}" />
+                    <CheckBox Content="Overlay automatisch verbergen na 10 seconden" IsChecked="{Binding AutoHideEnabled, Mode=TwoWay}" />
+                    <CheckBox Content="Click-through: muisklikken gaan door de overlay heen" IsChecked="{Binding IsClickThrough, Mode=TwoWay}" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="24,0,0,0"
+                               Text="Met click-through aan kun je de overlay niet aanklikken. Zet het hier weer uit, of verberg de overlay met de sneltoets." />
+                </StackPanel>
+            </Border>
+
+            <Border Margin="0,16,0,0" Padding="12" CornerRadius="6" Background="#33E5605A" BorderBrush="{StaticResource DangerBrush}" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasError}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding ErrorMessage}" />
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

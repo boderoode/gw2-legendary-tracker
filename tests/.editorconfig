@@ -1,0 +1,3 @@
+[*.cs]
+# Underscore-separated test names are the convention in this project.
+dotnet_diagnostic.CA1707.severity = none

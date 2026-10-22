@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Gw2LegendaryTracker.App/Gw2LegendaryTracker.App.csproj" />
+    <Project Path="src/Gw2LegendaryTracker.Core/Gw2LegendaryTracker.Core.csproj" />
+    <Project Path="src/Gw2LegendaryTracker.Infrastructure/Gw2LegendaryTracker.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Gw2LegendaryTracker.Tests/Gw2LegendaryTracker.Tests.csproj" />
+  </Folder>
+</Solution>

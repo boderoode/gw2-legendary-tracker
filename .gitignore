@@ -1,0 +1,14 @@
+bin/
+obj/
+publish/
+artifacts/
+.vs/
+.idea/
+*.user
+*.db
+*.db-shm
+*.db-wal
+*.log
+TestResults/
+coverage/
+.DS_Store

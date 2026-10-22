@@ -1,0 +1,105 @@
+using System.IO;
+using System.Windows;
+using Gw2LegendaryTracker.App.Services;
+using Gw2LegendaryTracker.App.ViewModels;
+using Gw2LegendaryTracker.App.Views;
+using Gw2LegendaryTracker.Core.State;
+using Gw2LegendaryTracker.Infrastructure.Persistence;
+
+namespace Gw2LegendaryTracker.App;
+
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Design",
+    "CA1001:Types that own disposable fields should be disposable",
+    Justification = "WPF Application has a fixed lifetime; resources are released in OnExit.")]
+public partial class App : Application
+{
+    private Mutex? _singleInstance;
+    private bool _ownsMutex;
+    private AppState? _state;
+    private AppViewModel? _viewModel;
+    private HotkeyService? _hotkey;
+    private OverlayController? _overlay;
+
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        // A second instance would fight over the global hotkey and the database.
+        _singleInstance = new Mutex(initiallyOwned: true, "Gw2LegendaryTracker.SingleInstance", out var isFirstInstance);
+        _ownsMutex = isFirstInstance;
+        if (!isFirstInstance)
+        {
+            MessageBox.Show("GW2 Legendary Tracker draait al.", "GW2 Legendary Tracker", MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
+
+        try
+        {
+            await StartAsync();
+        }
+        catch (Exception ex)
+        {
+            // Startup failures (e.g. unreadable database) must be visible; there is no window to report them in yet.
+            MessageBox.Show($"De applicatie kon niet starten:\n\n{ex.Message}", "GW2 Legendary Tracker", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
+        }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _overlay?.Dispose();
+        _hotkey?.Dispose();
+        _viewModel?.Dispose();
+        _state?.Dispose();
+        if (_ownsMutex)
+        {
+            _singleInstance?.ReleaseMutex();
+        }
+
+        _singleInstance?.Dispose();
+
+        base.OnExit(e);
+    }
+
+    private static string DatabasePath() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "Gw2LegendaryTracker",
+        "tracker.db");
+
+    private async Task StartAsync()
+    {
+        var database = new SqliteDatabase(DatabasePath());
+        await database.MigrateAsync();
+        _state = await AppState.LoadAsync(new SqliteSettingsStore(database));
+
+        _viewModel = new AppViewModel(_state, Dispatcher);
+        _overlay = new OverlayController(_viewModel);
+
+        var mainWindow = new MainWindow { DataContext = _viewModel };
+        _viewModel.MainWindowRequested += (_, _) => ShowMainWindow(mainWindow);
+        MainWindow = mainWindow;
+
+        _hotkey = new HotkeyService();
+        _hotkey.Pressed += (_, _) => _overlay.Toggle();
+        _viewModel.HotkeyError = _hotkey.TryRegister(_state.Settings.Overlay.ToggleHotkey);
+
+        mainWindow.Show();
+        if (_state.Settings.Overlay.ShowOnStartup)
+        {
+            _overlay.Show();
+        }
+    }
+
+    private static void ShowMainWindow(Window window)
+    {
+        if (window.WindowState == WindowState.Minimized)
+        {
+            window.WindowState = WindowState.Normal;
+        }
+
+        window.Show();
+        window.Activate();
+    }
+}
