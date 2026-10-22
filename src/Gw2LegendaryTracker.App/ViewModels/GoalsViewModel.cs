@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.Gw2;
+using Gw2LegendaryTracker.Core.Inventory;
 using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Core.Settings;
 using Gw2LegendaryTracker.Core.State;
@@ -14,9 +15,13 @@ public sealed record LegendaryOption(int ItemId, string Name, string? IconUrl);
 
 public sealed record GoalRow(int ItemId, string Name, string? IconUrl, double Progress, string ProgressText);
 
-public sealed record ShortageRow(string Name, string? IconUrl, long Missing, long Needed)
+public sealed record ShortageRow(string Name, string? IconUrl, long Missing, long Needed, long Owned)
 {
+    /// <summary>Main window: how much is still needed out of the total.</summary>
     public string Text => string.Create(CultureInfo.CurrentCulture, $"nog {Missing:N0} van {Needed:N0}");
+
+    /// <summary>Overlay: what is in stock and what is left to get.</summary>
+    public string OverlayText => string.Create(CultureInfo.CurrentCulture, $"heb {Owned:N0} · nog {Missing:N0}");
 }
 
 /// <summary>One component of the selected goal that can be ticked off by hand.</summary>
@@ -73,7 +78,10 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     private readonly PlanningService _planning;
     private readonly LegendaryCatalog _legendaries;
     private readonly ItemCatalog _items;
+    private readonly CurrencyCatalog _currencies;
+    private readonly InventoryProvider _inventory;
     private readonly AppState _state;
+    private readonly HashSet<string> _expandedPaths = [];
     private readonly Dispatcher _dispatcher;
 
     private IReadOnlyList<LegendaryOption> _options = [];
@@ -82,6 +90,11 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     private IReadOnlyList<ShortageRow> _shortages = [];
     private IReadOnlyList<ShortageRow> _overlayShortages = [];
     private IReadOnlyList<ChecklistRow> _checklist = [];
+    private List<MaterialRowVm> _allMaterialRows = [];
+    private IReadOnlyList<MaterialRowVm> _materialRows = [];
+    private IReadOnlyList<ReservationRowVm> _reservationRows = [];
+    private IReadOnlyList<CurrencyRowVm> _currencyRows = [];
+    private IReadOnlyList<TreeNodeRow> _treeRoots = [];
     private string _addSearchText = string.Empty;
     private string _statusText = string.Empty;
     private string? _errorText;
@@ -100,6 +113,8 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         PlanningService planning,
         LegendaryCatalog legendaries,
         ItemCatalog items,
+        CurrencyCatalog currencies,
+        InventoryProvider inventory,
         AppState state,
         Dispatcher dispatcher)
     {
@@ -107,6 +122,8 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         _planning = planning;
         _legendaries = legendaries;
         _items = items;
+        _currencies = currencies;
+        _inventory = inventory;
         _state = state;
         _dispatcher = dispatcher;
 
@@ -247,6 +264,46 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
 
     public bool HasChecklist => _checklist.Count > 0;
 
+    /// <summary>Expanded overlay: the materials of the selected goal, all of them or only what is missing (a setting).</summary>
+    public IReadOnlyList<MaterialRowVm> MaterialRows
+    {
+        get => _materialRows;
+        private set => Set(ref _materialRows, value, nameof(MaterialRows), nameof(HasMaterialRows), nameof(MaterialsHint));
+    }
+
+    public bool HasMaterialRows => _materialRows.Count > 0;
+
+    /// <summary>Explains an empty material list instead of leaving a blank space.</summary>
+    public string MaterialsHint =>
+        _materialRows.Count > 0 ? string.Empty
+        : _allMaterialRows.Count > 0 ? "Je hebt alle materialen die nodig zijn."
+        : string.Empty;
+
+    public IReadOnlyList<ReservationRowVm> ReservationRows
+    {
+        get => _reservationRows;
+        private set => Set(ref _reservationRows, value, nameof(ReservationRows), nameof(HasReservations));
+    }
+
+    public bool HasReservations => _reservationRows.Count > 0;
+
+    public IReadOnlyList<CurrencyRowVm> CurrencyRows
+    {
+        get => _currencyRows;
+        private set => Set(ref _currencyRows, value, nameof(CurrencyRows), nameof(HasCurrencies));
+    }
+
+    public bool HasCurrencies => _currencyRows.Count > 0;
+
+    /// <summary>The crafting tree below the selected goal.</summary>
+    public IReadOnlyList<TreeNodeRow> TreeRoots
+    {
+        get => _treeRoots;
+        private set => Set(ref _treeRoots, value, nameof(TreeRoots), nameof(HasTree));
+    }
+
+    public bool HasTree => _treeRoots.Count > 0;
+
     public string SelectedNote
     {
         get => _selectedNote;
@@ -346,7 +403,19 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         });
 
     private void OnSettingsChanged(object? sender, AppSettings settings) =>
-        _dispatcher.InvokeAsync(() => OverlayShortages = [.. _shortages.Take(settings.Overlay.VisibleMaterialCount)]);
+        _dispatcher.InvokeAsync(() =>
+        {
+            OverlayShortages = [.. _shortages.Take(settings.Overlay.VisibleMaterialCount)];
+            ApplyMaterialFilter(settings.Overlay.ShowOnlyMissing);
+        });
+
+    private void ApplyMaterialFilter(bool onlyMissing) =>
+        MaterialRows = onlyMissing ? [.. _allMaterialRows.Where(r => r.IsMissing)] : _allMaterialRows;
+
+    private void OnNodeExpandedChanged(string path, bool isExpanded)
+    {
+        _ = isExpanded ? _expandedPaths.Add(path) : _expandedPaths.Remove(path);
+    }
 
     private void Rebuild(IReadOnlyList<GoalPlan> plans) => _ = RebuildAsync(plans);
 
@@ -361,6 +430,13 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
             ids.UnionWith(GoalPresenter.ReferencedItemIds(selected));
         }
 
+        var overview = MaterialOverview.Build(plans, IndexOf(plans, selected), _inventory.Current);
+        var tree = selected?.Plan is { } selectedPlan ? PlanTree.Build(selectedPlan) : [];
+        ids.UnionWith(Flatten(tree).Where(n => n.Key.Kind == MaterialKind.Item).Select(n => n.Key.Id));
+        var currencyIds = overview.Currencies.Select(c => c.CurrencyId)
+            .Concat(Flatten(tree).Where(n => n.Key.Kind == MaterialKind.Currency).Select(n => n.Key.Id))
+            .ToHashSet();
+
         IReadOnlyDictionary<int, ItemInfo> info;
         try
         {
@@ -372,6 +448,8 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
             info = new Dictionary<int, ItemInfo>();
         }
 
+        var currencyNames = await _currencies.ResolveAsync(currencyIds);
+
         if (version != _version)
         {
             return;
@@ -379,6 +457,9 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
 
         string Name(int id) => info.TryGetValue(id, out var item) ? item.Name : $"item #{id.ToString(CultureInfo.InvariantCulture)}";
         string? Icon(int id) => info.TryGetValue(id, out var item) ? item.IconUrl : null;
+        string CurrencyName(int id) => currencyNames.TryGetValue(id, out var currency) ? currency : $"currency #{id.ToString(CultureInfo.InvariantCulture)}";
+        string KeyName(MaterialKey key) => key.Kind == MaterialKind.Item ? Name(key.Id) : CurrencyName(key.Id);
+        string? KeyIcon(MaterialKey key) => key.Kind == MaterialKind.Item ? Icon(key.Id) : null;
 
         Rows = [.. plans.Select(p => new GoalRow(
             p.Goal.ItemId,
@@ -404,8 +485,31 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
             RaisePropertyChanged(nameof(SelectedNote));
         }
 
-        ShowPlan(selected, Name, Icon);
+        ShowPlan(selected, Name, Icon, new PlanDetails(overview, tree, KeyName, KeyIcon, CurrencyName));
     }
+
+    private static int IndexOf(IReadOnlyList<GoalPlan> plans, GoalPlan? plan)
+    {
+        for (var i = 0; plan is not null && i < plans.Count; i++)
+        {
+            if (ReferenceEquals(plans[i], plan))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private static IEnumerable<PlanTreeNode> Flatten(IEnumerable<PlanTreeNode> nodes) =>
+        nodes.SelectMany(n => new[] { n }.Concat(Flatten(n.Children)));
+
+    private sealed record PlanDetails(
+        MaterialOverviewResult Overview,
+        IReadOnlyList<PlanTreeNode> Tree,
+        Func<MaterialKey, string> KeyName,
+        Func<MaterialKey, string?> KeyIcon,
+        Func<int, string> CurrencyName);
 
     private void ShowNoSelection()
     {
@@ -419,21 +523,51 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         Shortages = [];
         OverlayShortages = [];
         Checklist = [];
+        ClearDetails();
     }
 
-    private void ShowPlan(GoalPlan goalPlan, Func<int, string> name, Func<int, string?> icon)
+    private void ClearDetails()
     {
-        var summary = GoalPresenter.Summarize(goalPlan, name);
+        _allMaterialRows = [];
+        MaterialRows = [];
+        ReservationRows = [];
+        CurrencyRows = [];
+        TreeRoots = [];
+    }
+
+    private void ShowPlan(GoalPlan goalPlan, Func<int, string> name, Func<int, string?> icon, PlanDetails details)
+    {
+        var summary = GoalPresenter.Summarize(goalPlan, name, inventory: _inventory.Current);
 
         SelectedProgress = summary.Progress;
         SelectedProgressText = summary.ProgressText;
         NextStepText = summary.NextStepText;
         RecipeNotice = summary.Notice;
 
-        Shortages = [.. summary.Shortages.Select(l => new ShortageRow(name(l.ItemId), icon(l.ItemId), l.Missing, l.Needed))];
+        Shortages = [.. summary.Shortages.Select(l => new ShortageRow(name(l.ItemId), icon(l.ItemId), l.Missing, l.Needed, l.Owned))];
         OverlayShortages = [.. Shortages.Take(_state.Settings.Overlay.VisibleMaterialCount)];
         Checklist = [.. summary.Checklist.Select(l => new ChecklistRow(l.ItemId, name(l.ItemId), icon(l.ItemId), l.StatusText, l.IsDone, OnChecklistToggled))];
+
+        _allMaterialRows = [.. details.Overview.Materials.Select(m => new MaterialRowVm(name(m.ItemId), icon(m.ItemId), m.Needed, m.Owned, m.Missing))];
+        ApplyMaterialFilter(_state.Settings.Overlay.ShowOnlyMissing);
+
+        ReservationRows = [.. details.Overview.Reservations.Select(r => new ReservationRowVm(string.Create(
+            CultureInfo.CurrentCulture,
+            $"{r.Amount:N0}× {details.KeyName(r.Key)} staat gereserveerd voor {name(r.ForGoalItemId)} (hogere voorrang)")))];
+        CurrencyRows = [.. details.Overview.Currencies.Select(c => new CurrencyRowVm(details.CurrencyName(c.CurrencyId), c.Needed, c.Owned, c.Missing))];
+        TreeRoots = [.. details.Tree.Select(node => ToRow(node, details))];
     }
+
+    private TreeNodeRow ToRow(PlanTreeNode node, PlanDetails details) => new(
+        node.Path,
+        details.KeyName(node.Key),
+        details.KeyIcon(node.Key),
+        node.Required,
+        node.StatusText(),
+        node.State,
+        [.. node.Children.Select(child => ToRow(child, details))],
+        _expandedPaths.Contains(node.Path),
+        OnNodeExpandedChanged);
 
     private void OnChecklistToggled(int componentItemId, bool isDone)
     {

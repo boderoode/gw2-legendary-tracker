@@ -82,6 +82,23 @@ internal sealed class FakeApiClient : IGw2ApiClient
 
     public Dictionary<int, string>? ItemDescriptions { get; set; }
 
+    public Dictionary<int, string> Currencies { get; } = [];
+
+    public int CurrencyRequests { get; private set; }
+
+    public Exception? CurrencyFailure { get; set; }
+
+    public Task<IReadOnlyDictionary<int, string>> GetCurrencyNamesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        CurrencyRequests++;
+        if (CurrencyFailure is not null)
+        {
+            return Task.FromException<IReadOnlyDictionary<int, string>>(CurrencyFailure);
+        }
+
+        return Task.FromResult<IReadOnlyDictionary<int, string>>(ids.Where(Currencies.ContainsKey).ToDictionary(id => id, id => Currencies[id]));
+    }
+
     public List<int> Materials { get; set; } = [];
 
     public Task<IReadOnlyList<int>> GetMaterialItemIdsAsync(CancellationToken cancellationToken = default) =>

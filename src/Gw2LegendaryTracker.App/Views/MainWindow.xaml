@@ -385,6 +385,14 @@
                             Value="{Binding Opacity, Mode=TwoWay}" AutomationProperties.Name="Transparantie van de overlay" />
 
                     <CheckBox Content="Overlay uitgebreid weergeven" IsChecked="{Binding IsExpanded, Mode=TwoWay}" Margin="0,12,0,4" />
+                    <TextBlock Margin="0,12,0,4" Style="{StaticResource MutedText}">
+                        <Run Text="Aantal materialen in de compacte overlay:" />
+                        <Run Text="{Binding VisibleMaterialCount, Mode=OneWay}" FontWeight="SemiBold" />
+                    </TextBlock>
+                    <Slider Minimum="1" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3"
+                            Value="{Binding VisibleMaterialCount, Mode=TwoWay}"
+                            AutomationProperties.Name="Aantal materialen in de compacte overlay" />
+                    <CheckBox Content="Uitgebreide overlay: alleen ontbrekende materialen tonen" IsChecked="{Binding OverlayShowOnlyMissing, Mode=TwoWay}" Margin="0,8,0,0" />
                     <CheckBox Content="Overlay vergrendelen tegen verslepen" IsChecked="{Binding IsLocked, Mode=TwoWay}" />
                     <CheckBox Content="Overlay automatisch tonen bij het starten" IsChecked="{Binding ShowOverlayOnStartup, Mode=TwoWay}" />
                     <CheckBox Content="Overlay automatisch verbergen na 10 seconden" IsChecked="{Binding AutoHideEnabled, Mode=TwoWay}" />

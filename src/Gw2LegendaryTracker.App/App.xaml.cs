@@ -108,6 +108,8 @@ public partial class App : Application
             _planning,
             new LegendaryCatalog(api, new SqliteLegendaryStore(database)),
             catalog,
+            new CurrencyCatalog(api),
+            inventory,
             _state,
             Dispatcher);
 

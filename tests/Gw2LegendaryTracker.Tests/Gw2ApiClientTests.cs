@@ -224,4 +224,30 @@ public class Gw2ApiClientTests
         Assert.Equal("/v2/legendaryarmory", request.RequestUri!.PathAndQuery);
         Assert.Equal([83162, 106658, 93105], ids);
     }
+
+    [Fact]
+    public async Task Currency_names_are_read_from_the_public_endpoint()
+    {
+        var handler = new StubHandler(_ => StubHandler.Json("""[{"id":1,"name":"Coin","description":"x"},{"id":2,"name":"Karma"},{"id":3,"name":""}]"""));
+
+        var names = await CreateClient(handler).GetCurrencyNamesAsync([1, 2, 3]);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Null(request.Headers.Authorization);
+        Assert.Equal("/v2/currencies?ids=1,2,3&lang=en", request.RequestUri!.PathAndQuery);
+        Assert.Equal("Coin", names[1]);
+        Assert.Equal("Karma", names[2]);
+        Assert.False(names.ContainsKey(3));
+    }
+
+    [Fact]
+    public async Task Currency_names_for_unknown_ids_are_empty_and_no_ids_means_no_request()
+    {
+        var handler = new StubHandler(_ => StubHandler.Json("""{"text":"all ids provided are invalid"}""", HttpStatusCode.NotFound));
+        var client = CreateClient(handler);
+
+        Assert.Empty(await client.GetCurrencyNamesAsync([999]));
+        Assert.Empty(await client.GetCurrencyNamesAsync([]));
+        Assert.Single(handler.Requests);
+    }
 }

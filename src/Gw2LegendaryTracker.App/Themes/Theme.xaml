@@ -110,6 +110,44 @@
         <Setter Property="Padding" Value="16" />
     </Style>
 
+    <!-- Status text in the crafting tree. The wording always states the status; colour only supports it. -->
+    <Style x:Key="TreeStatusText" TargetType="TextBlock" BasedOn="{StaticResource MutedText}">
+        <Setter Property="Margin" Value="8,0,0,0" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding State}" Value="Covered">
+                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="Manual">
+                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="Ready">
+                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="Blocked">
+                <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="Missing">
+                <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="MissingAwareText" TargetType="TextBlock" BasedOn="{StaticResource MutedText}">
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="TreeView">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
+
     <!-- Sync status indicator. Colour is never the only signal: the adjacent text always states the status. -->
     <Style x:Key="SyncDot" TargetType="Ellipse">
         <Setter Property="Width" Value="10" />

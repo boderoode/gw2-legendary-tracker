@@ -17,7 +17,7 @@ Dit project wordt in fases opgebouwd. Een fase is pas klaar als de build en test
 | 5 | Inventorymodel | Klaar, UI **nog niet getest op Windows** |
 | 6 | Crafting-engine en materiaalberekeningen | Klaar (engine en data; nog geen scherm) |
 | 7 | Legendary-doelen en handmatige progress | Klaar, UI **nog niet getest op Windows** |
-| 8 | Compacte en uitgebreide overlay | Gedeeltelijk: de overlay toont al naam, voortgang, volgende stap en tekorten |
+| 8 | Compacte en uitgebreide overlay | Klaar, **nog niet getest op Windows** (zie `docs/overlay-test-plan.md`) |
 | 9 | Export/import, foutafhandeling, extra tests | Gepland |
 | 10 | Reproduceerbare Windows-build en installer | Gepland |
 
@@ -80,6 +80,19 @@ dotnet run --project tools/Gw2LegendaryTracker.PackBuilder -- --root 30704   # 3
 Het hulpprogramma schrijft niets als een id of naam niet klopt met de officiële API of een recept de officiële
 beschrijving tegenspreekt. De data komt van gw2treasures, een community-project. Controleer hun voorwaarden voordat je
 de app of dit bestand deelt buiten privégebruik.
+
+## De overlay
+
+- **Compact** (standaard): icoon en naam van de gekozen Legendary, voortgang, de volgende stap, de grootste tekorten
+  met wat je hebt en wat je nog nodig hebt, en het tijdstip van de laatste synchronisatie. Het aantal materialen stel
+  je zelf in (1 tot 20).
+- **Uitgebreid:** volledige materiaallijst met een filter voor alleen ontbrekende materialen, een uitklapbare crafting
+  tree (met per onderdeel of je het hebt, nu kunt maken of nog materialen mist), de afvinklijst, currencies en
+  reserveringen. Het venster wordt vanzelf hoger en weer compact.
+- **Reserveringen** zijn geen apart in te vullen aantallen: de volgorde van je Legendaries bepaalt wie eerst jouw
+  materialen krijgt. De uitgebreide weergave laat zien wat Legendaries hoger in de lijst al van jouw voorraad gebruiken.
+- Wat de overlay toont, komt uit dezelfde planning als het hoofdvenster; een wijziging in het ene venster is direct
+  zichtbaar in het andere.
 
 ## Bekende beperkingen van de overlay
 

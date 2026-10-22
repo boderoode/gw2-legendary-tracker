@@ -24,4 +24,7 @@ public interface IGw2ApiClient
 
     /// <summary>Item ids of all raw crafting materials (public). These are bought or gathered, never forged.</summary>
     Task<IReadOnlyList<int>> GetMaterialItemIdsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Names of wallet currencies by id (public). Unknown ids are left out of the result.</summary>
+    Task<IReadOnlyDictionary<int, string>> GetCurrencyNamesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
 }

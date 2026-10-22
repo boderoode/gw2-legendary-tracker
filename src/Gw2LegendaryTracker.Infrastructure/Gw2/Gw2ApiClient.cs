@@ -76,6 +76,21 @@ public sealed class Gw2ApiClient : IGw2ApiClient
             .ToList();
     }
 
+    public async Task<IReadOnlyDictionary<int, string>> GetCurrencyNamesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        var query = string.Join(',', ids.Select(id => id.ToString(CultureInfo.InvariantCulture)));
+        var currencies = await GetAsync<List<CurrencyDto>>($"v2/currencies?ids={query}&lang=en", apiKey: null, cancellationToken, notFoundIsEmpty: true).ConfigureAwait(false);
+        return (currencies ?? [])
+            .Where(c => !string.IsNullOrWhiteSpace(c.Name))
+            .ToDictionary(c => c.Id, c => c.Name!);
+    }
+
     public async Task<IReadOnlyList<int>> GetMaterialItemIdsAsync(CancellationToken cancellationToken = default)
     {
         var categories = await GetAsync<List<MaterialCategoryDto>>("v2/materials?ids=all", apiKey: null, cancellationToken).ConfigureAwait(false);
@@ -213,6 +228,8 @@ public sealed class Gw2ApiClient : IGw2ApiClient
         [property: JsonPropertyName("guild_ingredients")] List<JsonElement>? GuildIngredients);
 
     private sealed record RecipeIngredientDto([property: JsonPropertyName("item_id")] int ItemId, long Count);
+
+    private sealed record CurrencyDto(int Id, string? Name);
 
     private sealed record MaterialCategoryDto(List<int>? Items);
 

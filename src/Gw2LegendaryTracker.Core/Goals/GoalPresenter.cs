@@ -3,7 +3,8 @@ using Gw2LegendaryTracker.Core.Crafting;
 
 namespace Gw2LegendaryTracker.Core.Goals;
 
-public sealed record ShortageLine(int ItemId, long Missing, long Needed);
+/// <param name="Owned">What the account owns of the item in total (0 when unknown).</param>
+public sealed record ShortageLine(int ItemId, long Missing, long Needed, long Owned);
 
 public sealed record ChecklistLine(int ItemId, string StatusText, bool IsDone);
 
@@ -44,7 +45,7 @@ public static class GoalPresenter
         return ids;
     }
 
-    public static GoalSummary Summarize(GoalPlan goalPlan, Func<int, string> itemName, CultureInfo? culture = null)
+    public static GoalSummary Summarize(GoalPlan goalPlan, Func<int, string> itemName, CultureInfo? culture = null, Inventory.InventoryModel? inventory = null)
     {
         ArgumentNullException.ThrowIfNull(goalPlan);
         ArgumentNullException.ThrowIfNull(itemName);
@@ -59,7 +60,7 @@ public static class GoalPresenter
 
         var shortages = plan.Shortages
             .Where(m => m.Key.Kind == MaterialKind.Item)
-            .Select(m => new ShortageLine(m.Key.Id, m.Missing, m.Needed))
+            .Select(m => new ShortageLine(m.Key.Id, m.Missing, m.Needed, inventory?.CountOf(m.Key.Id) ?? 0))
             .ToList();
 
         var checklist = ChecklistBuilder.Build(plan)

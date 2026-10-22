@@ -346,6 +346,8 @@ public class LegendaryCatalogRefreshTests
         public Task<IReadOnlyList<Recipe>> GetRecipesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => throw Offline();
 
         public Task<IReadOnlyList<int>> GetMaterialItemIdsAsync(CancellationToken cancellationToken = default) => throw Offline();
+
+        public Task<IReadOnlyDictionary<int, string>> GetCurrencyNamesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => throw Offline();
     }
 }
 

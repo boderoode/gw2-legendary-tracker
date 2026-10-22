@@ -120,6 +120,20 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         set => Persist(s => s with { Overlay = s.Overlay with { ShowOnStartup = value } });
     }
 
+    /// <summary>How many materials the compact overlay lists.</summary>
+    public int VisibleMaterialCount
+    {
+        get => Overlay.VisibleMaterialCount;
+        set => Persist(s => s with { Overlay = s.Overlay with { VisibleMaterialCount = value } });
+    }
+
+    /// <summary>In the expanded overlay: only list what is still missing.</summary>
+    public bool OverlayShowOnlyMissing
+    {
+        get => Overlay.ShowOnlyMissing;
+        set => Persist(s => s with { Overlay = s.Overlay with { ShowOnlyMissing = value } });
+    }
+
     public bool AutoHideEnabled
     {
         get => Overlay.AutoHideSeconds is not null;

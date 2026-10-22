@@ -18,14 +18,17 @@
             <!-- Header doubles as the drag handle. -->
             <Grid x:Name="DragHandle" Grid.Row="0" Background="Transparent" MouseLeftButtonDown="OnDragHandleMouseDown">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding Goals.SelectedName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Image Source="{Binding Goals.SelectedIconUrl}" Width="22" Height="22" Margin="0,0,8,0" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Goals.SelectedName}" FontWeight="SemiBold" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button Content="{Binding IsExpanded, Converter={x:Static local:ExpandGlyphConverter.Instance}}"
                             Command="{Binding ToggleExpandedCommand}" Padding="6,0" Margin="6,0,0,0"
-                            ToolTip="In- of uitklappen" AutomationProperties.Name="In- of uitklappen" />
+                            ToolTip="Compact of uitgebreid" AutomationProperties.Name="Compact of uitgebreid" />
                     <Button Content="⟳" Command="{Binding SyncNowCommand}" Padding="6,0" Margin="4,0,0,0"
                             ToolTip="Nu synchroniseren" AutomationProperties.Name="Nu synchroniseren" />
                     <Button Content="⌂" Command="{Binding ShowMainWindowCommand}" Padding="6,0" Margin="4,0,0,0"
@@ -35,48 +38,179 @@
                 </StackPanel>
             </Grid>
 
-            <StackPanel Grid.Row="1" Margin="0,8,0,0">
-                <StackPanel.Resources>
-                    <Style x:Key="OverlayIfSelected" TargetType="FrameworkElement">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Goals.HasSelection}" Value="True">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </StackPanel.Resources>
+            <ScrollViewer Grid.Row="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto" Focusable="False">
+                <StackPanel>
+                    <StackPanel.Resources>
+                        <Style x:Key="OverlayIfSelected" TargetType="FrameworkElement">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Goals.HasSelection}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Resources>
 
-                <StackPanel Style="{StaticResource OverlayIfSelected}">
-                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding Goals.SelectedProgress, Mode=OneWay}" Height="6"
-                                 Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceBrush}"
-                                 BorderThickness="0" AutomationProperties.Name="Voortgang" />
-                    <TextBlock Text="{Binding Goals.SelectedProgressText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
-                    <TextBlock Text="{Binding Goals.NextStepText}" FontWeight="SemiBold" Margin="0,6,0,0" />
-                    <ItemsControl ItemsSource="{Binding Goals.OverlayShortages}" Margin="0,6,0,0" Focusable="False">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,1">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" FontSize="12" />
-                                    <TextBlock Grid.Column="1" Text="{Binding Text}" Style="{StaticResource MutedText}" Margin="8,0,0,0" />
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
+                    <!-- Compact view: always shown. -->
+                    <StackPanel Style="{StaticResource OverlayIfSelected}">
+                        <ProgressBar Minimum="0" Maximum="1" Value="{Binding Goals.SelectedProgress, Mode=OneWay}" Height="6"
+                                     Foreground="{StaticResource AccentBrush}" Background="{StaticResource SurfaceBrush}"
+                                     BorderThickness="0" AutomationProperties.Name="Voortgang" />
+                        <TextBlock Text="{Binding Goals.SelectedProgressText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding Goals.NextStepText}" FontWeight="SemiBold" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding Goals.RecipeNotice}" Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                   Foreground="{StaticResource AccentBrush}">
+                            <TextBlock.Visibility>
+                                <Binding Path="Goals.HasRecipeNotice" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            </TextBlock.Visibility>
+                        </TextBlock>
+                        <ItemsControl ItemsSource="{Binding Goals.OverlayShortages}" Margin="0,6,0,0" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="22" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Image Source="{Binding IconUrl}" Width="18" Height="18" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" FontSize="12" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding OverlayText}" Style="{StaticResource MutedText}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
 
-                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                    <Ellipse Style="{StaticResource SyncDot}" Margin="0,0,6,0" />
-                    <TextBlock Text="{Binding SyncText}" Style="{StaticResource MutedText}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Ellipse Style="{StaticResource SyncDot}" Margin="0,0,6,0" />
+                        <TextBlock Text="{Binding SyncText}" Style="{StaticResource MutedText}" />
+                    </StackPanel>
+
+                    <!-- Expanded view: shown when the user expands the overlay. -->
+                    <StackPanel Margin="0,10,0,0">
+                        <StackPanel.Visibility>
+                            <MultiBinding Converter="{x:Static local:AllTrueVisibilityConverter.Instance}">
+                                <Binding Path="IsExpanded" />
+                                <Binding Path="Goals.HasSelection" />
+                            </MultiBinding>
+                        </StackPanel.Visibility>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Materialen" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <CheckBox Grid.Column="1" Content="Alleen ontbrekend" IsChecked="{Binding OverlayShowOnlyMissing, Mode=TwoWay}"
+                                      FontSize="12" VerticalAlignment="Center" />
+                        </Grid>
+                        <TextBlock Text="{Binding Goals.MaterialsHint}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                        <ItemsControl ItemsSource="{Binding Goals.MaterialRows}" Margin="0,4,0,0" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="22" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Image Source="{Binding IconUrl}" Width="18" Height="18" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" FontSize="12" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Text}" Style="{StaticResource MissingAwareText}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Margin="0,10,0,0">
+                            <StackPanel.Visibility>
+                                <Binding Path="Goals.HasCurrencies" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            </StackPanel.Visibility>
+                            <TextBlock Text="Currencies" FontWeight="SemiBold" />
+                            <ItemsControl ItemsSource="{Binding Goals.CurrencyRows}" Margin="0,4,0,0" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Text}" Style="{StaticResource MutedText}" Margin="8,0,0,0" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,10,0,0">
+                            <StackPanel.Visibility>
+                                <Binding Path="Goals.HasReservations" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            </StackPanel.Visibility>
+                            <TextBlock Text="Reserveringen" FontWeight="SemiBold" />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                       Text="Wat Legendaries hoger in je lijst al van jouw voorraad gebruiken." />
+                            <ItemsControl ItemsSource="{Binding Goals.ReservationRows}" Margin="0,4,0,0" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Text}" FontSize="12" Margin="0,2" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,10,0,0">
+                            <StackPanel.Visibility>
+                                <Binding Path="Goals.HasChecklist" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            </StackPanel.Visibility>
+                            <TextBlock Text="Onderdelen afvinken" FontWeight="SemiBold" />
+                            <ItemsControl ItemsSource="{Binding Goals.Checklist}" Margin="0,4,0,0" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12" Margin="6,0" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            <TextBlock Grid.Column="2" Text="{Binding StatusText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,10,0,0">
+                            <StackPanel.Visibility>
+                                <Binding Path="Goals.HasTree" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            </StackPanel.Visibility>
+                            <TextBlock Text="Crafting tree" FontWeight="SemiBold" />
+                            <TreeView ItemsSource="{Binding Goals.TreeRoots}" Margin="0,4,0,0" Focusable="False"
+                                      AutomationProperties.Name="Crafting tree">
+                                <TreeView.ItemContainerStyle>
+                                    <Style TargetType="TreeViewItem">
+                                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                        <Setter Property="Focusable" Value="False" />
+                                    </Style>
+                                </TreeView.ItemContainerStyle>
+                                <TreeView.ItemTemplate>
+                                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                                            <Image Source="{Binding IconUrl}" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="{Binding Label}" FontSize="12" TextWrapping="NoWrap" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding StatusText}" Style="{StaticResource TreeStatusText}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </HierarchicalDataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
-                <TextBlock Margin="0,8,0,0" Style="{StaticResource MutedText}"
-                           Visibility="{Binding IsExpanded, Converter={x:Static local:VisibilityConverter.Instance}}"
-                           Text="Uitgebreide weergave: volledige materiaallijst en crafting tree volgen in een latere fase." />
-            </StackPanel>
+            </ScrollViewer>
         </Grid>
     </Border>
 </Window>

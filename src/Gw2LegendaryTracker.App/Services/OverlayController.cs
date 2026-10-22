@@ -11,11 +11,14 @@ public sealed class OverlayController : IDisposable
 {
     private static readonly TimeSpan BoundsPersistDelay = TimeSpan.FromMilliseconds(500);
     private const double DefaultMargin = 24;
+    private const double CompactHeight = 230;
+    private const double ExpandedHeight = 480;
 
     private readonly AppViewModel _viewModel;
     private readonly OverlayWindow _window;
     private readonly DispatcherTimer _autoHideTimer;
     private readonly DispatcherTimer _boundsTimer;
+    private bool _wasExpanded;
 
     public OverlayController(AppViewModel viewModel)
     {
@@ -34,6 +37,7 @@ public sealed class OverlayController : IDisposable
         _viewModel.OverlayToggleRequested += (_, _) => Toggle();
         _viewModel.OverlayHideRequested += (_, _) => Hide();
 
+        _wasExpanded = viewModel.IsExpanded;
         RestoreBounds(viewModel.Overlay.Bounds);
     }
 
@@ -89,9 +93,29 @@ public sealed class OverlayController : IDisposable
         }
 
         _window.ApplyClickThrough(_viewModel.IsClickThrough);
+        ResizeForMode(_viewModel.IsExpanded);
         if (_window.IsVisible)
         {
             RestartAutoHide();
+        }
+    }
+
+    /// <summary>Gives the expanded view room, and returns to a compact size when collapsed.</summary>
+    private void ResizeForMode(bool expanded)
+    {
+        if (expanded == _wasExpanded)
+        {
+            return;
+        }
+
+        _wasExpanded = expanded;
+        _window.Height = expanded ? Math.Max(_window.Height, ExpandedHeight) : CompactHeight;
+
+        // Growing downwards must not push the window off the bottom of the screens.
+        var bottom = SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight;
+        if (_window.Top + _window.Height > bottom)
+        {
+            _window.Top = Math.Max(SystemParameters.VirtualScreenTop, bottom - _window.Height);
         }
     }
 

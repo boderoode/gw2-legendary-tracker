@@ -25,7 +25,11 @@ public sealed record OverlaySettings
     /// <summary>Hides the overlay automatically after this many seconds; <c>null</c> disables the behaviour.</summary>
     public int? AutoHideSeconds { get; init; }
 
+    /// <summary>Number of materials in the compact overlay.</summary>
     public int VisibleMaterialCount { get; init; } = 5;
+
+    /// <summary>In the expanded overlay: list only what is still missing.</summary>
+    public bool ShowOnlyMissing { get; init; } = true;
 
     public HotkeyGesture ToggleHotkey { get; init; } = HotkeyGesture.Default;
 
