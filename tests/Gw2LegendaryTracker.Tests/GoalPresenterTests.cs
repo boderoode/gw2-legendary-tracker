@@ -33,7 +33,7 @@ public class GoalPresenterTests
     public void Crafting_names_the_discipline_for_api_recipes_and_the_forge_for_local_ones()
     {
         var api = Recipe(1, A, 1, (C, 1)) with { Disciplines = ["Weaponsmith", "Huntsman"] };
-        var local = Recipe(-1, A, 1, (C, 1)) with { Source = RecipeSource.Local };
+        var local = Recipe(-1, A, 1, (C, 1)) with { Source = RecipeSource.Local, Kind = RecipeKind.MysticForge };
         var inv = Inventory([(C, 1)]);
 
         var fromApi = GoalPresenter.Summarize(Summaryable(CraftingPlanner.Plan(new CraftGoal(A), inv, new RecipeBook([api]))), Name, Culture);
@@ -108,5 +108,20 @@ public class GoalPresenterTests
         var ids = GoalPresenter.ReferencedItemIds(Summaryable(plan));
 
         Assert.All(new[] { A, B, C }, id => Assert.Contains(id, ids));
+    }
+
+    [Theory]
+    [InlineData(0, "Maak nu: 1× Goal")]
+    [InlineData(1, "Maak nu: 1× Goal (bij Leatherworker)")]
+    [InlineData(3, "Maak nu: 1× Goal (bij Leatherworker of Armorsmith of Tailor)")]
+    [InlineData(7, "Maak nu: 1× Goal (bij o.a. Leatherworker, Armorsmith, Tailor en andere disciplines)")]
+    public void A_long_list_of_disciplines_is_shortened(int count, string expected)
+    {
+        string[] all = ["Leatherworker", "Armorsmith", "Tailor", "Artificer", "Weaponsmith", "Scribe", "Huntsman"];
+        var recipe = Recipe(1, A, 1, (C, 1)) with { Disciplines = [.. all.Take(count)] };
+
+        var plan = CraftingPlanner.Plan(new CraftGoal(A), Inventory([(C, 1)]), new RecipeBook([recipe]));
+
+        Assert.Equal(expected, GoalPresenter.Summarize(Summaryable(plan), Name, Culture).NextStepText);
     }
 }

@@ -21,6 +21,8 @@ public sealed record GoalSummary(
 /// <summary>Turns a plan into texts for the main window and the overlay. Kept free of UI so it can be tested.</summary>
 public static class GoalPresenter
 {
+    private const int MaxDisciplinesNamed = 3;
+
     public const string NoRecipeDataNotice =
         "Voor deze Legendary is nog geen receptdata beschikbaar. De app kan alleen laten zien dat je hem nog niet hebt; de onderdelen en tekorten ontbreken.";
 
@@ -45,7 +47,12 @@ public static class GoalPresenter
         return ids;
     }
 
-    public static GoalSummary Summarize(GoalPlan goalPlan, Func<int, string> itemName, CultureInfo? culture = null, Inventory.InventoryModel? inventory = null)
+    public static GoalSummary Summarize(
+        GoalPlan goalPlan,
+        Func<int, string> itemName,
+        CultureInfo? culture = null,
+        Inventory.InventoryModel? inventory = null,
+        Func<int, string>? currencyName = null)
     {
         ArgumentNullException.ThrowIfNull(goalPlan);
         ArgumentNullException.ThrowIfNull(itemName);
@@ -75,31 +82,42 @@ public static class GoalPresenter
         return new GoalSummary(
             plan.Progress,
             progress,
-            DescribeNext(plan.Next, itemName, culture),
+            DescribeNext(plan.Next, itemName, culture, currencyName),
             goalPlan.HasRecipeData ? null : NoRecipeDataNotice,
             shortages,
             checklist);
     }
 
-    public static string DescribeNext(NextStep next, Func<int, string> itemName, CultureInfo culture)
+    public static string DescribeNext(NextStep next, Func<int, string> itemName, CultureInfo culture, Func<int, string>? currencyName = null)
     {
         ArgumentNullException.ThrowIfNull(next);
         ArgumentNullException.ThrowIfNull(itemName);
         ArgumentNullException.ThrowIfNull(culture);
 
+        string Currency(int id) => currencyName?.Invoke(id) ?? $"currency #{id}";
+
         return next.Kind switch
         {
             NextStepKind.Done => "Je hebt deze Legendary al.",
             NextStepKind.Craft when next.Craft is { } craft =>
-                string.Create(culture, $"Maak nu: {craft.Times:N0}× {itemName(craft.Recipe.OutputItemId)}{Where(craft.Recipe)}"),
+                string.Create(culture, $"{(craft.Recipe.Kind == RecipeKind.Vendor ? "Koop" : "Maak")} nu: {craft.Times:N0}× {itemName(craft.Recipe.OutputItemId)}{Where(craft.Recipe)}"),
             NextStepKind.Gather when next.Material is { } material =>
-                string.Create(culture, $"Verzamel: {next.Amount:N0}× {(material.Kind == MaterialKind.Item ? itemName(material.Id) : $"currency #{material.Id}")}"),
+                string.Create(culture, $"Verzamel: {next.Amount:N0}× {(material.Kind == MaterialKind.Item ? itemName(material.Id) : Currency(material.Id))}"),
             _ => string.Empty,
         };
     }
 
-    private static string Where(Recipe recipe) =>
-        recipe.Source == RecipeSource.Local ? " (in de Mystic Forge)"
-        : recipe.Disciplines.Count > 0 ? $" (bij {string.Join(" of ", recipe.Disciplines)})"
-        : string.Empty;
+    private static string Where(Recipe recipe) => recipe.Kind switch
+    {
+        RecipeKind.MysticForge => " (in de Mystic Forge)",
+        RecipeKind.Vendor => string.IsNullOrWhiteSpace(recipe.Note) ? " (bij een verkoper)" : $" (bij een verkoper: {recipe.Note})",
+        _ => recipe.Disciplines.Count switch
+        {
+            0 => string.Empty,
+
+            // Refinements can be made by most disciplines; naming seven of them helps nobody.
+            > MaxDisciplinesNamed => $" (bij o.a. {string.Join(", ", recipe.Disciplines.Take(MaxDisciplinesNamed))} en andere disciplines)",
+            _ => $" (bij {string.Join(" of ", recipe.Disciplines)})",
+        },
+    };
 }

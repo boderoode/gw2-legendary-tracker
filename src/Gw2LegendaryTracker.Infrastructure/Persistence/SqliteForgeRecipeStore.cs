@@ -141,7 +141,8 @@ public sealed class SqliteForgeRecipeStore : IForgeRecipeStore
                     reader.GetInt32(2),
                     ingredients.GetValueOrDefault(rowId) ?? [],
                     [],
-                    RecipeSource.Local));
+                    RecipeSource.Local,
+                    Kind: RecipeKind.MysticForge));
                 if (reader.GetInt32(3) == 0)
                 {
                     singleSource.Add(id);

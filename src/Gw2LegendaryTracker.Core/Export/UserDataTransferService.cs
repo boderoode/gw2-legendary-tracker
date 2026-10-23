@@ -1,3 +1,4 @@
+using Gw2LegendaryTracker.Core.Acquisition;
 using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.State;
 
@@ -10,16 +11,18 @@ public sealed class UserDataTransferService
 {
     private readonly AppState _state;
     private readonly GoalService _goals;
+    private readonly AcquisitionService? _acquisitions;
     private readonly TimeProvider _time;
 
-    public UserDataTransferService(AppState state, GoalService goals, TimeProvider? time = null)
+    public UserDataTransferService(AppState state, GoalService goals, TimeProvider? time = null, AcquisitionService? acquisitions = null)
     {
         _state = state;
         _goals = goals;
+        _acquisitions = acquisitions;
         _time = time ?? TimeProvider.System;
     }
 
-    public string Export() => UserDataSerializer.Serialize(_state.Settings, _goals.Goals, _time.GetUtcNow());
+    public string Export() => UserDataSerializer.Serialize(_state.Settings, _goals.Goals, _time.GetUtcNow(), _acquisitions?.Offers);
 
     /// <summary>
     /// Replaces the goals and settings with the contents of the file. Nothing changes when the file is invalid.
@@ -34,6 +37,10 @@ public sealed class UserDataTransferService
         }
 
         await _goals.ReplaceAsync(parsed.Goals, cancellationToken).ConfigureAwait(false);
+        if (parsed.Acquisitions is not null && _acquisitions is not null)
+        {
+            await _acquisitions.ReplaceAsync(parsed.Acquisitions, cancellationToken).ConfigureAwait(false);
+        }
         if (parsed.Settings is { } settings)
         {
             try
@@ -47,6 +54,7 @@ public sealed class UserDataTransferService
         }
 
         var count = parsed.Goals.Count;
-        return new ImportOutcome(true, $"Geïmporteerd: {count} doel(en){(parsed.Settings is null ? string.Empty : " en je instellingen")}.", parsed.Warnings);
+        var offers = parsed.Acquisitions is { Count: > 0 } && _acquisitions is not null ? $", {parsed.Acquisitions.Count} eigen herkomstgegeven(s)" : string.Empty;
+        return new ImportOutcome(true, $"Geïmporteerd: {count} doel(en){offers}{(parsed.Settings is null ? string.Empty : " en je instellingen")}.", parsed.Warnings);
     }
 }

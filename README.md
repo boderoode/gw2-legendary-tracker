@@ -79,6 +79,34 @@ goedkoopste aanbiedingen opraken, dus het echte bedrag kan hoger zijn. Kosten en
 meegerekend. De prijs die je direct betaalt is de laagste aanbiedingsprijs (`sells` in de API); een kooporder
 overbiedt de beste order met 1 koper, maar kost nooit meer dan direct kopen.
 
+## Verkopers en valuta (Karma, ...)
+
+Niet alles koop je op de Trading Post. Obsidian Shards haal je bijvoorbeeld met Karma bij een verkoper. De app rekent
+daar mee als je de herkomst vastlegt.
+
+**Waarom leg je dat zelf vast?** Er is geen bron die de app kan lezen. De officiële API heeft een route voor
+verkopers (`/v2/vendors`), maar die is niet actief (antwoord: *API not active*), op de itempagina's van gw2treasures
+staat het niet, en de wiki was bij het bouwen van deze functie in onderhoud. De app verzint geen prijzen: een verkeerd
+getal geeft een tekort dat je gelooft.
+
+- **Vastleggen:** onder het kopje *Niet te koop op de Trading Post* staat bij elk item de knop **Herkomst
+  vastleggen…**. Je kiest het betaalmiddel (bijvoorbeeld Karma), de prijs, hoeveel stuks je ervoor krijgt, en optioneel
+  de verkoper en de plaats. Zoek de gegevens op met de knoppen **Wiki** en **gw2treasures** bij datzelfde item.
+- **Wat de app er dan mee doet:** het item verdwijnt uit "niet te koop". De planner behandelt de aankoop als een
+  stap: *"Koop nu: 250× Obsidian Shard (bij een verkoper: …)"*, en bij het onderdeel Valuta staat of je genoeg Karma
+  hebt (*"je hebt 194.832 van 6.250"*) of hoeveel je nog nodig hebt. Staat het item ook op de Trading Post, dan zie je
+  de prijs daar ernaast, zodat je kunt kiezen.
+- **Bewaard en meegenomen:** je aanbiedingen staan in de database en zitten in een export, dus ook in een back-up.
+  Een aanbod verwijderen kan onder *Herkomst en eigen gegevens*.
+- **Wiki en gw2treasures:** de knoppen openen de pagina in je browser. De wiki-knop zoekt op de naam van het item (bij
+  een exacte naam kom je direct op de pagina); de gw2treasures-knop opent precies dit item-id. Alleen links naar deze twee
+  sites worden geopend.
+- **Eigen gegevens-map:** *Map met eigen gegevens openen* opent `%LOCALAPPDATA%\Gw2LegendaryTracker\recipes`. Een
+  receptbestand daarin wordt bij het starten ingelezen. Dat is handig voor veel gegevens tegelijk of voor een aanbod
+  met meerdere kosten.
+- **Beperkingen van het formulier:** één betaalmiddel per aanbod, en Coin staat er niet in (bedragen zijn in koper, wat
+  tot fouten leidt). Via een bestand kan beide wel.
+
 ## Wat de app wel en niet telt
 
 De voorraad bestaat uit je **bank, materials, gedeelde inventaris en de tassen van al je personages**. Niet geteld
@@ -115,13 +143,21 @@ bij meerdere recepten de route met de minste ontbrekende stuks (daarna de minste
 receptnummer) en wijst de eerstvolgende stap aan. Recepten die guild-upgrades vereisen en recepten die je eerst moet
 leren worden niet meegerekend.
 
-**Eigen receptbestanden** hebben dit formaat (ids zijn negatief zodat ze nooit botsen met API-recepten; ongeldige regels
-worden overgeslagen en gemeld):
+**Eigen receptbestanden** hebben dit formaat. Ids zijn negatief zodat ze nooit botsen met API-recepten; ongeldige
+regels worden overgeslagen en gemeld. Zet bij elk item en elke valuta de **naam**: de app controleert id's en namen
+tegen de officiële API, zodat een verkeerd id opvalt.
 
 ```json
-{ "recipes": [ { "id": -1, "output": { "itemId": 100, "count": 1, "name": "Gift of Might" },
-                 "ingredients": [ { "itemId": 5, "count": 2, "name": "Some Item" }, { "currencyId": 23, "count": 250 } ] } ] }
+{ "recipes": [
+  { "id": -1, "output": { "itemId": 100, "count": 1, "name": "Gift of Might" },
+    "ingredients": [ { "itemId": 5, "count": 2, "name": "Some Item" }, { "currencyId": 23, "count": 250, "name": "Spirit Shard" } ] },
+  { "id": -2, "vendor": { "name": "Naam van de verkoper", "location": "Plaats" },
+    "output": { "itemId": 19925, "count": 1, "name": "Obsidian Shard" },
+    "ingredients": [ { "currencyId": 2, "count": 25, "name": "Karma" } ] }
+] }
 ```
+
+Een recept met een `vendor`-regel is een aanbod van een verkoper; zonder die regel is het een Mystic Forge-recept.
 
 ## Gegevens, privacy en beveiliging
 
@@ -133,7 +169,7 @@ telemetrie, geen analyse en geen andere server. De GW2-key wordt alleen gebruikt
 
 | Bestand of map | Inhoud |
 | --- | --- |
-| `tracker.db` | SQLite: instellingen, doelen, afvinkingen, notities, laatste inventaris, gecachete itemnamen, recepten en Trading Post-prijzen. Het schema is geversioneerd; updates migreren bestaande gegevens. |
+| `tracker.db` | SQLite: instellingen, doelen, afvinkingen, notities, je eigen herkomstgegevens, laatste inventaris, gecachete itemnamen, recepten en Trading Post-prijzen. Het schema is geversioneerd; updates migreren bestaande gegevens. |
 | `apikey.bin`, `forgekey.bin` | De twee keys, versleuteld met Windows DPAPI (alleen jouw Windows-account op deze pc kan ze lezen). **Nooit** in de database, in instellingen of in logs. |
 | `logs\` | Logbestanden, zie hieronder. |
 | `backups\` | Automatische back-ups vlak voor een import (de laatste vijf). |
@@ -143,7 +179,7 @@ Zonder internet blijven je eerder opgehaalde gegevens en je afvinkingen beschikb
 
 ### Export en import
 
-Onder "Gegevens en back-up" exporteer je je Legendaries, volgorde, afvinkingen, notities en instellingen naar een
+Onder "Gegevens en back-up" exporteer je je Legendaries, volgorde, afvinkingen, notities, herkomstgegevens en instellingen naar een
 bestand, en importeer je ze weer, bijvoorbeeld op een andere pc. **API-keys zitten nooit in een export.**
 
 - Importeren vervangt je huidige Legendaries en instellingen. De app controleert het bestand eerst volledig en vraagt
@@ -251,4 +287,6 @@ is nog niet afgevinkt.
 - Geen eigen programma-icoon.
 - Exclusive fullscreen wordt niet ondersteund (zie de overlay).
 - De Legendary-recepten zijn afhankelijk van gw2treasures (zie Recepten).
+- Verkopersgegevens (Karma-aankopen e.d.) moet je zelf vastleggen, omdat er geen bron voor is (zie Verkopers en valuta).
+- De overlay is bewust niet veranderd voor verkopers; in de uitgebreide weergave verschijnen Karma en andere valuta wel vanzelf in het onderdeel Currencies zodra het plan ze nodig heeft.
 - Eigen, vaste reserveringen bestaan niet; de volgorde van je Legendaries regelt de verdeling.

@@ -4,12 +4,14 @@ using System.Text.Json;
 namespace Gw2LegendaryTracker.Core.Crafting;
 
 /// <param name="ExpectedItemNames">Item id to the name the file claims for it; used to verify ids against the API.</param>
+/// <param name="ExpectedCurrencyNames">The same for currency ids (karma, spirit shards, ...).</param>
 /// <param name="UnreviewedRecipeIds">Recipes the file marks as not yet checked against their source.</param>
 public sealed record LocalRecipeLoadResult(
     IReadOnlyList<Recipe> Recipes,
     IReadOnlyList<string> Errors,
     IReadOnlyDictionary<int, string> ExpectedItemNames,
-    IReadOnlySet<int> UnreviewedRecipeIds)
+    IReadOnlySet<int> UnreviewedRecipeIds,
+    IReadOnlyDictionary<int, string>? ExpectedCurrencyNames = null)
 {
     public static LocalRecipeLoadResult Failed(string error) =>
         new([], [error], new Dictionary<int, string>(), new HashSet<int>());
@@ -25,12 +27,16 @@ public sealed record LocalRecipeLoadResult(
 /// <code>
 /// { "recipes": [ { "id": -1, "status": "reviewed", "source": "https://…",
 ///                  "output": { "itemId": 100, "count": 1, "name": "Gift of Might" },
-///                  "ingredients": [ { "itemId": 5, "count": 2, "name": "Some Item" }, { "currencyId": 23, "count": 250 } ] } ] }
+///                  "ingredients": [ { "itemId": 5, "count": 2, "name": "Some Item" }, { "currencyId": 23, "count": 250, "name": "Spirit Shard" } ] } ] }
 /// </code>
+/// A recipe with a <c>"vendor": { "name": "…", "location": "…" }</c> entry is a vendor offer (bought with its ingredients,
+/// typically a currency) instead of a Mystic Forge recipe.
 /// </summary>
 public static class LocalRecipeLoader
 {
     public const string UnreviewedStatus = "unreviewed";
+
+    private const int MaxVendorText = 200;
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -57,6 +63,7 @@ public static class LocalRecipeLoader
         var errors = new List<string>();
         var ids = new HashSet<int>();
         var names = new Dictionary<int, string>();
+        var currencyNames = new Dictionary<int, string>();
         var unreviewed = new HashSet<int>();
 
         for (var index = 0; index < file.Recipes.Count; index++)
@@ -77,6 +84,11 @@ public static class LocalRecipeLoader
                 RememberName(names, ingredient!.ItemId!.Value, ingredient.Name);
             }
 
+            foreach (var ingredient in dto.Ingredients!.Where(i => i!.CurrencyId is > 0))
+            {
+                RememberName(currencyNames, ingredient!.CurrencyId!.Value, ingredient.Name);
+            }
+
             if (string.Equals(dto.Status, UnreviewedStatus, StringComparison.OrdinalIgnoreCase))
             {
                 unreviewed.Add(dto.Id);
@@ -88,11 +100,16 @@ public static class LocalRecipeLoader
                 dto.Output.Count,
                 [.. dto.Ingredients!.Select(i => new Ingredient(i!.CurrencyId is { } c ? MaterialKey.Currency(c) : MaterialKey.Item(i.ItemId!.Value), i.Count))],
                 dto.Disciplines ?? [],
-                RecipeSource.Local));
+                RecipeSource.Local,
+                Kind: dto.Vendor is null ? RecipeKind.MysticForge : RecipeKind.Vendor,
+                Note: VendorNote(dto.Vendor)));
         }
 
-        return new LocalRecipeLoadResult(recipes, errors, names, unreviewed);
+        return new LocalRecipeLoadResult(recipes, errors, names, unreviewed, currencyNames);
     }
+
+    private static string? VendorNote(VendorDto? vendor) =>
+        vendor is null ? null : string.Join(", ", new[] { vendor.Name?.Trim(), vendor.Location?.Trim() }.Where(t => !string.IsNullOrEmpty(t)));
 
     private static void RememberName(Dictionary<int, string> names, int itemId, string? name)
     {
@@ -127,6 +144,11 @@ public static class LocalRecipeLoader
         if (dto.Ingredients is not { Count: > 0 })
         {
             return "minstens één ingrediënt is nodig.";
+        }
+
+        if (dto.Vendor is { } vendor && ((vendor.Name?.Length ?? 0) > MaxVendorText || (vendor.Location?.Length ?? 0) > MaxVendorText))
+        {
+            return $"de naam en plaats van de verkoper mogen hooguit {MaxVendorText} tekens lang zijn.";
         }
 
         // Within one recipe the same item must not appear under two names, and an ingredient must not repeat:
@@ -189,7 +211,9 @@ public static class LocalRecipeLoader
 
     private sealed record FileDto(List<RecipeDto?>? Recipes);
 
-    private sealed record RecipeDto(int Id, OutputDto? Output, List<IngredientDto?>? Ingredients, List<string>? Disciplines, string? Status, string? Source);
+    private sealed record RecipeDto(int Id, OutputDto? Output, List<IngredientDto?>? Ingredients, List<string>? Disciplines, string? Status, string? Source, VendorDto? Vendor);
+
+    private sealed record VendorDto(string? Name, string? Location);
 
     private sealed record OutputDto(int ItemId, int Count, string? Name);
 

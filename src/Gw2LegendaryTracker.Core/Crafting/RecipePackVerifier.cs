@@ -72,6 +72,8 @@ public static class RecipePackVerifier
             }
         }
 
+        await VerifyCurrenciesAsync(pack, api, problems, cancellationToken).ConfigureAwait(false);
+
         var verified = new HashSet<int>();
         foreach (var group in pack.Recipes.GroupBy(r => r.OutputItemId))
         {
@@ -112,5 +114,39 @@ public static class RecipePackVerifier
         return MysticForgeDescription.Matches(
             stated,
             recipe.Ingredients.Select(i => (actualNames.GetValueOrDefault(i.Key.Id, string.Empty), i.Count)));
+    }
+
+    /// <summary>Currency ids are checked like item ids: they must exist and carry the name the file gives them.</summary>
+    private static async Task VerifyCurrenciesAsync(LocalRecipeLoadResult pack, IGw2ApiClient api, List<string> problems, CancellationToken cancellationToken)
+    {
+        var referenced = pack.Recipes
+            .SelectMany(r => r.Ingredients)
+            .Where(i => i.Key.Kind == MaterialKind.Currency)
+            .Select(i => i.Key.Id)
+            .Distinct()
+            .Order()
+            .ToList();
+        if (referenced.Count == 0)
+        {
+            return;
+        }
+
+        var expectedNames = pack.ExpectedCurrencyNames ?? new Dictionary<int, string>();
+        var actual = await api.GetCurrencyNamesAsync(referenced, cancellationToken).ConfigureAwait(false);
+        foreach (var id in referenced)
+        {
+            if (!expectedNames.TryGetValue(id, out var expected))
+            {
+                problems.Add($"Valuta {id} heeft geen naam in het bestand, dus het id kan niet worden gecontroleerd.");
+            }
+            else if (!actual.TryGetValue(id, out var real))
+            {
+                problems.Add($"Valuta {id} (\"{expected}\") bestaat niet in de API.");
+            }
+            else if (!string.Equals(real, expected, StringComparison.OrdinalIgnoreCase))
+            {
+                problems.Add($"Valuta {id} is \"{real}\" in de API, maar het bestand zegt \"{expected}\".");
+            }
+        }
     }
 }

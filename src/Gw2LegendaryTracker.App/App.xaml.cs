@@ -5,6 +5,7 @@ using System.Windows.Threading;
 using Gw2LegendaryTracker.App.Services;
 using Gw2LegendaryTracker.App.ViewModels;
 using Gw2LegendaryTracker.App.Views;
+using Gw2LegendaryTracker.Core.Acquisition;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Crafting.Forge;
 using Gw2LegendaryTracker.Core.Export;
@@ -37,6 +38,7 @@ public partial class App : Application
     private HttpClient? _forgeHttp;
     private GoalService? _goalService;
     private PlanningService? _planning;
+    private AcquisitionService? _acquisitions;
     private HotkeyService? _hotkey;
     private OverlayController? _overlay;
     private FileAppLog? _log;
@@ -83,6 +85,7 @@ public partial class App : Application
         _overlay?.Dispose();
         _hotkey?.Dispose();
         _viewModel?.Dispose();
+        _acquisitions?.Dispose();
         _planning?.Dispose();
         _goalService?.Dispose();
         _http?.Dispose();
@@ -175,13 +178,15 @@ public partial class App : Application
 
         _goalService = new GoalService(new SqliteGoalStore(database));
         _planning = new PlanningService(_goalService, inventory);
+        _acquisitions = new AcquisitionService(new SqliteAcquisitionStore(database));
+        var currencyCatalog = new CurrencyCatalog(api);
         var recipes = new RecipeCatalog(api, new SqliteRecipeStore(database));
         var goals = new GoalsViewModel(
             _goalService,
             _planning,
             new LegendaryCatalog(api, new SqliteLegendaryStore(database)),
             catalog,
-            new CurrencyCatalog(api),
+            currencyCatalog,
             new PriceCatalog(api, new SqlitePriceStore(database)),
             inventory,
             _state,
@@ -193,9 +198,9 @@ public partial class App : Application
         var forgeClient = new ForgeApiClient(_forgeHttp);
         var forgeKeys = new DpapiApiKeyStore(DataPath("forgekey.bin"));
         var forge = new ForgeRecipeCatalog(forgeClient, forgeKeys, new SqliteForgeRecipeStore(database), api);
-        var provider = new RecipeBookProvider(recipes, forge, token => LocalRecipeFiles.LoadAsync(RecipeFolders(), token));
-        var recipeData = new RecipeDataViewModel(new ForgeConnectionService(forgeClient, forgeKeys), forge, provider, _planning, goals, log, Dispatcher);
-        var transfer = new DataTransferViewModel(new UserDataTransferService(_state, _goalService), log, DataPath("backups"), log is FileAppLog file ? file.Directory : DataPath("logs"));
+        var provider = new RecipeBookProvider(recipes, forge, token => LocalRecipeFiles.LoadAsync(RecipeFolders(), token), _acquisitions);
+        var recipeData = new RecipeDataViewModel(new ForgeConnectionService(forgeClient, forgeKeys), forge, provider, _planning, goals, _acquisitions, log, Dispatcher);
+        var transfer = new DataTransferViewModel(new UserDataTransferService(_state, _goalService, acquisitions: _acquisitions), log, DataPath("backups"), log is FileAppLog file ? file.Directory : DataPath("logs"));
 
         _viewModel = new AppViewModel(
             _state,
@@ -205,6 +210,7 @@ public partial class App : Application
             goals,
             recipeData,
             transfer,
+            new AcquisitionsViewModel(_acquisitions, currencyCatalog, catalog, DataPath("recipes"), Dispatcher),
             log,
             Dispatcher);
         _overlay = new OverlayController(_viewModel);
@@ -223,6 +229,7 @@ public partial class App : Application
             _overlay.Show();
         }
 
+        await _acquisitions.LoadAsync();
         await _viewModel.InitializeAsync();
 
         // Recipes are public data: use what is cached right away, then refresh in the background.

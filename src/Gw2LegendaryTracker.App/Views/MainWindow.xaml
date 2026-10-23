@@ -245,7 +245,19 @@
                             <Binding Path="Goals.HasSelection" Converter="{x:Static local:VisibilityConverter.Instance}" />
                         </StackPanel.Visibility>
 
-                        <TextBlock Text="{Binding Goals.SelectedName}" Style="{StaticResource HeadingText}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Goals.SelectedName}" Style="{StaticResource HeadingText}" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="Wiki" Style="{StaticResource LinkButton}" Command="{Binding Goals.OpenLinkCommand}"
+                                        CommandParameter="{Binding Goals.SelectedWikiUrl}" ToolTip="Zoek deze Legendary op in de Guild Wars 2-wiki" />
+                                <Button Content="gw2treasures" Style="{StaticResource LinkButton}" Command="{Binding Goals.OpenLinkCommand}"
+                                        CommandParameter="{Binding Goals.SelectedTreasuresUrl}" ToolTip="Open de pagina van deze Legendary op gw2treasures" />
+                            </StackPanel>
+                        </Grid>
                         <ProgressBar Minimum="0" Maximum="1" Value="{Binding Goals.SelectedProgress, Mode=OneWay}" Height="8" Margin="0,8,0,0"
                                      Foreground="{StaticResource AccentBrush}" Background="{StaticResource BackgroundBrush}"
                                      BorderBrush="{StaticResource BorderBrush}" AutomationProperties.Name="Voortgang" />
@@ -274,7 +286,15 @@
                                         </Grid.ColumnDefinitions>
                                         <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                        <TextBlock Grid.Column="2" Text="{Binding Text}" VerticalAlignment="Center" Style="{StaticResource MutedText}" />
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Style="{StaticResource MutedText}" />
+                                            <Button Content="Wiki" Style="{StaticResource LinkButton}" Margin="10,0,0,0"
+                                                    Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding WikiUrl}" ToolTip="Zoek dit item op in de Guild Wars 2-wiki" />
+                                            <Button Content="gw2treasures" Style="{StaticResource LinkButton}"
+                                                    Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding TreasuresUrl}" ToolTip="Open de pagina van dit item op gw2treasures" />
+                                        </StackPanel>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -339,11 +359,71 @@
                                 </ItemsControl>
                             </StackPanel>
 
-                            <TextBlock Text="{Binding Goals.UnbuyableText}" Style="{StaticResource MutedText}" Margin="0,12,0,0">
-                                <TextBlock.Visibility>
+                            <StackPanel Margin="0,12,0,0">
+                                <StackPanel.Visibility>
+                                    <Binding Path="Goals.HasVendorLines" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                </StackPanel.Visibility>
+                                <TextBlock Text="Bij een verkoper" FontWeight="SemiBold" />
+                                <ItemsControl ItemsSource="{Binding Goals.VendorLines}" Margin="0,4,0,0" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="0,2" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,12,0,0">
+                                <StackPanel.Visibility>
+                                    <Binding Path="Goals.HasCurrencyLines" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                </StackPanel.Visibility>
+                                <TextBlock Text="Valuta" FontWeight="SemiBold" />
+                                <ItemsControl ItemsSource="{Binding Goals.CurrencyLines}" Margin="0,4,0,0" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="0,2" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,12,0,0">
+                                <StackPanel.Visibility>
                                     <Binding Path="Goals.HasUnbuyable" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                </TextBlock.Visibility>
-                            </TextBlock>
+                                </StackPanel.Visibility>
+                                <TextBlock Text="Niet te koop op de Trading Post" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Goals.UnbuyableText}" Style="{StaticResource MutedText}" Margin="0,2,0,4" />
+                                <ItemsControl ItemsSource="{Binding Goals.UnbuyableRows}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                                                    <Run Text="{Binding Quantity, Mode=OneWay, StringFormat={}{0:N0}×}" />
+                                                    <Run Text="{Binding Name, Mode=OneWay}" />
+                                                </TextBlock>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                    <Button Content="Wiki" Style="{StaticResource LinkButton}"
+                                                            Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding WikiUrl}" ToolTip="Zoek dit item op in de Guild Wars 2-wiki" />
+                                                    <Button Content="gw2treasures" Style="{StaticResource LinkButton}"
+                                                            Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding TreasuresUrl}" ToolTip="Open de pagina van dit item op gw2treasures" />
+                                                    <Button Content="Herkomst vastleggen…" Style="{StaticResource LinkButton}"
+                                                            Command="{Binding DataContext.Goals.AddSourceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}" ToolTip="Leg vast waar en waarvoor je dit kunt kopen" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
                             <TextBlock Text="{Binding Goals.CostDisclaimer}" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
                             <TextBlock Text="{Binding Goals.PriceStatusText}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
                         </StackPanel>
@@ -467,6 +547,50 @@
                     <CheckBox Content="Click-through: muisklikken gaan door de overlay heen" IsChecked="{Binding IsClickThrough, Mode=TwoWay}" />
                     <TextBlock Style="{StaticResource MutedText}" Margin="24,0,0,0"
                                Text="Met click-through aan kun je de overlay niet aanklikken. Zet het hier weer uit, of verberg de overlay met de sneltoets." />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardBorder}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="Herkomst en eigen gegevens" Style="{StaticResource HeadingText}" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                               Text="Sommige onderdelen koop je niet op de Trading Post maar bij een verkoper, bijvoorbeeld met Karma. Dat staat in geen enkele bron die de app kan lezen, dus leg je het zelf vast: kies bij een onderdeel dat niet te koop is op Herkomst vastleggen. De app rekent er dan mee en laat zien hoeveel Karma je nodig hebt." />
+
+                    <TextBlock Text="Nog niets vastgelegd." Style="{StaticResource MutedText}" Margin="0,12,0,0">
+                        <TextBlock.Visibility>
+                            <Binding Path="Acquisitions.HasNoRows" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                        </TextBlock.Visibility>
+                    </TextBlock>
+                    <ItemsControl ItemsSource="{Binding Acquisitions.Rows}" Margin="0,12,0,0" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="32" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                        <TextBlock Text="{Binding Text}" Style="{StaticResource MutedText}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Content="Verwijderen" Style="{StaticResource LinkButton}" VerticalAlignment="Center"
+                                            Command="{Binding DataContext.Acquisitions.RemoveCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{Binding Acquisitions.Error}" Foreground="{StaticResource DangerBrush}" Margin="0,8,0,0">
+                        <TextBlock.Visibility>
+                            <Binding Path="Acquisitions.HasError" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                        </TextBlock.Visibility>
+                    </TextBlock>
+
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,12,0,0"
+                               Text="Handiger met veel gegevens, of een aanbod met meerdere kosten? Zet een receptbestand (.json) in de map met eigen gegevens. De uitleg staat in de README." />
+                    <Button Content="Map met eigen gegevens openen" Click="OnOpenCustomDataFolderClick" HorizontalAlignment="Left" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>
 

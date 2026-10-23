@@ -7,8 +7,25 @@ public sealed class CurrencyCatalog
 {
     private readonly IGw2ApiClient _api;
     private readonly Dictionary<int, string> _names = [];
+    private bool _allLoaded;
 
     public CurrencyCatalog(IGw2ApiClient api) => _api = api;
+
+    /// <summary>All currencies (id and name), for choosing one. Throws <see cref="Gw2ApiException"/> when offline and nothing is known yet.</summary>
+    public async Task<IReadOnlyDictionary<int, string>> AllAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_allLoaded)
+        {
+            foreach (var (id, name) in await _api.GetAllCurrencyNamesAsync(cancellationToken).ConfigureAwait(false))
+            {
+                _names[id] = name;
+            }
+
+            _allLoaded = true;
+        }
+
+        return new Dictionary<int, string>(_names);
+    }
 
     /// <summary>Names for the ids; ids that cannot be resolved (offline, unknown) are simply absent.</summary>
     public async Task<IReadOnlyDictionary<int, string>> ResolveAsync(IEnumerable<int> ids, CancellationToken cancellationToken = default)

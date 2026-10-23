@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Gw2LegendaryTracker.Core.Acquisition;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Crafting.Forge;
 using Gw2LegendaryTracker.Core.Goals;
@@ -19,6 +20,7 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
     private readonly RecipeBookProvider _provider;
     private readonly PlanningService _planning;
     private readonly GoalsViewModel _goals;
+    private readonly AcquisitionService _acquisitions;
     private readonly IAppLog _log;
     private readonly Dispatcher _dispatcher;
     private readonly SemaphoreSlim _bookGate = new(1, 1);
@@ -37,6 +39,7 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
         RecipeBookProvider provider,
         PlanningService planning,
         GoalsViewModel goals,
+        AcquisitionService acquisitions,
         IAppLog log,
         Dispatcher dispatcher)
     {
@@ -45,10 +48,12 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
         _provider = provider;
         _planning = planning;
         _goals = goals;
+        _acquisitions = acquisitions;
         _log = log;
         _dispatcher = dispatcher;
 
         _goals.PropertyChanged += OnGoalsPropertyChanged;
+        _acquisitions.Changed += OnAcquisitionsChanged;
         RefreshCommand = new RelayCommand(() => _ = EnsureSelectedAsync(force: true));
     }
 
@@ -273,6 +278,7 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _goals.PropertyChanged -= OnGoalsPropertyChanged;
+        _acquisitions.Changed -= OnAcquisitionsChanged;
         _run?.Cancel();
         _run?.Dispose();
         _bookGate.Dispose();
@@ -314,6 +320,20 @@ public sealed class RecipeDataViewModel : ObservableObject, IDisposable
             ? $"{text} {result.Rejected.Count} recept(en) niet gebruikt omdat ze niet kloppen met de officiële beschrijving. {result.Rejected[0]}"
             : text;
     }
+
+    /// <summary>A vendor offer was added or removed: the plans must use the new offers straight away.</summary>
+    private void OnAcquisitionsChanged(object? sender, IReadOnlyList<AcquisitionOffer> offers) =>
+        _ = _dispatcher.InvokeAsync(async () =>
+        {
+            try
+            {
+                await RebuildBookAsync();
+            }
+            catch (Exception ex)
+            {
+                _log.Failure("Receptboek bijwerken na een wijziging in de herkomstgegevens mislukt", ex);
+            }
+        });
 
     private void OnGoalsPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {

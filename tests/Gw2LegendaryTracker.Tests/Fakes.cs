@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using Gw2LegendaryTracker.Core.Acquisition;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Crafting.Forge;
 using Gw2LegendaryTracker.Core.Goals;
@@ -82,6 +83,11 @@ internal sealed class FakeApiClient : IGw2ApiClient
     public Dictionary<int, string>? KnownItems { get; set; }
 
     public Dictionary<int, string>? ItemDescriptions { get; set; }
+
+    public Task<IReadOnlyDictionary<int, string>> GetAllCurrencyNamesAsync(CancellationToken cancellationToken = default) =>
+        CurrencyFailure is null
+            ? Task.FromResult<IReadOnlyDictionary<int, string>>(new Dictionary<int, string>(Currencies))
+            : Task.FromException<IReadOnlyDictionary<int, string>>(CurrencyFailure);
 
     public Dictionary<int, TradingPostPrice> Prices { get; } = [];
 
@@ -345,7 +351,7 @@ internal sealed class FakeForgeRecipeStore : IForgeRecipeStore
     public Task SaveAsync(int itemId, IReadOnlyList<ForgeRecipeDraft> recipes, DateTimeOffset fetchedUtc, CancellationToken cancellationToken = default)
     {
         _lookups[itemId] = fetchedUtc;
-        _recipes[itemId] = [.. recipes.Select(r => (new Recipe(-(IForgeRecipeStore.IdBase + _next++), itemId, r.OutputCount, r.Ingredients, [], RecipeSource.Local), r.IsVerified))];
+        _recipes[itemId] = [.. recipes.Select(r => (new Recipe(-(IForgeRecipeStore.IdBase + _next++), itemId, r.OutputCount, r.Ingredients, [], RecipeSource.Local, Kind: RecipeKind.MysticForge), r.IsVerified))];
         return Task.CompletedTask;
     }
 
@@ -380,6 +386,29 @@ internal sealed class FakePriceStore : IPriceStore
             Lookups[lookup.ItemId] = lookup;
         }
 
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeAcquisitionStore : IAcquisitionStore
+{
+    public IReadOnlyList<AcquisitionOffer> Saved { get; set; } = [];
+
+    public int SaveCount { get; private set; }
+
+    public Exception? Failure { get; set; }
+
+    public Task<IReadOnlyList<AcquisitionOffer>> LoadAsync(CancellationToken cancellationToken = default) => Task.FromResult(Saved);
+
+    public Task SaveAsync(IReadOnlyList<AcquisitionOffer> offers, CancellationToken cancellationToken = default)
+    {
+        if (Failure is not null)
+        {
+            return Task.FromException(Failure);
+        }
+
+        Saved = offers;
+        SaveCount++;
         return Task.CompletedTask;
     }
 }

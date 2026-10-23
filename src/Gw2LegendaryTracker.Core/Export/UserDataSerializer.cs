@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
+using Gw2LegendaryTracker.Core.Acquisition;
+using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.Settings;
 
@@ -8,7 +10,13 @@ namespace Gw2LegendaryTracker.Core.Export;
 /// <param name="Settings">The settings from the file, or <c>null</c> when the file has none (current settings are then kept).</param>
 /// <param name="Warnings">Things that were left out or corrected; the import still succeeded.</param>
 /// <param name="Error">Why the file cannot be imported at all; <c>null</c> on success.</param>
-public sealed record ImportResult(AppSettings? Settings, IReadOnlyList<Goal> Goals, IReadOnlyList<string> Warnings, string? Error)
+/// <param name="Acquisitions">The vendor offers in the file, or <c>null</c> when the file has none (an older export): current ones are then kept.</param>
+public sealed record ImportResult(
+    AppSettings? Settings,
+    IReadOnlyList<Goal> Goals,
+    IReadOnlyList<string> Warnings,
+    string? Error,
+    IReadOnlyList<NewOffer>? Acquisitions = null)
 {
     public bool Succeeded => Error is null;
 
@@ -33,7 +41,7 @@ public static class UserDataSerializer
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    public static string Serialize(AppSettings settings, IReadOnlyList<Goal> goals, DateTimeOffset exportedUtc)
+    public static string Serialize(AppSettings settings, IReadOnlyList<Goal> goals, DateTimeOffset exportedUtc, IReadOnlyList<AcquisitionOffer>? acquisitions = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(goals);
@@ -43,7 +51,13 @@ public static class UserDataSerializer
             CurrentVersion,
             exportedUtc.ToString("O", CultureInfo.InvariantCulture),
             settings,
-            [.. goals.Select(g => new GoalDto(g.ItemId, g.Quantity, g.Note, [.. g.CompletedItemIds.Order()]))]);
+            [.. goals.Select(g => new GoalDto(g.ItemId, g.Quantity, g.Note, [.. g.CompletedItemIds.Order()]))],
+            [.. (acquisitions ?? []).Select(o => new OfferDto(
+                o.ItemId,
+                o.OutputCount,
+                [.. o.Costs.Select(c => new CostDto(c.Key.Kind == MaterialKind.Currency ? CurrencyKind : ItemKind, c.Key.Id, c.Count))],
+                o.VendorName,
+                o.Location))]);
         return JsonSerializer.Serialize(envelope, JsonOptions) + "\n";
     }
 
@@ -89,7 +103,8 @@ public static class UserDataSerializer
             CleanSettings(envelope.Settings, warnings),
             CleanGoals(envelope.Goals, warnings),
             warnings,
-            null);
+            null,
+            CleanOffers(envelope.Acquisitions, warnings));
     }
 
     private static AppSettings? CleanSettings(AppSettings? settings, List<string> warnings)
@@ -171,9 +186,51 @@ public static class UserDataSerializer
         return goals;
     }
 
+    private static List<NewOffer>? CleanOffers(List<OfferDto?>? dtos, List<string> warnings)
+    {
+        if (dtos is null)
+        {
+            return null;
+        }
+
+        var offers = new List<NewOffer>();
+        for (var index = 0; index < dtos.Count; index++)
+        {
+            var label = $"Herkomst #{(index + 1).ToString(CultureInfo.InvariantCulture)}";
+            if (offers.Count >= AcquisitionService.MaxOffers)
+            {
+                warnings.Add($"{label} en de rest zijn overgeslagen: er kunnen er hooguit {AcquisitionService.MaxOffers} zijn.");
+                break;
+            }
+
+            var dto = dtos[index];
+            var costs = (dto?.Costs ?? []).Where(c => c is not null).Select(c => new Ingredient(
+                string.Equals(c!.Kind, CurrencyKind, StringComparison.Ordinal) ? MaterialKey.Currency(c.Id) : MaterialKey.Item(c.Id),
+                c.Count)).ToList();
+            var offer = dto is null ? null : new NewOffer(dto.ItemId, dto.OutputCount, costs, dto.VendorName ?? string.Empty, dto.Location ?? string.Empty);
+            var error = offer is null ? "leeg item." : AcquisitionService.Validate(offer);
+            if (error is not null)
+            {
+                warnings.Add($"{label} is overgeslagen: {error}");
+                continue;
+            }
+
+            offers.Add(offer!);
+        }
+
+        return offers;
+    }
+
     private static bool IsFinite(double value) => double.IsFinite(value);
 
-    private sealed record Envelope(string? Format, int Version, string? ExportedUtc, AppSettings? Settings, List<GoalDto?>? Goals);
+    private const string ItemKind = "item";
+    private const string CurrencyKind = "currency";
+
+    private sealed record Envelope(string? Format, int Version, string? ExportedUtc, AppSettings? Settings, List<GoalDto?>? Goals, List<OfferDto?>? Acquisitions = null);
+
+    private sealed record OfferDto(int ItemId, int OutputCount, List<CostDto?>? Costs, string? VendorName, string? Location);
+
+    private sealed record CostDto(string? Kind, int Id, long Count);
 
     private sealed record GoalDto(int ItemId, int Quantity, string? Note, List<int>? CompletedItemIds);
 }

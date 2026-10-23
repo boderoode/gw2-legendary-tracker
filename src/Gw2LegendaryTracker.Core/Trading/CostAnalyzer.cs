@@ -15,6 +15,13 @@ public sealed record BuyInsteadSuggestion(int ItemId, long Quantity, long BuyCos
     public long Savings => CraftCost - BuyCost;
 }
 
+/// <param name="Costs">What the vendor asks for the units that are needed, as currencies and/or items.</param>
+/// <param name="TradingPostTotal">What the same units cost on the Trading Post, or <c>null</c> when the item is not sold there.</param>
+public sealed record VendorLine(int ItemId, long Units, IReadOnlyList<Ingredient> Costs, string? Note, long? TradingPostTotal);
+
+/// <summary>A currency the plan needs, set against the wallet.</summary>
+public sealed record CurrencyNeed(int CurrencyId, long Needed, long Owned, long Missing);
+
 /// <param name="TotalInstant">What it costs to buy every purchasable shortage right now. Unbuyable items are not in it.</param>
 /// <param name="TotalBuyOrder">The same via buy orders.</param>
 /// <param name="Shortfall">How much more coin is needed than is owned (0 when there is enough).</param>
@@ -27,9 +34,15 @@ public sealed record CostEstimate(
     long CoinOwned,
     long Shortfall,
     IReadOnlyList<BuyInsteadSuggestion> Suggestions,
-    long TotalAfterSuggestions)
+    long TotalAfterSuggestions,
+    IReadOnlyList<VendorLine>? Vendors = null,
+    IReadOnlyList<CurrencyNeed>? Currencies = null)
 {
-    public bool NothingToBuy => BuyLines.Count == 0 && Unbuyable.Count == 0;
+    public IReadOnlyList<VendorLine> VendorLines { get; } = Vendors ?? [];
+
+    public IReadOnlyList<CurrencyNeed> CurrencyNeeds { get; } = Currencies ?? [];
+
+    public bool NothingToBuy => BuyLines.Count == 0 && Unbuyable.Count == 0 && VendorLines.Count == 0;
 }
 
 /// <summary>
@@ -65,7 +78,7 @@ public static class CostAnalyzer
         }
     }
 
-    public static CostEstimate Analyze(CraftPlan plan, PriceBook prices, long coinOwned)
+    public static CostEstimate Analyze(CraftPlan plan, PriceBook prices, long coinOwned, Func<int, long>? currencyOwned = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentNullException.ThrowIfNull(prices);
@@ -97,6 +110,18 @@ public static class CostAnalyzer
             Suggest(child, prices, suggestions);
         }
 
+        var vendors = new List<VendorLine>();
+        foreach (var child in plan.Root.Children)
+        {
+            CollectVendors(child, prices, vendors);
+        }
+
+        var currencies = plan.Materials
+            .Where(m => m.Key.Kind == MaterialKind.Currency)
+            .OrderBy(m => m.Key.Id)
+            .Select(m => new CurrencyNeed(m.Key.Id, m.Needed, currencyOwned?.Invoke(m.Key.Id) ?? m.UsedFromStock, m.Missing))
+            .ToList();
+
         var totalInstant = lines.Sum(l => l.InstantTotal);
         return new CostEstimate(
             [.. lines.OrderByDescending(l => l.InstantTotal).ThenBy(l => l.ItemId)],
@@ -106,7 +131,31 @@ public static class CostAnalyzer
             coinOwned,
             Math.Max(0, totalInstant - coinOwned),
             [.. suggestions.OrderByDescending(s => s.Savings).ThenBy(s => s.ItemId)],
-            totalInstant - suggestions.Sum(s => s.Savings));
+            totalInstant - suggestions.Sum(s => s.Savings),
+            [.. vendors.OrderBy(v => v.ItemId)],
+            currencies);
+    }
+
+    /// <summary>Everything the plan will buy from a vendor, with what the Trading Post would charge for the same.</summary>
+    private static void CollectVendors(PlanNode node, PriceBook prices, List<VendorLine> vendors)
+    {
+        if (node.IsManual || node.IsCoveredByStock)
+        {
+            return;
+        }
+
+        if (node.Recipe is { Kind: RecipeKind.Vendor } recipe && node.Key.Kind == MaterialKind.Item)
+        {
+            var units = node.Required - node.FromStock;
+            var costs = recipe.Ingredients.Select(i => new Ingredient(i.Key, checked(i.Count * node.Crafts))).ToList();
+            var onMarket = prices.Find(node.Key.Id) is { IsPurchasable: true } price ? checked(units * price.InstantBuyPrice) : (long?)null;
+            vendors.Add(new VendorLine(node.Key.Id, units, costs, recipe.Note, onMarket));
+        }
+
+        foreach (var child in node.Children)
+        {
+            CollectVendors(child, prices, vendors);
+        }
     }
 
     /// <summary>

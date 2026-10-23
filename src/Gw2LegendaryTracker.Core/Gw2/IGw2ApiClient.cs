@@ -34,4 +34,7 @@ public interface IGw2ApiClient
     /// Trading Post are left out of the result.
     /// </summary>
     Task<IReadOnlyList<TradingPostPrice>> GetTradingPostPricesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>The names of all wallet currencies (public), e.g. to pick one in a form.</summary>
+    Task<IReadOnlyDictionary<int, string>> GetAllCurrencyNamesAsync(CancellationToken cancellationToken = default);
 }

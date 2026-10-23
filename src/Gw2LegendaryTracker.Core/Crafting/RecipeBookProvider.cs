@@ -1,3 +1,4 @@
+using Gw2LegendaryTracker.Core.Acquisition;
 using Gw2LegendaryTracker.Core.Crafting.Forge;
 
 namespace Gw2LegendaryTracker.Core.Crafting;
@@ -14,9 +15,15 @@ public sealed class RecipeBookProvider
     private readonly RecipeCatalog _official;
     private readonly ForgeRecipeCatalog _forge;
     private readonly Func<CancellationToken, Task<LocalRecipes>> _local;
+    private readonly AcquisitionService? _acquisitions;
 
-    public RecipeBookProvider(RecipeCatalog official, ForgeRecipeCatalog forge, Func<CancellationToken, Task<LocalRecipes>> local)
+    public RecipeBookProvider(
+        RecipeCatalog official,
+        ForgeRecipeCatalog forge,
+        Func<CancellationToken, Task<LocalRecipes>> local,
+        AcquisitionService? acquisitions = null)
     {
+        _acquisitions = acquisitions;
         _official = official;
         _forge = forge;
         _local = local;
@@ -28,7 +35,8 @@ public sealed class RecipeBookProvider
         var forged = await _forge.LoadAsync(cancellationToken).ConfigureAwait(false);
 
         // Downloaded recipes come first, so where both say the same, the fresh (and verified) one is kept.
-        var book = await _official.LoadBookAsync([.. forged.Recipes, .. local.Recipes], cancellationToken).ConfigureAwait(false);
+        var offers = _acquisitions?.ToRecipes() ?? [];
+        var book = await _official.LoadBookAsync([.. forged.Recipes, .. local.Recipes, .. offers], cancellationToken).ConfigureAwait(false);
 
         var singleSource = forged.SingleSourceRecipeIds.Union(local.UnreviewedIds).Count(book.Contains);
         return new RecipeBookResult(book, singleSource, local.Errors);

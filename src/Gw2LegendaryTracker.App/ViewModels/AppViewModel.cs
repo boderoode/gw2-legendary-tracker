@@ -39,6 +39,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         GoalsViewModel goals,
         RecipeDataViewModel recipeData,
         DataTransferViewModel dataTransfer,
+        AcquisitionsViewModel acquisitions,
         IAppLog log,
         Dispatcher dispatcher)
     {
@@ -46,6 +47,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         Goals = goals;
         RecipeData = recipeData;
         DataTransfer = dataTransfer;
+        Acquisitions = acquisitions;
         _log = log;
         _state = state;
         _connection = connection;
@@ -89,6 +91,8 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     public RecipeDataViewModel RecipeData { get; }
 
     public DataTransferViewModel DataTransfer { get; }
+
+    public AcquisitionsViewModel Acquisitions { get; }
 
     /// <summary>Shown in the main window so a problem report can say which version it is about.</summary>
     public string AppVersion { get; } = AppInfo.Version;
@@ -337,6 +341,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         _state.SettingsChanged -= OnSettingsChanged;
         _state.SyncStatusChanged -= OnSyncStatusChanged;
         Inventory.Dispose();
+        Acquisitions.Dispose();
         RecipeData.Dispose();
         Goals.Dispose();
     }

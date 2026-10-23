@@ -129,5 +129,25 @@ internal static class Migrations
             fetched_utc   TEXT NOT NULL
         );
         """,
+
+        // v8: the user's own vendor offers (user data; exported with the goals).
+        """
+        CREATE TABLE acquisition (
+            id           INTEGER PRIMARY KEY NOT NULL,
+            item_id      INTEGER NOT NULL,
+            output_count INTEGER NOT NULL,
+            vendor_name  TEXT NOT NULL,
+            location     TEXT NOT NULL
+        );
+        CREATE INDEX ix_acquisition_item ON acquisition (item_id);
+
+        CREATE TABLE acquisition_cost (
+            acquisition_id INTEGER NOT NULL REFERENCES acquisition (id) ON DELETE CASCADE,
+            kind           INTEGER NOT NULL,
+            ref_id         INTEGER NOT NULL,
+            amount         INTEGER NOT NULL
+        );
+        CREATE INDEX ix_acquisition_cost_offer ON acquisition_cost (acquisition_id);
+        """,
     ];
 }

@@ -10,7 +10,17 @@ namespace Gw2LegendaryTracker.App.Views;
 
 public partial class MainWindow : Window
 {
-    public MainWindow() => InitializeComponent();
+    public MainWindow()
+    {
+        InitializeComponent();
+        DataContextChanged += (_, e) =>
+        {
+            if (e.NewValue is AppViewModel viewModel)
+            {
+                viewModel.Goals.AddSourceRequested += OnAddSourceRequested;
+            }
+        };
+    }
 
     private AppViewModel ViewModel => (AppViewModel)DataContext;
 
@@ -104,6 +114,14 @@ public partial class MainWindow : Window
             await ViewModel.DataTransfer.ImportAsync(dialog.FileName);
         }
     }
+
+    private void OnAddSourceRequested(object? sender, UnbuyableRowVm row)
+    {
+        var editor = ViewModel.Acquisitions.CreateEditor(row.ItemId, row.Name);
+        new OfferEditorWindow(editor) { Owner = this }.ShowDialog();
+    }
+
+    private void OnOpenCustomDataFolderClick(object sender, RoutedEventArgs e) => OpenFolder(ViewModel.Acquisitions.CustomDataFolder);
 
     private void OnOpenLogFolderClick(object sender, RoutedEventArgs e) => OpenFolder(ViewModel.DataTransfer.LogFolder);
 

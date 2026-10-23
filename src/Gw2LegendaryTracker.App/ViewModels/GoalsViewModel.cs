@@ -6,6 +6,7 @@ using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Inventory;
 using Gw2LegendaryTracker.Core.Items;
+using Gw2LegendaryTracker.Core.Links;
 using Gw2LegendaryTracker.Core.Settings;
 using Gw2LegendaryTracker.Core.State;
 using Gw2LegendaryTracker.Core.Trading;
@@ -16,8 +17,12 @@ public sealed record LegendaryOption(int ItemId, string Name, string? IconUrl);
 
 public sealed record GoalRow(int ItemId, string Name, string? IconUrl, double Progress, string ProgressText);
 
-public sealed record ShortageRow(string Name, string? IconUrl, long Missing, long Needed, long Owned)
+public sealed record ShortageRow(string Name, string? IconUrl, long Missing, long Needed, long Owned, int ItemId = 0)
 {
+    public string WikiUrl => ItemLinks.Wiki(Name);
+
+    public string TreasuresUrl => ItemId > 0 ? ItemLinks.Treasures(ItemId) : string.Empty;
+
     /// <summary>Main window: how much is still needed out of the total.</summary>
     public string Text => string.Create(CultureInfo.CurrentCulture, $"nog {Missing:N0} van {Needed:N0}");
 
@@ -70,6 +75,9 @@ public sealed class ChecklistRow : ObservableObject
 /// </summary>
 public sealed class GoalsViewModel : ObservableObject, IDisposable
 {
+    public const string UnbuyableIntro =
+        "Dit is niet op de Trading Post te koop en je hebt er nog geen herkomst voor vastgelegd. Zoek het op in de wiki. Kun je het bij een verkoper kopen, leg dat dan vast: de app rekent er dan mee.";
+
     public const string ProgressExplanation =
         "Een onderdeel telt mee als je er genoeg van hebt, of als je het nu zelf kunt maken met wat je bezit.";
 
@@ -102,6 +110,9 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     private string _costHeadline = string.Empty;
     private string _coinText = string.Empty;
     private string? _unbuyableText;
+    private IReadOnlyList<string> _vendorLines = [];
+    private IReadOnlyList<string> _currencyLines = [];
+    private IReadOnlyList<UnbuyableRowVm> _unbuyableRows = [];
     private string _priceStatusText = string.Empty;
     private bool _forcePriceRefresh;
     private string _addSearchText = string.Empty;
@@ -150,6 +161,8 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         RemoveCommand = new RelayCommand<GoalRow>(row => Run(() => _goals.RemoveAsync(row.ItemId)));
         MoveUpCommand = new RelayCommand<GoalRow>(row => Run(() => _goals.MoveAsync(row.ItemId, -1)));
         MoveDownCommand = new RelayCommand<GoalRow>(row => Run(() => _goals.MoveAsync(row.ItemId, 1)));
+        OpenLinkCommand = new RelayCommand<string>(Services.LinkOpener.Open);
+        AddSourceCommand = new RelayCommand<UnbuyableRowVm>(row => AddSourceRequested?.Invoke(this, row));
         RefreshPricesCommand = new RelayCommand(() =>
         {
             _forcePriceRefresh = true;
@@ -166,6 +179,14 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     public ICommand MoveDownCommand { get; }
 
     public ICommand RefreshPricesCommand { get; }
+
+    /// <summary>Opens a web page (wiki or gw2treasures) in the browser; only known, safe links are opened.</summary>
+    public ICommand OpenLinkCommand { get; }
+
+    /// <summary>Asks for the form where the user records where an unbuyable item can be bought.</summary>
+    public ICommand AddSourceCommand { get; }
+
+    public event EventHandler<UnbuyableRowVm>? AddSourceRequested;
 
     public IReadOnlyList<GoalRow> Rows
     {
@@ -224,7 +245,7 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     public string SelectedName
     {
         get => _selectedName;
-        private set => Set(ref _selectedName, value, nameof(SelectedName));
+        private set => Set(ref _selectedName, value, nameof(SelectedName), nameof(SelectedWikiUrl), nameof(SelectedTreasuresUrl));
     }
 
     public string? SelectedIconUrl
@@ -359,10 +380,38 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     public string? UnbuyableText
     {
         get => _unbuyableText;
-        private set => Set(ref _unbuyableText, value, nameof(UnbuyableText), nameof(HasUnbuyable));
+        private set => Set(ref _unbuyableText, value, nameof(UnbuyableText));
     }
 
-    public bool HasUnbuyable => _unbuyableText is not null;
+    public bool HasUnbuyable => _unbuyableRows.Count > 0;
+
+    public IReadOnlyList<UnbuyableRowVm> UnbuyableRows
+    {
+        get => _unbuyableRows;
+        private set => Set(ref _unbuyableRows, value, nameof(UnbuyableRows), nameof(HasUnbuyable));
+    }
+
+    /// <summary>Items that are bought from a vendor, with the price and the Trading Post alternative.</summary>
+    public IReadOnlyList<string> VendorLines
+    {
+        get => _vendorLines;
+        private set => Set(ref _vendorLines, value, nameof(VendorLines), nameof(HasVendorLines));
+    }
+
+    public bool HasVendorLines => _vendorLines.Count > 0;
+
+    /// <summary>The currencies the plan needs (karma, ...) set against the wallet.</summary>
+    public IReadOnlyList<string> CurrencyLines
+    {
+        get => _currencyLines;
+        private set => Set(ref _currencyLines, value, nameof(CurrencyLines), nameof(HasCurrencyLines));
+    }
+
+    public bool HasCurrencyLines => _currencyLines.Count > 0;
+
+    public string SelectedWikiUrl => _selectedGoalId is null || SelectedName.Length == 0 ? string.Empty : ItemLinks.Wiki(SelectedName);
+
+    public string SelectedTreasuresUrl => _selectedGoalId is { } id ? ItemLinks.Treasures(id) : string.Empty;
 
     public string PriceStatusText
     {
@@ -555,13 +604,13 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         }
 
         ShowPlan(selected, Name, Icon, new PlanDetails(overview, tree, KeyName, KeyIcon, CurrencyName));
-        _ = UpdateCostsAsync(selected, version, Name, Icon);
+        _ = UpdateCostsAsync(selected, version, Name, Icon, CurrencyName);
     }
 
     /// <summary>
     /// Prices arrive after the rest of the screen is shown: they may need a request, and the screen should not wait for it.
     /// </summary>
-    private async Task UpdateCostsAsync(GoalPlan goalPlan, int version, Func<int, string> name, Func<int, string?> icon)
+    private async Task UpdateCostsAsync(GoalPlan goalPlan, int version, Func<int, string> name, Func<int, string?> icon, Func<int, string> currencyName)
     {
         if (goalPlan.Plan is not { } plan)
         {
@@ -572,7 +621,7 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         var ids = CostAnalyzer.RelevantItemIds(plan);
         if (ids.Count == 0)
         {
-            ApplyCosts(plan, PriceBook.Empty, name, icon);
+            ApplyCosts(plan, PriceBook.Empty, name, icon, currencyName);
             return;
         }
 
@@ -597,20 +646,24 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
             return; // a newer calculation is already running
         }
 
-        ApplyCosts(plan, book, name, icon);
+        ApplyCosts(plan, book, name, icon, currencyName);
         PriceStatusText = CostPresenter.PriceStatus(book);
     }
 
-    private void ApplyCosts(CraftPlan plan, PriceBook book, Func<int, string> name, Func<int, string?> icon)
+    private void ApplyCosts(CraftPlan plan, PriceBook book, Func<int, string> name, Func<int, string?> icon, Func<int, string> currencyName)
     {
-        var estimate = CostAnalyzer.Analyze(plan, book, _inventory.Current.CurrencyAmount(CoinFormatter.CoinCurrencyId));
-        var summary = CostPresenter.Summarize(estimate, name);
+        var inventory = _inventory.Current;
+        var estimate = CostAnalyzer.Analyze(plan, book, inventory.CurrencyAmount(CoinFormatter.CoinCurrencyId), inventory.CurrencyAmount);
+        var summary = CostPresenter.Summarize(estimate, name, currencyName: currencyName);
 
         CostHeadline = summary.Headline;
         CoinText = summary.CoinText;
         CostRows = [.. summary.Lines.Select(l => new CostRowVm(name(l.ItemId), icon(l.ItemId), l.Quantity, l.UnitText, l.TotalText))];
         SuggestionRows = summary.Suggestions;
-        UnbuyableText = summary.UnbuyableText;
+        VendorLines = summary.VendorLines;
+        CurrencyLines = summary.CurrencyLines;
+        UnbuyableRows = [.. estimate.Unbuyable.Select(u => new UnbuyableRowVm(u.ItemId, name(u.ItemId), icon(u.ItemId), u.Quantity))];
+        UnbuyableText = UnbuyableRows.Count > 0 ? UnbuyableIntro : null;
     }
 
     private static int IndexOf(IReadOnlyList<GoalPlan> plans, GoalPlan? plan)
@@ -658,6 +711,9 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         CostRows = [];
         SuggestionRows = [];
         UnbuyableText = null;
+        UnbuyableRows = [];
+        VendorLines = [];
+        CurrencyLines = [];
         PriceStatusText = string.Empty;
     }
 
@@ -673,14 +729,14 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
 
     private void ShowPlan(GoalPlan goalPlan, Func<int, string> name, Func<int, string?> icon, PlanDetails details)
     {
-        var summary = GoalPresenter.Summarize(goalPlan, name, inventory: _inventory.Current);
+        var summary = GoalPresenter.Summarize(goalPlan, name, inventory: _inventory.Current, currencyName: details.CurrencyName);
 
         SelectedProgress = summary.Progress;
         SelectedProgressText = summary.ProgressText;
         NextStepText = summary.NextStepText;
         RecipeNotice = summary.Notice;
 
-        Shortages = [.. summary.Shortages.Select(l => new ShortageRow(name(l.ItemId), icon(l.ItemId), l.Missing, l.Needed, l.Owned))];
+        Shortages = [.. summary.Shortages.Select(l => new ShortageRow(name(l.ItemId), icon(l.ItemId), l.Missing, l.Needed, l.Owned, l.ItemId))];
         OverlayShortages = [.. Shortages.Take(_state.Settings.Overlay.VisibleMaterialCount)];
         Checklist = [.. summary.Checklist.Select(l => new ChecklistRow(l.ItemId, name(l.ItemId), icon(l.ItemId), l.StatusText, l.IsDone, OnChecklistToggled))];
 

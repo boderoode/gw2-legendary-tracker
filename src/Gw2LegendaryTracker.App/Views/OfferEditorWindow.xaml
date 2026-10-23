@@ -1,0 +1,56 @@
+<Window x:Class="Gw2LegendaryTracker.App.Views.OfferEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Gw2LegendaryTracker.App.Views"
+        Title="Herkomst vastleggen"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{StaticResource BackgroundBrush}"
+        Loaded="OnLoaded">
+    <StackPanel Margin="20">
+        <TextBlock Style="{StaticResource HeadingText}">
+            <Run Text="Waar koop je" />
+            <Run Text="{Binding ItemName, Mode=OneWay}" />
+            <Run Text="?" />
+        </TextBlock>
+        <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,12"
+                   Text="Noteer wat je bij de verkoper ziet, bijvoorbeeld in de wiki of in het spel. De app rekent er dan mee: je ziet hoeveel Karma (of een andere valuta) je nodig hebt." />
+
+        <TextBlock Text="Betaalmiddel" Style="{StaticResource MutedText}" />
+        <ComboBox ItemsSource="{Binding Currencies}" SelectedItem="{Binding SelectedCurrency, Mode=TwoWay}" DisplayMemberPath="Name"
+                  Margin="0,2,0,10" Padding="6" AutomationProperties.Name="Betaalmiddel" />
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Prijs per aankoop" Style="{StaticResource MutedText}" />
+                <TextBox Text="{Binding PriceText, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,0,10" AutomationProperties.Name="Prijs per aankoop" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Stuks per aankoop" Style="{StaticResource MutedText}" />
+                <TextBox Text="{Binding PiecesText, UpdateSourceTrigger=PropertyChanged}" Margin="0,2,0,10" AutomationProperties.Name="Stuks per aankoop" />
+            </StackPanel>
+        </Grid>
+
+        <TextBlock Text="Verkoper (niet verplicht)" Style="{StaticResource MutedText}" />
+        <TextBox Text="{Binding VendorName, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" Margin="0,2,0,10" AutomationProperties.Name="Verkoper" />
+
+        <TextBlock Text="Plaats (niet verplicht)" Style="{StaticResource MutedText}" />
+        <TextBox Text="{Binding Location, UpdateSourceTrigger=PropertyChanged}" MaxLength="200" Margin="0,2,0,10" AutomationProperties.Name="Plaats" />
+
+        <TextBlock Text="{Binding Error}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,10">
+            <TextBlock.Visibility>
+                <Binding Path="HasError" Converter="{x:Static local:VisibilityConverter.Instance}" />
+            </TextBlock.Visibility>
+        </TextBlock>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Annuleren" IsCancel="True" Padding="14,6" />
+            <Button Content="Opslaan" IsDefault="True" Click="OnSaveClick" IsEnabled="{Binding CanSave}" Padding="14,6" Margin="8,0,0,0" />
+        </StackPanel>
+    </StackPanel>
+</Window>

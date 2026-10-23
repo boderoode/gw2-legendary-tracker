@@ -104,6 +104,14 @@ public sealed class Gw2ApiClient : IGw2ApiClient
                 p.Sells?.Quantity ?? 0))];
     }
 
+    public async Task<IReadOnlyDictionary<int, string>> GetAllCurrencyNamesAsync(CancellationToken cancellationToken = default)
+    {
+        var currencies = await GetAsync<List<CurrencyDto>>("v2/currencies?ids=all&lang=en", apiKey: null, cancellationToken).ConfigureAwait(false);
+        return currencies
+            .Where(c => !string.IsNullOrWhiteSpace(c.Name))
+            .ToDictionary(c => c.Id, c => c.Name!);
+    }
+
     public async Task<IReadOnlyDictionary<int, string>> GetCurrencyNamesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(ids);
