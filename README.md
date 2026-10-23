@@ -58,6 +58,27 @@ vergelijk dan de SHA256-waarde met `SHA256SUMS.txt` bij de release (`Get-FileHas
   gemeten. Het testplan staat in [`docs/overlay-test-plan.md`](docs/overlay-test-plan.md).
 - De overlay leest niets uit de gameclient: alles komt uit de API, de recepten en wat je zelf afvinkt.
 
+## Kosten op de Trading Post (hoofdvenster)
+
+Bij je gekozen Legendary toont het hoofdvenster wat het kost om te kopen wat je nog mist, met de huidige
+Trading Post-prijzen. De overlay toont geen prijzen en is hiervoor niet veranderd.
+
+- **Totaal en je wallet:** wat alles kost bij direct kopen en bij kooporders, en of je genoeg goud hebt of hoeveel je
+  tekortkomt.
+- **Per materiaal:** aantal, prijs per stuk en het bedrag, het duurste bovenaan.
+- **Slimmer kopen:** voor onderdelen die je zelf zou maken, zoals een ingot uit ore, vergelijkt de app de aankoopprijs
+  met de kosten van de ontbrekende grondstoffen. Is kopen goedkoper, dan staat er wat je bespaart. Tips overlappen nooit:
+  als een onderdeel gekocht wordt, kijkt de app niet meer naar wat eronder hoort.
+- **Niet te koop:** wat de Trading Post niet verkoopt (account-bound items, beloningen, ...) staat apart en telt niet
+  mee in het bedrag.
+- **Actualiteit:** prijzen worden hooguit eens per 10 minuten opgehaald en bewaard. Zonder internet zie je de laatst
+  bekende prijzen met het tijdstip, en een melding dat verversen mislukte. *Prijzen verversen* vraagt ze direct opnieuw.
+
+**Het is een schatting.** De app rekent met de laagste verkoopprijs. Bij grote aantallen stijgt de prijs, omdat de
+goedkoopste aanbiedingen opraken, dus het echte bedrag kan hoger zijn. Kosten en tijd van het craften zijn niet
+meegerekend. De prijs die je direct betaalt is de laagste aanbiedingsprijs (`sells` in de API); een kooporder
+overbiedt de beste order met 1 koper, maar kost nooit meer dan direct kopen.
+
 ## Wat de app wel en niet telt
 
 De voorraad bestaat uit je **bank, materials, gedeelde inventaris en de tassen van al je personages**. Niet geteld
@@ -104,7 +125,7 @@ worden overgeslagen en gemeld):
 
 ## Gegevens, privacy en beveiliging
 
-**Netwerkverkeer.** De app praat met `api.guildwars2.com` (je account met jouw key, plus publieke lijsten),
+**Netwerkverkeer.** De app praat met `api.guildwars2.com` (je account met jouw key, plus publieke lijsten en Trading Post-prijzen),
 `api.gw2treasures.com` (recepten, met jouw gw2treasures-key) en `render.guildwars2.com` (itemiconen). Er is geen
 telemetrie, geen analyse en geen andere server. De GW2-key wordt alleen gebruikt voor leesverzoeken.
 
@@ -112,7 +133,7 @@ telemetrie, geen analyse en geen andere server. De GW2-key wordt alleen gebruikt
 
 | Bestand of map | Inhoud |
 | --- | --- |
-| `tracker.db` | SQLite: instellingen, doelen, afvinkingen, notities, laatste inventaris, gecachete itemnamen en recepten. Het schema is geversioneerd; updates migreren bestaande gegevens. |
+| `tracker.db` | SQLite: instellingen, doelen, afvinkingen, notities, laatste inventaris, gecachete itemnamen, recepten en Trading Post-prijzen. Het schema is geversioneerd; updates migreren bestaande gegevens. |
 | `apikey.bin`, `forgekey.bin` | De twee keys, versleuteld met Windows DPAPI (alleen jouw Windows-account op deze pc kan ze lezen). **Nooit** in de database, in instellingen of in logs. |
 | `logs\` | Logbestanden, zie hieronder. |
 | `backups\` | Automatische back-ups vlak voor een import (de laatste vijf). |

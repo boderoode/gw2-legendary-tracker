@@ -15,6 +15,7 @@ using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Core.Logging;
 using Gw2LegendaryTracker.Core.State;
 using Gw2LegendaryTracker.Core.Sync;
+using Gw2LegendaryTracker.Core.Trading;
 using Gw2LegendaryTracker.Infrastructure.Gw2;
 using Gw2LegendaryTracker.Infrastructure.Logging;
 using Gw2LegendaryTracker.Infrastructure.Security;
@@ -181,6 +182,7 @@ public partial class App : Application
             new LegendaryCatalog(api, new SqliteLegendaryStore(database)),
             catalog,
             new CurrencyCatalog(api),
+            new PriceCatalog(api, new SqlitePriceStore(database)),
             inventory,
             _state,
             Dispatcher);

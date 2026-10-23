@@ -1,5 +1,6 @@
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Items;
+using Gw2LegendaryTracker.Core.Trading;
 
 namespace Gw2LegendaryTracker.Core.Gw2;
 
@@ -27,4 +28,10 @@ public interface IGw2ApiClient
 
     /// <summary>Names of wallet currencies by id (public). Unknown ids are left out of the result.</summary>
     Task<IReadOnlyDictionary<int, string>> GetCurrencyNamesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Trading Post prices (public, no key needed). At most 200 ids per call; items that are not on the
+    /// Trading Post are left out of the result.
+    /// </summary>
+    Task<IReadOnlyList<TradingPostPrice>> GetTradingPostPricesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
 }

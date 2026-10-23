@@ -280,6 +280,74 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
+                        <StackPanel Margin="0,16,0,0">
+                            <StackPanel.Visibility>
+                                <Binding Path="Goals.HasCosts" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            </StackPanel.Visibility>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Kosten op de Trading Post" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" Content="Prijzen verversen" Command="{Binding Goals.RefreshPricesCommand}" Padding="8,2"
+                                        ToolTip="Haalt de prijzen opnieuw op, ook als ze recent zijn opgehaald." />
+                            </Grid>
+                            <TextBlock Text="{Binding Goals.CostHeadline}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                            <TextBlock Text="{Binding Goals.CoinText}" Margin="0,2,0,0">
+                                <TextBlock.Visibility>
+                                    <Binding Path="Goals.HasCoinText" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                </TextBlock.Visibility>
+                            </TextBlock>
+
+                            <ItemsControl ItemsSource="{Binding Goals.CostRows}" Margin="0,8,0,0" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="32" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="110" />
+                                            </Grid.ColumnDefinitions>
+                                            <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                                                <TextBlock TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                                                    <Run Text="{Binding Quantity, Mode=OneWay, StringFormat={}{0:N0}×}" />
+                                                    <Run Text="{Binding Name, Mode=OneWay}" />
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding UnitText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                            <TextBlock Grid.Column="3" Text="{Binding TotalText}" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Margin="0,12,0,0">
+                                <StackPanel.Visibility>
+                                    <Binding Path="Goals.HasSuggestionRows" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                </StackPanel.Visibility>
+                                <TextBlock Text="Slimmer kopen" FontWeight="SemiBold" />
+                                <ItemsControl ItemsSource="{Binding Goals.SuggestionRows}" Margin="0,4,0,0" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="0,2" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding Goals.UnbuyableText}" Style="{StaticResource MutedText}" Margin="0,12,0,0">
+                                <TextBlock.Visibility>
+                                    <Binding Path="Goals.HasUnbuyable" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                </TextBlock.Visibility>
+                            </TextBlock>
+                            <TextBlock Text="{Binding Goals.CostDisclaimer}" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+                            <TextBlock Text="{Binding Goals.PriceStatusText}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                        </StackPanel>
+
                         <StackPanel>
                             <StackPanel.Visibility>
                                 <Binding Path="Goals.HasChecklist" Converter="{x:Static local:VisibilityConverter.Instance}" />

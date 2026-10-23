@@ -5,6 +5,7 @@ using Gw2LegendaryTracker.Core.Crafting.Forge;
 using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
+using Gw2LegendaryTracker.Core.Trading;
 using Gw2LegendaryTracker.Core.Settings;
 using Gw2LegendaryTracker.Core.Sync;
 
@@ -81,6 +82,23 @@ internal sealed class FakeApiClient : IGw2ApiClient
     public Dictionary<int, string>? KnownItems { get; set; }
 
     public Dictionary<int, string>? ItemDescriptions { get; set; }
+
+    public Dictionary<int, TradingPostPrice> Prices { get; } = [];
+
+    public List<IReadOnlyCollection<int>> PriceRequests { get; } = [];
+
+    public Exception? PriceFailure { get; set; }
+
+    public Task<IReadOnlyList<TradingPostPrice>> GetTradingPostPricesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        PriceRequests.Add(ids);
+        if (PriceFailure is not null)
+        {
+            return Task.FromException<IReadOnlyList<TradingPostPrice>>(PriceFailure);
+        }
+
+        return Task.FromResult<IReadOnlyList<TradingPostPrice>>([.. ids.Where(Prices.ContainsKey).Select(id => Prices[id])]);
+    }
 
     public Dictionary<int, string> Currencies { get; } = [];
 
@@ -343,4 +361,25 @@ internal sealed class FakeForgeRecipeStore : IForgeRecipeStore
     public bool HasLookup(int itemId) => _lookups.ContainsKey(itemId);
 
     public IReadOnlyList<(Recipe Recipe, bool Verified)> Stored(int itemId) => _recipes.GetValueOrDefault(itemId) ?? [];
+}
+
+internal sealed class FakePriceStore : IPriceStore
+{
+    public Dictionary<int, PriceLookup> Lookups { get; } = [];
+
+    public int SaveCalls { get; private set; }
+
+    public Task<IReadOnlyDictionary<int, PriceLookup>> GetAsync(IReadOnlyCollection<int> itemIds, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyDictionary<int, PriceLookup>>(itemIds.Where(Lookups.ContainsKey).ToDictionary(id => id, id => Lookups[id]));
+
+    public Task SaveAsync(IReadOnlyCollection<PriceLookup> lookups, CancellationToken cancellationToken = default)
+    {
+        SaveCalls++;
+        foreach (var lookup in lookups)
+        {
+            Lookups[lookup.ItemId] = lookup;
+        }
+
+        return Task.CompletedTask;
+    }
 }

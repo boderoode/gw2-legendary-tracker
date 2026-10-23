@@ -8,6 +8,7 @@ using Gw2LegendaryTracker.Core.Inventory;
 using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Core.Settings;
 using Gw2LegendaryTracker.Core.State;
+using Gw2LegendaryTracker.Core.Trading;
 
 namespace Gw2LegendaryTracker.App.ViewModels;
 
@@ -79,6 +80,7 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     private readonly LegendaryCatalog _legendaries;
     private readonly ItemCatalog _items;
     private readonly CurrencyCatalog _currencies;
+    private readonly PriceCatalog _prices;
     private readonly InventoryProvider _inventory;
     private readonly AppState _state;
     private readonly HashSet<string> _expandedPaths = [];
@@ -95,6 +97,13 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     private IReadOnlyList<ReservationRowVm> _reservationRows = [];
     private IReadOnlyList<CurrencyRowVm> _currencyRows = [];
     private IReadOnlyList<TreeNodeRow> _treeRoots = [];
+    private IReadOnlyList<CostRowVm> _costRows = [];
+    private IReadOnlyList<string> _suggestionRows = [];
+    private string _costHeadline = string.Empty;
+    private string _coinText = string.Empty;
+    private string? _unbuyableText;
+    private string _priceStatusText = string.Empty;
+    private bool _forcePriceRefresh;
     private string _addSearchText = string.Empty;
     private string _statusText = string.Empty;
     private string? _errorText;
@@ -114,6 +123,7 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         LegendaryCatalog legendaries,
         ItemCatalog items,
         CurrencyCatalog currencies,
+        PriceCatalog prices,
         InventoryProvider inventory,
         AppState state,
         Dispatcher dispatcher)
@@ -123,6 +133,7 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         _legendaries = legendaries;
         _items = items;
         _currencies = currencies;
+        _prices = prices;
         _inventory = inventory;
         _state = state;
         _dispatcher = dispatcher;
@@ -139,6 +150,11 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         RemoveCommand = new RelayCommand<GoalRow>(row => Run(() => _goals.RemoveAsync(row.ItemId)));
         MoveUpCommand = new RelayCommand<GoalRow>(row => Run(() => _goals.MoveAsync(row.ItemId, -1)));
         MoveDownCommand = new RelayCommand<GoalRow>(row => Run(() => _goals.MoveAsync(row.ItemId, 1)));
+        RefreshPricesCommand = new RelayCommand(() =>
+        {
+            _forcePriceRefresh = true;
+            Rebuild(_planning.Current);
+        });
     }
 
     public ICommand AddCommand { get; }
@@ -148,6 +164,8 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     public ICommand MoveUpCommand { get; }
 
     public ICommand MoveDownCommand { get; }
+
+    public ICommand RefreshPricesCommand { get; }
 
     public IReadOnlyList<GoalRow> Rows
     {
@@ -303,6 +321,57 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     }
 
     public bool HasTree => _treeRoots.Count > 0;
+
+    /// <summary>What the missing, purchasable materials cost on the Trading Post (desktop app only).</summary>
+    public string CostHeadline
+    {
+        get => _costHeadline;
+        private set => Set(ref _costHeadline, value, nameof(CostHeadline), nameof(HasCosts));
+    }
+
+    public bool HasCosts => _costHeadline.Length > 0;
+
+    public string CoinText
+    {
+        get => _coinText;
+        private set => Set(ref _coinText, value, nameof(CoinText), nameof(HasCoinText));
+    }
+
+    public bool HasCoinText => _coinText.Length > 0;
+
+    public IReadOnlyList<CostRowVm> CostRows
+    {
+        get => _costRows;
+        private set => Set(ref _costRows, value, nameof(CostRows), nameof(HasCostRows));
+    }
+
+    public bool HasCostRows => _costRows.Count > 0;
+
+    /// <summary>Crafted parts that are cheaper to buy than to make, with what each saves.</summary>
+    public IReadOnlyList<string> SuggestionRows
+    {
+        get => _suggestionRows;
+        private set => Set(ref _suggestionRows, value, nameof(SuggestionRows), nameof(HasSuggestionRows));
+    }
+
+    public bool HasSuggestionRows => _suggestionRows.Count > 0;
+
+    public string? UnbuyableText
+    {
+        get => _unbuyableText;
+        private set => Set(ref _unbuyableText, value, nameof(UnbuyableText), nameof(HasUnbuyable));
+    }
+
+    public bool HasUnbuyable => _unbuyableText is not null;
+
+    public string PriceStatusText
+    {
+        get => _priceStatusText;
+        private set => Set(ref _priceStatusText, value, nameof(PriceStatusText));
+    }
+
+    /// <summary>What the estimate leaves out, shown with the numbers so they are not taken for exact.</summary>
+    public string CostDisclaimer { get; } = CostPresenter.Disclaimer;
 
     public string SelectedNote
     {
@@ -486,6 +555,62 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         }
 
         ShowPlan(selected, Name, Icon, new PlanDetails(overview, tree, KeyName, KeyIcon, CurrencyName));
+        _ = UpdateCostsAsync(selected, version, Name, Icon);
+    }
+
+    /// <summary>
+    /// Prices arrive after the rest of the screen is shown: they may need a request, and the screen should not wait for it.
+    /// </summary>
+    private async Task UpdateCostsAsync(GoalPlan goalPlan, int version, Func<int, string> name, Func<int, string?> icon)
+    {
+        if (goalPlan.Plan is not { } plan)
+        {
+            ClearCosts();
+            return;
+        }
+
+        var ids = CostAnalyzer.RelevantItemIds(plan);
+        if (ids.Count == 0)
+        {
+            ApplyCosts(plan, PriceBook.Empty, name, icon);
+            return;
+        }
+
+        PriceStatusText = "Prijzen ophalen…";
+        var maxAge = _forcePriceRefresh ? TimeSpan.Zero : (TimeSpan?)null;
+        _forcePriceRefresh = false;
+
+        PriceBook book;
+        try
+        {
+            book = await _prices.EnsureAsync(ids, maxAge);
+        }
+        catch (Exception ex)
+        {
+            // The price cache is unavailable; everything else keeps working.
+            PriceStatusText = $"Prijzen konden niet worden geladen: {ex.Message}";
+            return;
+        }
+
+        if (version != _version)
+        {
+            return; // a newer calculation is already running
+        }
+
+        ApplyCosts(plan, book, name, icon);
+        PriceStatusText = CostPresenter.PriceStatus(book);
+    }
+
+    private void ApplyCosts(CraftPlan plan, PriceBook book, Func<int, string> name, Func<int, string?> icon)
+    {
+        var estimate = CostAnalyzer.Analyze(plan, book, _inventory.Current.CurrencyAmount(CoinFormatter.CoinCurrencyId));
+        var summary = CostPresenter.Summarize(estimate, name);
+
+        CostHeadline = summary.Headline;
+        CoinText = summary.CoinText;
+        CostRows = [.. summary.Lines.Select(l => new CostRowVm(name(l.ItemId), icon(l.ItemId), l.Quantity, l.UnitText, l.TotalText))];
+        SuggestionRows = summary.Suggestions;
+        UnbuyableText = summary.UnbuyableText;
     }
 
     private static int IndexOf(IReadOnlyList<GoalPlan> plans, GoalPlan? plan)
@@ -526,8 +651,19 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         ClearDetails();
     }
 
+    private void ClearCosts()
+    {
+        CostHeadline = string.Empty;
+        CoinText = string.Empty;
+        CostRows = [];
+        SuggestionRows = [];
+        UnbuyableText = null;
+        PriceStatusText = string.Empty;
+    }
+
     private void ClearDetails()
     {
+        ClearCosts();
         _allMaterialRows = [];
         MaterialRows = [];
         ReservationRows = [];

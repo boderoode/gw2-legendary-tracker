@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
+using Gw2LegendaryTracker.Core.Trading;
 
 namespace Gw2LegendaryTracker.Infrastructure.Gw2;
 
@@ -74,6 +75,33 @@ public sealed class Gw2ApiClient : IGw2ApiClient
             .Where(i => !string.IsNullOrWhiteSpace(i.Name))
             .Select(i => new ItemInfo(i.Id, i.Name!, i.Icon, i.Rarity ?? "Basic", i.Description))
             .ToList();
+    }
+
+    public async Task<IReadOnlyList<TradingPostPrice>> GetTradingPostPricesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        if (ids.Count > MaxItemsPerRequest)
+        {
+            throw new ArgumentException($"At most {MaxItemsPerRequest} ids per request.", nameof(ids));
+        }
+
+        var query = string.Join(',', ids.Select(id => id.ToString(CultureInfo.InvariantCulture)));
+
+        // 206 means some ids are not on the Trading Post; 404 means none are. Both are normal.
+        var prices = await GetAsync<List<PriceDto>>($"v2/commerce/prices?ids={query}", apiKey: null, cancellationToken, notFoundIsEmpty: true).ConfigureAwait(false);
+        return [.. (prices ?? [])
+            .Where(p => p.Id > 0)
+            .Select(p => new TradingPostPrice(
+                p.Id,
+                p.Buys?.UnitPrice ?? 0,
+                p.Buys?.Quantity ?? 0,
+                p.Sells?.UnitPrice ?? 0,
+                p.Sells?.Quantity ?? 0))];
     }
 
     public async Task<IReadOnlyDictionary<int, string>> GetCurrencyNamesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
@@ -228,6 +256,10 @@ public sealed class Gw2ApiClient : IGw2ApiClient
         [property: JsonPropertyName("guild_ingredients")] List<JsonElement>? GuildIngredients);
 
     private sealed record RecipeIngredientDto([property: JsonPropertyName("item_id")] int ItemId, long Count);
+
+    private sealed record PriceSideDto(long Quantity, [property: JsonPropertyName("unit_price")] long UnitPrice);
+
+    private sealed record PriceDto(int Id, PriceSideDto? Buys, PriceSideDto? Sells);
 
     private sealed record CurrencyDto(int Id, string? Name);
 

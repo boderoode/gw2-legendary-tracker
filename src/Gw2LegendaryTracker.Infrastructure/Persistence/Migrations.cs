@@ -116,5 +116,18 @@ internal static class Migrations
         );
         CREATE INDEX ix_forge_recipe_ingredient_recipe ON forge_recipe_ingredient (recipe_id);
         """,
+
+        // v7: Trading Post prices (public data). listed = 0 records that the item is not on the Trading Post.
+        """
+        CREATE TABLE tp_price (
+            item_id       INTEGER PRIMARY KEY NOT NULL,
+            listed        INTEGER NOT NULL,
+            buy_price     INTEGER NOT NULL,
+            buy_quantity  INTEGER NOT NULL,
+            sell_price    INTEGER NOT NULL,
+            sell_quantity INTEGER NOT NULL,
+            fetched_utc   TEXT NOT NULL
+        );
+        """,
     ];
 }
