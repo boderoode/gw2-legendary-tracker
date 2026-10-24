@@ -53,6 +53,7 @@ Ondersteuning voor exclusive fullscreen wordt pas geclaimd als 1.3 aantoonbaar w
 | 3.11 | Inklappen | Venster wordt weer compact | |
 | 3.12 | Knoppen in de kop (bijwerken, meer/minder, verbergen) | Vlak, lichten alleen op bij hover; tooltips kloppen; iconen zijn geen lege vierkantjes (anders ontbreekt het lettertype Segoe Fluent Icons of Segoe MDL2 Assets) | |
 | 3.13 | Voortgang op 0%, 100% en tussenin; materiaal volledig gedekt | Balk leeg, vol en deels; een volledig gedekt materiaal heeft een groene balk, een tekort een gouden | |
+| 3.14 | Scrollbalk in de overlay (maak het venster laag, of klap uit met veel materialen) en in het hoofdvenster | Dun, afgerond, geen pijlknoppen; iets breder bij hover, goud tijdens het slepen; slepen en het wiel werken | |
 
 ## 4. Resoluties, DPI en monitoren
 
