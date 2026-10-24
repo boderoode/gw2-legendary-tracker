@@ -267,7 +267,8 @@ opmaak van `runtimeconfig.json`. De bestanden uit de release zijn dus die van de
 
 ### Een release maken
 
-1. Zet de versie in `src/Gw2LegendaryTracker.App/Gw2LegendaryTracker.App.csproj` (`<Version>`) en commit.
+1. Zet de versie in `src/Gw2LegendaryTracker.App/Gw2LegendaryTracker.App.csproj` (`<Version>`), schrijf de notities in
+   `docs/release-notes/v<versie>.md` (de workflow weigert een release zonder) en commit.
 2. Repeteer de hele release zonder iets te publiceren: *Actions → Release → Run workflow*. Dit bouwt ook de installer.
 3. Maak een tag met dezelfde versie en push hem: `git tag v1.0.0` en `git push origin v1.0.0`. De workflow controleert
    dat tag en projectversie gelijk zijn, bouwt en test alles, en maakt een release met installer, zip en
@@ -287,8 +288,8 @@ beschrijving tegenspreekt.
 
 ## Status en bekende beperkingen
 
-Alle tien fasen van het ontwerp zijn gebouwd. De eigenaar gebruikt de app op Windows; het systematische overlay-testplan
-is nog niet afgevinkt.
+Versie 1.0.0. Alle tien fasen van het ontwerp zijn gebouwd. De eigenaar gebruikt de app en de overlay op Windows; het
+systematische overlay-testplan en de installer op een schone computer zijn nog niet doorlopen.
 
 - Alleen Nederlandstalig; alleen Windows 10 (1809) of nieuwer, x64.
 - Programma en installer zijn niet digitaal ondertekend, dus Windows toont een waarschuwing.

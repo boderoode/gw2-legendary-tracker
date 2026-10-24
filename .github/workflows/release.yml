@@ -20,6 +20,15 @@ jobs:
         with:
           global-json-file: global.json
 
+      # A release without notes is refused, also in a rehearsal, so the real run cannot fail on it halfway.
+      - name: Check that release notes exist for this version
+        shell: pwsh
+        run: |
+          $version = (dotnet msbuild src/Gw2LegendaryTracker.App -getProperty:Version).Trim()
+          $notes = "docs/release-notes/v$version.md"
+          if (-not (Test-Path $notes)) { throw "Geen release-notities gevonden: $notes" }
+          Write-Host "Release-notities gevonden: $notes"
+
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
@@ -49,5 +58,5 @@ jobs:
           $files = Get-ChildItem artifacts -File |
             Where-Object { $_.Extension -in '.zip', '.exe', '.txt' } |
             ForEach-Object FullName
-          gh release create '${{ github.ref_name }}' @files --title 'GW2 Legendary Tracker ${{ github.ref_name }}' --generate-notes
+          gh release create '${{ github.ref_name }}' @files --title 'GW2 Legendary Tracker ${{ github.ref_name }}' --notes-file "docs/release-notes/${{ github.ref_name }}.md"
           if ($LASTEXITCODE -ne 0) { throw 'De release kon niet worden aangemaakt.' }
