@@ -69,11 +69,50 @@
         </Setter>
     </Style>
 
+    <!-- Modern check box: a rounded box with a soft border, gold with a drawn tick when checked. The tick is a shape, not a font glyph. -->
+    <SolidColorBrush x:Key="CheckBorderBrush" Color="#73FFFFFF" />
+    <SolidColorBrush x:Key="CheckHoverBrush" Color="#C8FFFFFF" />
+
+    <ControlTemplate x:Key="ModernCheckBoxTemplate" TargetType="CheckBox">
+        <Grid Background="Transparent" SnapsToDevicePixels="True">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border x:Name="Box" Width="18" Height="18" CornerRadius="5" BorderThickness="1.5" VerticalAlignment="Center"
+                    Background="Transparent" BorderBrush="{StaticResource CheckBorderBrush}">
+                <Path x:Name="Tick" Visibility="Collapsed" Width="10" Height="10" Stretch="Uniform"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                      Data="M 0 5 L 3.6 8.6 L 10 1.4" Stroke="{StaticResource BackgroundBrush}" StrokeThickness="2"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+            </Border>
+            <ContentPresenter x:Name="Label" Grid.Column="1" Margin="9,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="HasContent" Value="False">
+                <Setter TargetName="Label" Property="Margin" Value="0" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource CheckHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Box" Property="Background" Value="{StaticResource AccentBrush}" />
+                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
     <Style TargetType="CheckBox">
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Margin" Value="0,4" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template" Value="{StaticResource ModernCheckBoxTemplate}" />
     </Style>
 
     <Style TargetType="Button">

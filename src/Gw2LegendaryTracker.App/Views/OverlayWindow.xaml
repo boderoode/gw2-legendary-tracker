@@ -402,18 +402,14 @@
                                 <ItemsControl ItemsSource="{Binding Goals.Checklist}" Focusable="False">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid Margin="0,0,0,8" ToolTip="{Binding Name}">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" VerticalAlignment="Center" Focusable="False"
-                                                          AutomationProperties.Name="{Binding Name}" />
-                                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                            <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" Focusable="False" Margin="0,0,0,10"
+                                                      ToolTip="{Binding Name}" AutomationProperties.Name="{Binding Name}"
+                                                      VerticalAlignment="Top" VerticalContentAlignment="Top">
+                                                <StackPanel>
                                                     <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding StatusText}" Style="{StaticResource Secondary}" TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>
-                                            </Grid>
+                                            </CheckBox>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>

@@ -46,7 +46,7 @@ Ondersteuning voor exclusive fullscreen wordt pas geclaimd als 1.3 aantoonbaar w
 | 3.4 | Geen Legendary gekozen | Vriendelijke tekst en de knop "Hoofdvenster openen" | |
 | 3.5 | Uitklappen (pijltje in de kop) | Venster wordt breder en hoger; drie tabs: Nodig, Onderdelen, Boom; de lijst "Nog nodig" verdwijnt omdat de tab "Nodig" alles toont | |
 | 3.6 | Tab "Nodig": "Alleen tekort" uit en aan | Lijst toont alle of alleen ontbrekende materialen; blijft na herstart | |
-| 3.7 | Tab "Onderdelen": een onderdeel aanvinken | Hoofdvenster toont dezelfde afvinking zonder herstart | |
+| 3.7 | Tab "Onderdelen": een onderdeel aanvinken (klik ook eens op de tekst, niet alleen op het vakje) | Afgerond vakje dat goud wordt met een vinkje; een klik op de hele regel schakelt het; het hoofdvenster toont dezelfde afvinking zonder herstart | |
 | 3.8 | Tab "Boom": een onderdeel uitklappen en een inventaris-sync doen | Uitklapstand blijft behouden | |
 | 3.9 | Twee Legendaries met overlappende materialen, onderste selecteren | Onder tab "Nodig" staat "Al in gebruik door hogere Legendaries" | |
 | 3.10 | Valuta in het plan (bijvoorbeeld Karma via een eigen verkoper-aanbod) | Onder tab "Nodig" staat het onderdeel Valuta met een balk | |
