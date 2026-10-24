@@ -42,7 +42,7 @@
 
                         <PasswordBox x:Name="ApiKeyBox" Padding="8" FontSize="14" MaxLength="100"
                                      AutomationProperties.Name="API-key" KeyDown="OnApiKeyBoxKeyDown" />
-                        <Button Content="Verbinden" Click="OnConnectClick" IsEnabled="{Binding IsNotBusy}"
+                        <Button Style="{StaticResource PrimaryButton}" Content="Verbinden" Click="OnConnectClick" IsEnabled="{Binding IsNotBusy}"
                                 HorizontalAlignment="Left" Margin="0,8,0,0" />
                     </StackPanel>
 
@@ -107,7 +107,7 @@
 
                         <PasswordBox x:Name="ForgeKeyBox" Padding="8" FontSize="14" MaxLength="100"
                                      AutomationProperties.Name="gw2treasures-key" KeyDown="OnForgeKeyBoxKeyDown" />
-                        <Button Content="Verbinden" Click="OnForgeConnectClick" IsEnabled="{Binding RecipeData.IsNotBusy}"
+                        <Button Style="{StaticResource PrimaryButton}" Content="Verbinden" Click="OnForgeConnectClick" IsEnabled="{Binding RecipeData.IsNotBusy}"
                                 HorizontalAlignment="Left" Margin="0,8,0,0" />
                     </StackPanel>
 
@@ -456,7 +456,7 @@
                         </StackPanel>
 
                         <TextBlock Text="Notitie" Style="{StaticResource MutedText}" Margin="0,12,0,4" />
-                        <TextBox Text="{Binding Goals.SelectedNote, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap"
+                        <TextBox Text="{Binding Goals.SelectedNote, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                                  MinHeight="48" MaxLength="2000" AutomationProperties.Name="Notitie bij deze Legendary" />
                     </StackPanel>
 

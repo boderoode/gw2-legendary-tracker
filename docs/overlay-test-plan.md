@@ -77,6 +77,19 @@ Ondersteuning voor exclusive fullscreen wordt pas geclaimd als 1.3 aantoonbaar w
 | 5.4 | App sluiten en opnieuw starten | Instellingen, doelen, afvinkingen en selectie zijn er nog | |
 | 5.5 | Tweede exemplaar starten | Melding dat de app al draait | |
 
+## 6. Uiterlijk van het hoofdvenster
+
+| # | Test | Verwacht | Resultaat |
+| --- | --- | --- | --- |
+| 6.1 | Knoppen: zweef erboven, klik, en maak er een onbeschikbaar (bijvoorbeeld "Verbinden" tijdens het controleren van een key) | Afgerond en vlak; iets lichter bij hover, donkerder bij klikken, gedimd als onbeschikbaar | |
+| 6.2 | Hoofdknoppen ("Verbinden" bij beide keys, "Opslaan" in het formulier) | Goud met donkere tekst; lichter bij hover, donkerder bij klikken | |
+| 6.3 | Invoervelden (zoekvelden, prijs, verkoper) en de velden voor de keys | Afgerond; rand wordt goud zodra je typt; tekst en cursor goed leesbaar; geselecteerde tekst heeft een zachte gouden markering | |
+| 6.4 | Het notitieveld bij een Legendary met veel tekst | Meerdere regels; er verschijnt een dunne scrollbalk als de tekst langer wordt | |
+| 6.5 | Keuzelijst "Betaalmiddel" in het formulier | Afgerond met een pijltje rechts; de lijst klapt open als afgeronde kaart; hover en de gekozen waarde hebben een zachte markering; toetsenbord (pijltjes, Enter) werkt | |
+| 6.6 | Sliders (transparantie, aantal materialen) | Dunne baan, goud gevuld tot een ronde gouden knop; knop wordt lichter bij hover en donkerder bij slepen; slepen, klikken op de baan en de pijltjestoetsen werken | |
+| 6.7 | Lijst "Mijn Legendaries": selecteer er een | Zachte gouden markering in plaats van Windows-blauw; hover geeft een lichte achtergrond | |
+| 6.8 | Alles op 125% en 150% schaling | Niets afgekapt; de ronde hoeken en de balken blijven scherp | |
+
 ## Resultaten doorgeven
 
 Noteer per rij OK of niet OK, met wat je zag. Voeg bij problemen een screenshot toe en vermeld Windows-versie,
