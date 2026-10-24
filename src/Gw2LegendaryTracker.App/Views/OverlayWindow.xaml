@@ -11,7 +11,6 @@
     <Window.Resources>
         <!-- Overlay-only palette: soft tints of the app colours. -->
         <SolidColorBrush x:Key="HoverBrush" Color="#22FFFFFF" />
-        <SolidColorBrush x:Key="TrackBrush" Color="#26FFFFFF" />
         <SolidColorBrush x:Key="EdgeBrush" Color="#1FFFFFFF" />
         <SolidColorBrush x:Key="AccentSoftBrush" Color="#26E0A526" />
 
@@ -135,25 +134,7 @@
             </Setter>
         </Style>
 
-        <!-- Thin, rounded bars: gold while something is missing, green when covered. -->
-        <Style x:Key="SoftBar" TargetType="ProgressBar">
-            <Setter Property="Height" Value="4" />
-            <Setter Property="Minimum" Value="0" />
-            <Setter Property="Maximum" Value="1" />
-            <Setter Property="Background" Value="{StaticResource TrackBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ProgressBar">
-                        <Grid>
-                            <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="2" />
-                            <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" CornerRadius="2" HorizontalAlignment="Left" />
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <!-- The base bar (SoftBar) comes from the theme; here it turns green when a requirement is covered. -->
         <Style x:Key="CoverageBar" TargetType="ProgressBar" BasedOn="{StaticResource SoftBar}">
             <Setter Property="Height" Value="3" />
             <Style.Triggers>
@@ -279,7 +260,7 @@
                                 <TextBlock Grid.Column="1" Text="{Binding Goals.SelectedPartsText}" Style="{StaticResource Secondary}"
                                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8,0,0,3" TextTrimming="CharacterEllipsis" />
                             </Grid>
-                            <ProgressBar Margin="0,6,0,0" Style="{StaticResource SoftBar}" Value="{Binding Goals.SelectedProgress, Mode=OneWay}" AutomationProperties.Name="Voortgang" />
+                            <ProgressBar Height="4" Margin="0,6,0,0" Style="{StaticResource SoftBar}" Value="{Binding Goals.SelectedProgress, Mode=OneWay}" AutomationProperties.Name="Voortgang" />
                         </StackPanel>
 
                         <!-- When the numbers cannot be trusted (no recipe data), say so instead. -->

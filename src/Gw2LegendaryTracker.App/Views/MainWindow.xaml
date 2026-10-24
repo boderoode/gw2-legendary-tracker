@@ -258,9 +258,8 @@
                                         CommandParameter="{Binding Goals.SelectedTreasuresUrl}" ToolTip="Open de pagina van deze Legendary op gw2treasures" />
                             </StackPanel>
                         </Grid>
-                        <ProgressBar Minimum="0" Maximum="1" Value="{Binding Goals.SelectedProgress, Mode=OneWay}" Height="8" Margin="0,8,0,0"
-                                     Foreground="{StaticResource AccentBrush}" Background="{StaticResource BackgroundBrush}"
-                                     BorderBrush="{StaticResource BorderBrush}" AutomationProperties.Name="Voortgang" />
+                        <ProgressBar Value="{Binding Goals.SelectedProgress, Mode=OneWay}" Height="8" Margin="0,8,0,0"
+                                     AutomationProperties.Name="Voortgang" />
                         <TextBlock Text="{Binding Goals.SelectedProgressText}" FontWeight="SemiBold" Margin="0,4,0,0" />
                         <TextBlock Style="{StaticResource MutedText}" Text="Een onderdeel telt mee als je er genoeg van hebt, of als je het nu zelf kunt maken met wat je bezit." />
 

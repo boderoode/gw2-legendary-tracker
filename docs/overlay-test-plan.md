@@ -89,6 +89,7 @@ Ondersteuning voor exclusive fullscreen wordt pas geclaimd als 1.3 aantoonbaar w
 | 6.6 | Sliders (transparantie, aantal materialen) | Dunne baan, goud gevuld tot een ronde gouden knop; knop wordt lichter bij hover en donkerder bij slepen; slepen, klikken op de baan en de pijltjestoetsen werken | |
 | 6.7 | Lijst "Mijn Legendaries": selecteer er een | Zachte gouden markering in plaats van Windows-blauw; hover geeft een lichte achtergrond | |
 | 6.8 | Alles op 125% en 150% schaling | Niets afgekapt; de ronde hoeken en de balken blijven scherp | |
+| 6.9 | Voortgangsbalk in het hoofdvenster bij een Legendary (zet er een op 0%, tussenin en 100%) | Dunne, volledig afgeronde balk, goud op een zachte baan; dezelfde als in de overlay | |
 
 ## Resultaten doorgeven
 
