@@ -40,14 +40,19 @@ Ondersteuning voor exclusive fullscreen wordt pas geclaimd als 1.3 aantoonbaar w
 
 | # | Test | Verwacht | Resultaat |
 | --- | --- | --- | --- |
-| 3.1 | Compacte weergave | Icoon, naam, voortgang, volgende stap, tekorten met "heb X · nog Y", synctijd | |
-| 3.2 | Aantal materialen op 3 en op 12 zetten (hoofdvenster) | Overlay toont precies dat aantal tekorten | |
-| 3.3 | Uitklappen (▾) | Venster wordt hoger; materiaallijst, afvinklijst en crafting tree verschijnen | |
-| 3.4 | "Alleen ontbrekend" uit en aan | Lijst toont alle of alleen ontbrekende materialen; blijft na herstart | |
-| 3.5 | Een onderdeel in de tree uitklappen en een inventaris-sync doen | Uitklapstand blijft behouden | |
-| 3.6 | Een onderdeel aanvinken in de overlay | Hoofdvenster toont dezelfde afvinking zonder herstart | |
-| 3.7 | Twee Legendaries met overlappende materialen, onderste selecteren | Sectie "Reserveringen" toont wat de bovenste gebruikt | |
-| 3.8 | Inklappen | Venster wordt weer compact | |
+| 3.1 | Compacte weergave | Icoon en naam, één percentage met de telling ernaast en een dunne balk, "Volgende stap", "Nog nodig" met een mini-balk per materiaal ("120 / 250"), en rechtsonder "Bijgewerkt 12:41" | |
+| 3.2 | Aantal materialen op 3 en op 12 zetten (hoofdvenster) | Overlay toont precies dat aantal in "Nog nodig" | |
+| 3.3 | Niets meer nodig (alles gedekt) | "Je hebt alles wat nodig is." in plaats van een lege lijst | |
+| 3.4 | Geen Legendary gekozen | Vriendelijke tekst en de knop "Hoofdvenster openen" | |
+| 3.5 | Uitklappen (pijltje in de kop) | Venster wordt breder en hoger; drie tabs: Nodig, Onderdelen, Boom; de lijst "Nog nodig" verdwijnt omdat de tab "Nodig" alles toont | |
+| 3.6 | Tab "Nodig": "Alleen tekort" uit en aan | Lijst toont alle of alleen ontbrekende materialen; blijft na herstart | |
+| 3.7 | Tab "Onderdelen": een onderdeel aanvinken | Hoofdvenster toont dezelfde afvinking zonder herstart | |
+| 3.8 | Tab "Boom": een onderdeel uitklappen en een inventaris-sync doen | Uitklapstand blijft behouden | |
+| 3.9 | Twee Legendaries met overlappende materialen, onderste selecteren | Onder tab "Nodig" staat "Al in gebruik door hogere Legendaries" | |
+| 3.10 | Valuta in het plan (bijvoorbeeld Karma via een eigen verkoper-aanbod) | Onder tab "Nodig" staat het onderdeel Valuta met een balk | |
+| 3.11 | Inklappen | Venster wordt weer compact | |
+| 3.12 | Knoppen in de kop (bijwerken, meer/minder, verbergen) | Vlak, lichten alleen op bij hover; tooltips kloppen; iconen zijn geen lege vierkantjes (anders ontbreekt het lettertype Segoe Fluent Icons of Segoe MDL2 Assets) | |
+| 3.13 | Voortgang op 0%, 100% en tussenin; materiaal volledig gedekt | Balk leeg, vol en deels; een volledig gedekt materiaal heeft een groene balk, een tekort een gouden | |
 
 ## 4. Resoluties, DPI en monitoren
 
@@ -59,7 +64,7 @@ Ondersteuning voor exclusive fullscreen wordt pas geclaimd als 1.3 aantoonbaar w
 | 4.4 | Overlay verslepen tussen monitoren met verschillende schaling | Geen vervorming of verspringen | |
 | 4.5 | Tweede monitor loskoppelen terwijl de overlay daar stond, app starten | Overlay verschijnt op een zichtbare plek | |
 | 4.6 | Het spel minimaliseren en herstellen | Overlay blijft zichtbaar en bovenop | |
-| 4.7 | Uitklappen vlak boven de onderrand van het scherm | Overlay schuift omhoog en blijft zichtbaar | |
+| 4.7 | Uitklappen vlak boven de onderrand of vlak naast de rechterrand van het scherm | Overlay schuift omhoog of naar links en blijft zichtbaar | |
 
 ## 5. Gegevens en storingen
 

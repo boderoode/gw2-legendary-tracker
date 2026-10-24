@@ -37,18 +37,26 @@ vergelijk dan de SHA256-waarde met `SHA256SUMS.txt` bij de release (`Get-FileHas
 
 ## De overlay
 
-- **Compact** (standaard): icoon en naam van de gekozen Legendary, voortgang, de volgende stap, de grootste tekorten
-  als "heb X · nog Y" en het tijdstip van de laatste synchronisatie. Het aantal materialen stel je zelf in (1 tot 20).
-- **Uitgebreid** (▾): volledige materiaallijst met filter voor alleen ontbrekende materialen, uitklapbare crafting
-  tree, afvinklijst, currencies en reserveringen. Het venster past zijn hoogte aan.
+De overlay is gemaakt om in een ooghoek te lezen terwijl je speelt: binnen twee seconden zie je hoever je bent, wat je
+nu moet doen en wat je nog mist.
+
+- **Compact** (standaard): icoon en naam van de gekozen Legendary, je voortgang als één percentage (met de telling
+  ernaast en een dunne balk), de **volgende stap**, en **nog nodig**: de grootste tekorten, elk als "120 / 250" met een
+  mini-balk (goud zolang er iets mist, groen als het gedekt is). Rechtsonder staat wanneer het is bijgewerkt. Het aantal
+  materialen stel je zelf in (1 tot 20).
+- **Uitgebreid** (pijltje in de kop): het venster wordt breder en hoger en toont drie tabs in plaats van alles door
+  elkaar: **Nodig** (alle materialen met een filter *Alleen tekort*, valuta, en wat Legendaries hoger in je lijst al
+  gebruiken), **Onderdelen** (afvinklijst) en **Boom** (uitklapbare crafting tree).
+- **Geen Legendary gekozen:** een korte uitleg en een knop om het hoofdvenster te openen.
 - **Bediening:** slepen aan de kop, vergrendelen tegen slepen, transparantie, automatisch verbergen, en een
   *click-through*-stand waarin muisklikken door de overlay heen naar het spel gaan. De sneltoets en alle instellingen
   staan in het hoofdvenster, zodat je de bediening nooit kwijtraakt.
 - **Focus:** een klik op de overlay neemt de focus van het spel niet over.
 - **Voortgang** is het aandeel onderdelen in de crafting tree dat klaar is: je hebt er genoeg van, of je kunt het nu
   zelf maken met wat je bezit. 100% betekent dat je het doel nu kunt afronden.
-- **Reserveringen** zijn geen aparte aantallen: de volgorde van je Legendaries bepaalt wie eerst materialen krijgt. De
-  uitgebreide weergave toont wat Legendaries hoger in de lijst al van jouw voorraad gebruiken.
+- **Reserveringen** zijn geen aparte aantallen: de volgorde van je Legendaries bepaalt wie eerst materialen krijgt. Het
+  tabblad *Nodig* toont wat Legendaries hoger in de lijst al van jouw voorraad gebruiken.
+- De iconen in de kop komen uit het lettertype *Segoe Fluent Icons* (Windows 11) of *Segoe MDL2 Assets* (Windows 10).
 
 ### Bekende beperkingen van de overlay
 

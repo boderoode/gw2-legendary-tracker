@@ -11,6 +11,11 @@ public sealed record MaterialRowVm(string Name, string? IconUrl, long Needed, lo
         : string.Create(CultureInfo.CurrentCulture, $"heb {Owned:N0} · genoeg");
 
     public bool IsMissing => Missing > 0;
+
+    /// <summary>Overlay: what is covered out of what is needed, e.g. <c>120 / 250</c>.</summary>
+    public string CoverText => string.Create(CultureInfo.CurrentCulture, $"{Math.Max(0, Needed - Missing):N0} / {Needed:N0}");
+
+    public double Ratio => Coverage.Ratio(Math.Max(0, Needed - Missing), Needed);
 }
 
 public sealed record ReservationRowVm(string Text);
@@ -20,6 +25,10 @@ public sealed record CurrencyRowVm(string Name, long Needed, long Owned, long Mi
     public string Text => Missing > 0
         ? string.Create(CultureInfo.CurrentCulture, $"heb {Owned:N0} van {Needed:N0}")
         : string.Create(CultureInfo.CurrentCulture, $"heb {Owned:N0} · genoeg");
+
+    public bool IsMissing => Missing > 0;
+
+    public double Ratio => Coverage.Ratio(Math.Min(Owned, Needed), Needed);
 }
 
 /// <summary>One position of the crafting tree. Remembers whether the user expanded it, across recalculations.</summary>

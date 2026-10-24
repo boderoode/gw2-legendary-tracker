@@ -12,6 +12,14 @@ namespace Gw2LegendaryTracker.App.ViewModels;
 /// View model shared by the main window and the overlay. Both windows bind to the same instance,
 /// so a change made in one is visible in the other without extra plumbing.
 /// </summary>
+/// <summary>The sections of the expanded overlay.</summary>
+public enum OverlayTab
+{
+    Needs,
+    Parts,
+    Tree,
+}
+
 public sealed class AppViewModel : ObservableObject, IDisposable
 {
     private static readonly TimeSpan OpacityPersistDelay = TimeSpan.FromMilliseconds(300);
@@ -142,6 +150,26 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         set => Persist(s => s with { Overlay = s.Overlay with { VisibleMaterialCount = value } });
     }
 
+    private OverlayTab _overlayTab = OverlayTab.Needs;
+
+    public bool IsNeedsTab
+    {
+        get => _overlayTab == OverlayTab.Needs;
+        set => SelectTab(value, OverlayTab.Needs);
+    }
+
+    public bool IsPartsTab
+    {
+        get => _overlayTab == OverlayTab.Parts;
+        set => SelectTab(value, OverlayTab.Parts);
+    }
+
+    public bool IsTreeTab
+    {
+        get => _overlayTab == OverlayTab.Tree;
+        set => SelectTab(value, OverlayTab.Tree);
+    }
+
     /// <summary>In the expanded overlay: only list what is still missing.</summary>
     public bool OverlayShowOnlyMissing
     {
@@ -199,15 +227,11 @@ public sealed class AppViewModel : ObservableObject, IDisposable
 
     public SyncPhase SyncPhase => _state.SyncStatus.Phase;
 
-    public string SyncText => _state.SyncStatus switch
-    {
-        { Phase: SyncPhase.Syncing } => "Synchroniseren…",
-        { Phase: SyncPhase.Failed, Error: { } error } => $"Synchronisatie mislukt: {error}",
-        { Phase: SyncPhase.Failed } => "Synchronisatie mislukt",
-        { LastSuccessUtc: { } at } => $"Laatst gesynchroniseerd: {at.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)}",
-        _ when !_hasApiKey => "Geen API-key ingesteld",
-        _ => "Nog niet gesynchroniseerd",
-    };
+    /// <summary>The full status text, for the main window and for tooltips.</summary>
+    public string SyncText => SyncStatusPresenter.LongText(_state.SyncStatus, _hasApiKey);
+
+    /// <summary>The short status text for the overlay, e.g. "Bijgewerkt 12:41".</summary>
+    public string SyncShortText => SyncStatusPresenter.ShortText(_state.SyncStatus, _hasApiKey);
 
     public bool HasApiKey
     {
@@ -218,6 +242,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
             RaisePropertyChanged(nameof(HasApiKey));
             RaisePropertyChanged(nameof(NeedsApiKey));
             RaisePropertyChanged(nameof(SyncText));
+            RaisePropertyChanged(nameof(SyncShortText));
         }
     }
 
@@ -335,6 +360,20 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void SelectTab(bool selected, OverlayTab tab)
+    {
+        // A radio button reports "unchecked" for the tab being left; only the newly checked one changes the view.
+        if (!selected || _overlayTab == tab)
+        {
+            return;
+        }
+
+        _overlayTab = tab;
+        RaisePropertyChanged(nameof(IsNeedsTab));
+        RaisePropertyChanged(nameof(IsPartsTab));
+        RaisePropertyChanged(nameof(IsTreeTab));
+    }
+
     public void Dispose()
     {
         _opacityTimer.Stop();
@@ -432,5 +471,6 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         {
             RaisePropertyChanged(nameof(SyncPhase));
             RaisePropertyChanged(nameof(SyncText));
+            RaisePropertyChanged(nameof(SyncShortText));
         });
 }

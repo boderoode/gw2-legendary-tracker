@@ -26,6 +26,14 @@ public sealed record ShortageRow(string Name, string? IconUrl, long Missing, lon
     /// <summary>Main window: how much is still needed out of the total.</summary>
     public string Text => string.Create(CultureInfo.CurrentCulture, $"nog {Missing:N0} van {Needed:N0}");
 
+    /// <summary>Overlay: how much is covered out of what is needed, e.g. <c>120 / 250</c>.</summary>
+    public string CoverText => string.Create(CultureInfo.CurrentCulture, $"{Math.Max(0, Needed - Missing):N0} / {Needed:N0}");
+
+    /// <summary>Share covered, for the mini bar.</summary>
+    public double Ratio => Coverage.Ratio(Math.Max(0, Needed - Missing), Needed);
+
+    public bool IsMissing => Missing > 0;
+
     /// <summary>Overlay: what is in stock and what is left to get.</summary>
     public string OverlayText => string.Create(CultureInfo.CurrentCulture, $"heb {Owned:N0} · nog {Missing:N0}");
 }
@@ -123,6 +131,9 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     private double _selectedProgress;
     private string _selectedProgressText = string.Empty;
     private string _nextStepText = string.Empty;
+    private string _selectedPercentText = string.Empty;
+    private string _selectedPartsText = string.Empty;
+    private string? _nextStepIconUrl;
     private string? _recipeNotice;
     private string _selectedNote = string.Empty;
     private int? _selectedGoalId;
@@ -270,8 +281,37 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     public string NextStepText
     {
         get => _nextStepText;
-        private set => Set(ref _nextStepText, value, nameof(NextStepText));
+        private set => Set(ref _nextStepText, value, nameof(NextStepText), nameof(HasNextStep));
     }
+
+    public bool HasNextStep => _nextStepText.Length > 0;
+
+    /// <summary>The progress as one number, e.g. <c>42%</c>; the overlay gives it a place of its own.</summary>
+    public string SelectedPercentText
+    {
+        get => _selectedPercentText;
+        private set => Set(ref _selectedPercentText, value, nameof(SelectedPercentText), nameof(HasPlanNumbers), nameof(ShowAllCovered));
+    }
+
+    /// <summary>The count behind the percentage, e.g. <c>3 van 7 onderdelen klaar</c>.</summary>
+    public string SelectedPartsText
+    {
+        get => _selectedPartsText;
+        private set => Set(ref _selectedPartsText, value, nameof(SelectedPartsText));
+    }
+
+    /// <summary>Icon of the item the next step is about.</summary>
+    public string? NextStepIconUrl
+    {
+        get => _nextStepIconUrl;
+        private set => Set(ref _nextStepIconUrl, value, nameof(NextStepIconUrl));
+    }
+
+    /// <summary>True when the plan has numbers to show (not when there is no recipe data or the plan failed).</summary>
+    public bool HasPlanNumbers => _selectedPercentText.Length > 0;
+
+    /// <summary>The goal is selected and nothing is missing: the overlay says so instead of showing an empty list.</summary>
+    public bool ShowAllCovered => HasSelection && HasPlanNumbers && _overlayShortages.Count == 0;
 
     /// <summary>Shown instead of numbers when the plan cannot be trusted, e.g. no recipe data for this Legendary.</summary>
     public string? RecipeNotice
@@ -292,8 +332,10 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
     public IReadOnlyList<ShortageRow> OverlayShortages
     {
         get => _overlayShortages;
-        private set => Set(ref _overlayShortages, value, nameof(OverlayShortages));
+        private set => Set(ref _overlayShortages, value, nameof(OverlayShortages), nameof(HasOverlayShortages), nameof(ShowAllCovered));
     }
+
+    public bool HasOverlayShortages => _overlayShortages.Count > 0;
 
     public IReadOnlyList<ChecklistRow> Checklist
     {
@@ -696,6 +738,9 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
         SelectedIconUrl = null;
         SelectedProgress = 0;
         SelectedProgressText = string.Empty;
+        SelectedPercentText = string.Empty;
+        SelectedPartsText = string.Empty;
+        NextStepIconUrl = null;
         NextStepText = "Kies hieronder een Legendary om te beginnen.";
         RecipeNotice = null;
         Shortages = [];
@@ -733,8 +778,13 @@ public sealed class GoalsViewModel : ObservableObject, IDisposable
 
         SelectedProgress = summary.Progress;
         SelectedProgressText = summary.ProgressText;
+        SelectedPercentText = summary.PercentText;
+        SelectedPartsText = summary.PartsText;
         NextStepText = summary.NextStepText;
+        NextStepIconUrl = summary.NextItemId is { } nextId ? icon(nextId) : null;
         RecipeNotice = summary.Notice;
+        RaisePropertyChanged(nameof(HasPlanNumbers));
+        RaisePropertyChanged(nameof(ShowAllCovered));
 
         Shortages = [.. summary.Shortages.Select(l => new ShortageRow(name(l.ItemId), icon(l.ItemId), l.Missing, l.Needed, l.Owned, l.ItemId))];
         OverlayShortages = [.. Shortages.Take(_state.Settings.Overlay.VisibleMaterialCount)];

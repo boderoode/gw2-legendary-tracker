@@ -6,12 +6,22 @@ namespace Gw2LegendaryTracker.Core.Goals;
 /// <param name="Needed">What this goal uses of it in total: taken from stock plus still missing.</param>
 /// <param name="Owned">What the account owns of it in total, also what other goals will use.</param>
 /// <param name="Missing">What this goal still lacks after stock was shared in goal order.</param>
-public sealed record MaterialRow(int ItemId, long Needed, long Owned, long Missing);
+public sealed record MaterialRow(int ItemId, long Needed, long Owned, long Missing)
+{
+    /// <summary>How much of the need is covered for this goal (what it uses from stock).</summary>
+    public long Covered => Math.Max(0, Needed - Missing);
+
+    public double Ratio => Coverage.Ratio(Covered, Needed);
+}
 
 /// <summary>An amount of something the selected goal needs that a goal with higher priority already uses up.</summary>
 public sealed record ReservationLine(MaterialKey Key, long Amount, int ForGoalItemId);
 
-public sealed record CurrencyRow(int CurrencyId, long Needed, long Owned, long Missing);
+public sealed record CurrencyRow(int CurrencyId, long Needed, long Owned, long Missing)
+{
+    /// <summary>The wallet against the need; a wallet larger than the need counts as fully covered.</summary>
+    public double Ratio => Coverage.Ratio(Math.Min(Owned, Needed), Needed);
+}
 
 public sealed record MaterialOverviewResult(
     IReadOnlyList<MaterialRow> Materials,

@@ -4,7 +4,13 @@ using Gw2LegendaryTracker.Core.Crafting;
 namespace Gw2LegendaryTracker.Core.Goals;
 
 /// <param name="Owned">What the account owns of the item in total (0 when unknown).</param>
-public sealed record ShortageLine(int ItemId, long Missing, long Needed, long Owned);
+public sealed record ShortageLine(int ItemId, long Missing, long Needed, long Owned)
+{
+    /// <summary>How much of the need is already covered for this goal.</summary>
+    public long Covered => Math.Max(0, Needed - Missing);
+
+    public double Ratio => Coverage.Ratio(Covered, Needed);
+}
 
 public sealed record ChecklistLine(int ItemId, string StatusText, bool IsDone);
 
@@ -16,7 +22,10 @@ public sealed record GoalSummary(
     string NextStepText,
     string? Notice,
     IReadOnlyList<ShortageLine> Shortages,
-    IReadOnlyList<ChecklistLine> Checklist);
+    IReadOnlyList<ChecklistLine> Checklist,
+    string PercentText = "",
+    string PartsText = "",
+    int? NextItemId = null);
 
 /// <summary>Turns a plan into texts for the main window and the overlay. Kept free of UI so it can be tested.</summary>
 public static class GoalPresenter
@@ -63,7 +72,9 @@ public static class GoalPresenter
             return new GoalSummary(0, string.Empty, string.Empty, goalPlan.Error ?? "Dit doel kon niet worden doorgerekend.", [], []);
         }
 
-        var progress = string.Create(culture, $"{plan.Progress:P0} · {plan.Root.SatisfiedCount} van {plan.Root.NodeCount} onderdelen klaar");
+        var percent = plan.Progress.ToString("P0", culture);
+        var parts = string.Create(culture, $"{plan.Root.SatisfiedCount} van {plan.Root.NodeCount} onderdelen klaar");
+        var progress = $"{percent} · {parts}";
 
         var shortages = plan.Shortages
             .Where(m => m.Key.Kind == MaterialKind.Item)
@@ -85,8 +96,19 @@ public static class GoalPresenter
             DescribeNext(plan.Next, itemName, culture, currencyName),
             goalPlan.HasRecipeData ? null : NoRecipeDataNotice,
             shortages,
-            checklist);
+            checklist,
+            percent,
+            parts,
+            NextItemOf(plan.Next));
     }
+
+    /// <summary>The item the next step is about, so the screen can show its icon next to the text.</summary>
+    private static int? NextItemOf(NextStep next) => next switch
+    {
+        { Craft: { } craft } => craft.Recipe.OutputItemId,
+        { Material: { Kind: MaterialKind.Item } material } => material.Id,
+        _ => null,
+    };
 
     public static string DescribeNext(NextStep next, Func<int, string> itemName, CultureInfo culture, Func<int, string>? currencyName = null)
     {
