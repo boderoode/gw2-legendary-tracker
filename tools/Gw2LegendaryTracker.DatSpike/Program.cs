@@ -18,6 +18,8 @@ using Gw2LegendaryTracker.Infrastructure.Gw2;
 // census counts the kinds of all files in the archive by reading the first bytes of each one.
 // context shows the bytes around the icon id inside one file found by find, and which numbers nearby are file
 //        ids of the archive (and of what kind), to see how a skin points at its model.
+// grep   shows every place where a byte pattern (for example a 16-byte id of a content object) occurs in one
+//        file, with the bytes around it and the archive file ids nearby.
 // find   looks for the icon file id of a skin inside the content of the archive's files, to see which files
 //        describe that skin. It only prints where the id was found.
 
@@ -28,9 +30,10 @@ const string Usage = """
       DatSpike census <Gw2.dat>
       DatSpike find <Gw2.dat> "<naam van een skin>" [bestandssoort, bijvoorbeeld PF/cntc]
       DatSpike context <Gw2.dat> "<naam van een skin>" <itemnummer uit find> [venster in bytes, standaard 1024]
+      DatSpike grep <Gw2.dat> <itemnummer> <bytes als hex, bijvoorbeeld BA7A6791DA7F914A898090DAD944CD7D> [venster in bytes, standaard 512]
     """;
 
-if (args.Length < 2 || args[0] is not ("info" or "icons" or "verify" or "census" or "find" or "context"))
+if (args.Length < 2 || args[0] is not ("info" or "icons" or "verify" or "census" or "find" or "context" or "grep"))
 {
     Console.Error.WriteLine(Usage);
     return 2;
@@ -47,7 +50,8 @@ if (args[0] == "verify" && args.Length == 3
 if ((args[0] is "info" or "icons" or "census" && args.Length != 2)
     || (args[0] == "verify" && args.Length > 3)
     || (args[0] == "find" && args.Length is < 3 or > 4)
-    || (args[0] == "context" && args.Length is < 4 or > 5))
+    || (args[0] == "context" && args.Length is < 4 or > 5)
+    || (args[0] == "grep" && args.Length is < 4 or > 5))
 {
     Console.Error.WriteLine(Usage);
     return 2;
@@ -63,6 +67,7 @@ try
         "census" => Census(archive),
         "find" => await FindAsync(archive, args[2], args.Length == 4 ? args[3] : null),
         "context" => await ContextAsync(archive, args[2], args[3], args.Length == 5 ? args[4] : null),
+        "grep" => Grep(archive, args[2], args[3], args.Length == 5 ? args[4] : null),
         _ => Verify(archive, sample),
     };
 }
@@ -423,31 +428,7 @@ static async Task<int> ContextAsync(DatArchive archive, string skinName, string 
             Console.WriteLine();
             Console.WriteLine($"== id {id} ('{skin.Name}') op positie {position:N0} ==");
             HexDump(data, Math.Max(0, position - 128), Math.Min(data.Length, position + 128));
-            Console.WriteLine($"-- getallen in de buurt (±{window} bytes) die bestands-id's van het archief zijn --");
-            var from = Math.Max(0, position - window);
-            var to = Math.Min(data.Length - 4, position + window);
-            var listed = 0;
-            for (var i = from; i <= to && listed < 60; i++)
-            {
-                var value = BitConverter.ToUInt32(data, i);
-                if (value == id || archive.FindEntry(value) is not { } entry)
-                {
-                    continue;
-                }
-
-                string kind;
-                try
-                {
-                    kind = Describe(archive.ReadPrefix(entry, 12));
-                }
-                catch (DatFormatException)
-                {
-                    kind = "(niet te lezen)";
-                }
-
-                listed++;
-                Console.WriteLine($"  {i - position,6:+#;-#;0} bytes: {value,10}  {kind}");
-            }
+            ShowNeighbors(archive, data, position, window, id);
         }
     }
 
@@ -475,4 +456,92 @@ static void HexDump(byte[] data, int from, int to)
 
         Console.WriteLine($"{row,10:X8}  {hex} {text}");
     }
+}
+
+/// <summary>Numbers near a position that are file ids of the archive, with their kind. Audio and similar noise is left out.</summary>
+static void ShowNeighbors(DatArchive archive, byte[] data, int position, int window, uint skipValue)
+{
+    Console.WriteLine($"-- getallen in de buurt (±{window} bytes) die bestands-id's van het archief zijn (geluid weggelaten) --");
+    var from = Math.Max(0, position - window);
+    var to = Math.Min(data.Length - 4, position + window);
+    var listed = 0;
+    for (var i = from; i <= to && listed < 60; i++)
+    {
+        var value = BitConverter.ToUInt32(data, i);
+        if (value == skipValue || archive.FindEntry(value) is not { } entry)
+        {
+            continue;
+        }
+
+        string kind;
+        try
+        {
+            kind = Describe(archive.ReadPrefix(entry, 12));
+        }
+        catch (DatFormatException)
+        {
+            kind = "(niet te lezen)";
+        }
+
+        if (kind is "PF/ASND" or "PF/ABNK" or "PF/AMSP" or "DDS " or "<!DO")
+        {
+            continue;
+        }
+
+        listed++;
+        Console.WriteLine($"  {i - position,6:+#;-#;0} bytes: {value,10}  {kind}");
+    }
+}
+
+static int Grep(DatArchive archive, string itemText, string hex, string? windowText)
+{
+    var window = 512;
+    byte[] pattern;
+    try
+    {
+        pattern = Convert.FromHexString(hex);
+    }
+    catch (FormatException)
+    {
+        pattern = [];
+    }
+
+    if (!int.TryParse(itemText, NumberStyles.None, CultureInfo.InvariantCulture, out var item) || item < DatArchive.FirstFileEntry || item >= archive.Entries.Count
+        || pattern.Length is < 4 or > 64
+        || (windowText is not null && (!int.TryParse(windowText, NumberStyles.None, CultureInfo.InvariantCulture, out window) || window is < 64 or > 65_536)))
+    {
+        Console.Error.WriteLine("Geef een itemnummer, 4 tot 64 bytes als hex (zonder spaties) en eventueel een venster tussen 64 en 65.536.");
+        return 2;
+    }
+
+    var data = archive.Read(item);
+    Console.WriteLine($"Bestand {item}: {data.Length:N0} bytes");
+    var shown = 0;
+    var total = 0;
+    for (var at = 0; ;)
+    {
+        var found = data.AsSpan(at).IndexOf(pattern);
+        if (found < 0)
+        {
+            break;
+        }
+
+        var position = at + found;
+        at = position + 1;
+        total++;
+        if (shown >= 6)
+        {
+            continue;
+        }
+
+        shown++;
+        Console.WriteLine();
+        Console.WriteLine($"== treffer {shown} op positie {position:N0} (0x{position:X}) ==");
+        HexDump(data, Math.Max(0, position - 96), Math.Min(data.Length, position + pattern.Length + 96));
+        ShowNeighbors(archive, data, position, window, 0);
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"Aantal plekken in dit bestand: {total:N0}{(total > shown ? $" (de eerste {shown} zijn getoond)" : string.Empty)}");
+    return total == 0 ? 1 : 0;
 }
