@@ -15,17 +15,37 @@ using Gw2LegendaryTracker.Infrastructure.Gw2;
 // icons  checks the idea that the icon id in the URL of an API skin is also a file id in the archive.
 // verify decompresses a spread of files and checks that each one decodes to exactly the size it announces,
 //        and counts what kinds of files came out. Nothing is stored.
+// census counts the kinds of all files in the archive by reading the first bytes of each one.
+// find   looks for the icon file id of a skin inside the content of the archive's files, to see which files
+//        describe that skin. It only prints where the id was found.
 
-if (args.Length is < 2 or > 3 || args[0] is not ("info" or "icons" or "verify") || (args.Length == 3 && args[0] != "verify"))
+const string Usage = """
+    Gebruik:
+      DatSpike info|icons <Gw2.dat>
+      DatSpike verify <Gw2.dat> [aantal bestanden]
+      DatSpike census <Gw2.dat>
+      DatSpike find <Gw2.dat> "<naam van een skin>" [bestandssoort, bijvoorbeeld PF/cntc]
+    """;
+
+if (args.Length < 2 || args[0] is not ("info" or "icons" or "verify" or "census" or "find"))
 {
-    Console.Error.WriteLine("Gebruik: DatSpike info|icons <pad naar Gw2.dat>  of  DatSpike verify <pad naar Gw2.dat> [aantal bestanden]");
+    Console.Error.WriteLine(Usage);
     return 2;
 }
 
 var sample = 500;
-if (args.Length == 3 && (!int.TryParse(args[2], NumberStyles.None, CultureInfo.InvariantCulture, out sample) || sample is < 1 or > 100_000))
+if (args[0] == "verify" && args.Length == 3
+    && (!int.TryParse(args[2], NumberStyles.None, CultureInfo.InvariantCulture, out sample) || sample is < 1 or > 100_000))
 {
     Console.Error.WriteLine("Het aantal bestanden moet een getal tussen 1 en 100.000 zijn.");
+    return 2;
+}
+
+if ((args[0] is "info" or "icons" or "census" && args.Length != 2)
+    || (args[0] == "verify" && args.Length > 3)
+    || (args[0] == "find" && args.Length is < 3 or > 4))
+{
+    Console.Error.WriteLine(Usage);
     return 2;
 }
 
@@ -36,6 +56,8 @@ try
     {
         "info" => Info(archive),
         "icons" => await IconsAsync(archive),
+        "census" => Census(archive),
+        "find" => await FindAsync(archive, args[2], args.Length == 4 ? args[3] : null),
         _ => Verify(archive, sample),
     };
 }
@@ -207,4 +229,136 @@ static string Printable(ReadOnlySpan<byte> bytes)
     }
 
     return System.Text.Encoding.ASCII.GetString(bytes);
+}
+
+static int Census(DatArchive archive)
+{
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    var kinds = new System.Collections.Concurrent.ConcurrentDictionary<string, (int Count, long Stored)>();
+    var unreadable = 0;
+    Parallel.For(DatArchive.FirstFileEntry, archive.Entries.Count, index =>
+    {
+        var entry = archive.Entries[index];
+        if (!entry.IsInUse)
+        {
+            return;
+        }
+
+        string kind;
+        try
+        {
+            kind = Describe(archive.ReadPrefix(index, 12));
+        }
+        catch (DatFormatException)
+        {
+            Interlocked.Increment(ref unreadable);
+            return;
+        }
+
+        kinds.AddOrUpdate(kind, (1, entry.Size), (_, old) => (old.Count + 1, old.Stored + entry.Size));
+    });
+
+    watch.Stop();
+    Console.WriteLine($"Gelezen in {watch.Elapsed.TotalSeconds:N0} s; niet te lezen: {unreadable:N0}; soorten: {kinds.Count:N0}");
+    Console.WriteLine("Aantal  Opgeslagen (MiB)  Soort");
+    foreach (var (kind, value) in kinds.OrderByDescending(k => k.Value.Count).Take(60))
+    {
+        Console.WriteLine($"{value.Count,7:N0}  {value.Stored / 1_048_576.0,15:N0}  {kind}");
+    }
+
+    return 0;
+}
+
+static async Task<int> FindAsync(DatArchive archive, string skinName, string? kindFilter)
+{
+    using var http = new HttpClient { BaseAddress = new Uri("https://api.guildwars2.com/"), Timeout = TimeSpan.FromSeconds(60) };
+    http.DefaultRequestHeaders.UserAgent.ParseAdd("Gw2LegendaryTracker-DatSpike/0.1");
+    var skins = await new Gw2ApiClient(http).GetAllSkinsAsync();
+    var matches = skins.Where(s => string.Equals(s.Name, skinName, StringComparison.OrdinalIgnoreCase)).Take(3).ToList();
+    if (matches.Count == 0)
+    {
+        Console.Error.WriteLine($"Geen skin met de naam '{skinName}' gevonden. Gebruik de Engelse naam, precies zoals in het spel.");
+        return 1;
+    }
+
+    var wanted = new List<(CosmeticSkin Skin, uint IconId, byte[] Pattern)>();
+    foreach (var skin in matches)
+    {
+        if (IconFileId.TryParse(skin.IconUrl) is { } iconId)
+        {
+            wanted.Add((skin, iconId, BitConverter.GetBytes(iconId)));
+            Console.WriteLine($"Zoeken naar skin {skin.Id} '{skin.Name}' ({skin.Category} {skin.Slot}), icoon-id {iconId}");
+        }
+    }
+
+    // Textures, audio and the like never describe a skin and make up most of the archive, so they are skipped
+    // unless a kind is asked for.
+    static bool Skipped(string kind) => kind.StartsWith("AT", StringComparison.Ordinal) || kind.StartsWith("DDS", StringComparison.Ordinal)
+        || kind is "PF/ASND" or "PF/ABNK" or "PF/MODL" or "PF/AMSP";
+
+    const uint MaxStored = 8 * 1024 * 1024;
+    var hits = new System.Collections.Concurrent.ConcurrentQueue<string>();
+    var scanned = 0;
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    var lastReport = 0L;
+    Parallel.For(DatArchive.FirstFileEntry, archive.Entries.Count, index =>
+    {
+        var entry = archive.Entries[index];
+        if (!entry.IsInUse || entry.Size > MaxStored || hits.Count >= 60)
+        {
+            return;
+        }
+
+        try
+        {
+            var kind = Describe(archive.ReadPrefix(index, 12));
+            if (kindFilter is null ? Skipped(kind) : !kind.Equals(kindFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var data = archive.Read(index);
+            Interlocked.Increment(ref scanned);
+            foreach (var (skin, iconId, pattern) in wanted)
+            {
+                var offsets = new List<int>();
+                for (var at = 0; offsets.Count < 5; )
+                {
+                    var found = data.AsSpan(at).IndexOf(pattern);
+                    if (found < 0)
+                    {
+                        break;
+                    }
+
+                    offsets.Add(at + found);
+                    at += found + 1;
+                }
+
+                if (offsets.Count > 0)
+                {
+                    var ids = string.Join(", ", archive.IdsOf(index));
+                    hits.Enqueue($"item {index} (id's: {ids}), soort {kind}, {data.Length:N0} bytes: icoon {iconId} van '{skin.Name}' op positie {string.Join(", ", offsets)}");
+                }
+            }
+
+            var now = watch.ElapsedMilliseconds;
+            if (now - Interlocked.Read(ref lastReport) > 15_000 && Interlocked.Exchange(ref lastReport, now) != now)
+            {
+                Console.WriteLine($"  … {scanned:N0} bestanden bekeken, {hits.Count} treffers, {now / 1000} s");
+            }
+        }
+        catch (DatFormatException)
+        {
+            // A file that does not decode is skipped; verify and census report those.
+        }
+    });
+
+    watch.Stop();
+    Console.WriteLine($"Bekeken: {scanned:N0} bestanden in {watch.Elapsed.TotalSeconds:N0} s. Treffers: {hits.Count}");
+    foreach (var hit in hits.Take(60))
+    {
+        Console.WriteLine("  " + hit);
+    }
+
+    return 0;
 }

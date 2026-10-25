@@ -52,6 +52,7 @@ public sealed class DatArchive : IDisposable
 
     private readonly FileStream _file;
     private readonly Dictionary<uint, int> _entryById;
+    private ILookup<int, uint>? _idsByEntry;
 
     private DatArchive(FileStream file, DatHeader header, DatEntry[] entries, Dictionary<uint, int> entryById)
     {
@@ -84,6 +85,13 @@ public sealed class DatArchive : IDisposable
             file.Dispose();
             throw;
         }
+    }
+
+    /// <summary>The file ids that point at an entry (usually a base id and a file id); empty for most internal entries.</summary>
+    public IReadOnlyList<uint> IdsOf(int index)
+    {
+        _idsByEntry ??= _entryById.ToLookup(pair => pair.Value, pair => pair.Key);
+        return [.. _idsByEntry[index].Order()];
     }
 
     /// <summary>The index of the entry for a file id, or null when the archive does not know the id.</summary>
