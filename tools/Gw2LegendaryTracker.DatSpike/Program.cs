@@ -16,6 +16,8 @@ using Gw2LegendaryTracker.Infrastructure.Gw2;
 // verify decompresses a spread of files and checks that each one decodes to exactly the size it announces,
 //        and counts what kinds of files came out. Nothing is stored.
 // census counts the kinds of all files in the archive by reading the first bytes of each one.
+// context shows the bytes around the icon id inside one file found by find, and which numbers nearby are file
+//        ids of the archive (and of what kind), to see how a skin points at its model.
 // find   looks for the icon file id of a skin inside the content of the archive's files, to see which files
 //        describe that skin. It only prints where the id was found.
 
@@ -25,9 +27,10 @@ const string Usage = """
       DatSpike verify <Gw2.dat> [aantal bestanden]
       DatSpike census <Gw2.dat>
       DatSpike find <Gw2.dat> "<naam van een skin>" [bestandssoort, bijvoorbeeld PF/cntc]
+      DatSpike context <Gw2.dat> "<naam van een skin>" <itemnummer uit find> [venster in bytes, standaard 1024]
     """;
 
-if (args.Length < 2 || args[0] is not ("info" or "icons" or "verify" or "census" or "find"))
+if (args.Length < 2 || args[0] is not ("info" or "icons" or "verify" or "census" or "find" or "context"))
 {
     Console.Error.WriteLine(Usage);
     return 2;
@@ -43,7 +46,8 @@ if (args[0] == "verify" && args.Length == 3
 
 if ((args[0] is "info" or "icons" or "census" && args.Length != 2)
     || (args[0] == "verify" && args.Length > 3)
-    || (args[0] == "find" && args.Length is < 3 or > 4))
+    || (args[0] == "find" && args.Length is < 3 or > 4)
+    || (args[0] == "context" && args.Length is < 4 or > 5))
 {
     Console.Error.WriteLine(Usage);
     return 2;
@@ -58,6 +62,7 @@ try
         "icons" => await IconsAsync(archive),
         "census" => Census(archive),
         "find" => await FindAsync(archive, args[2], args.Length == 4 ? args[3] : null),
+        "context" => await ContextAsync(archive, args[2], args[3], args.Length == 5 ? args[4] : null),
         _ => Verify(archive, sample),
     };
 }
@@ -281,15 +286,7 @@ static async Task<int> FindAsync(DatArchive archive, string skinName, string? ki
         return 1;
     }
 
-    var wanted = new List<(CosmeticSkin Skin, uint IconId, byte[] Pattern)>();
-    foreach (var skin in matches)
-    {
-        if (IconFileId.TryParse(skin.IconUrl) is { } iconId)
-        {
-            wanted.Add((skin, iconId, BitConverter.GetBytes(iconId)));
-            Console.WriteLine($"Zoeken naar skin {skin.Id} '{skin.Name}' ({skin.Category} {skin.Slot}), icoon-id {iconId}");
-        }
-    }
+    var wanted = Wanted(archive, matches);
 
     // Textures, audio and the like never describe a skin and make up most of the archive, so they are skipped
     // unless a kind is asked for.
@@ -361,4 +358,121 @@ static async Task<int> FindAsync(DatArchive archive, string skinName, string? ki
     }
 
     return 0;
+}
+
+/// <summary>The icon id of each skin plus the other ids of the same archive entry, since content may use either.</summary>
+static List<(CosmeticSkin Skin, uint IconId, byte[] Pattern)> Wanted(DatArchive archive, IEnumerable<CosmeticSkin> skins)
+{
+    var wanted = new List<(CosmeticSkin, uint, byte[])>();
+    foreach (var skin in skins)
+    {
+        if (IconFileId.TryParse(skin.IconUrl) is not { } iconId)
+        {
+            continue;
+        }
+
+        var ids = new SortedSet<uint> { iconId };
+        if (archive.FindEntry(iconId) is { } entry)
+        {
+            ids.UnionWith(archive.IdsOf(entry));
+        }
+
+        Console.WriteLine($"Zoeken naar skin {skin.Id} '{skin.Name}' ({skin.Category} {skin.Slot}), icoon-id {iconId} (id's van dit bestand: {string.Join(", ", ids)})");
+        wanted.AddRange(ids.Select(id => (skin, id, BitConverter.GetBytes(id))));
+    }
+
+    return wanted;
+}
+
+static async Task<int> ContextAsync(DatArchive archive, string skinName, string itemText, string? windowText)
+{
+    var window = 1024;
+    if (!int.TryParse(itemText, NumberStyles.None, CultureInfo.InvariantCulture, out var item) || item < DatArchive.FirstFileEntry || item >= archive.Entries.Count
+        || (windowText is not null && (!int.TryParse(windowText, NumberStyles.None, CultureInfo.InvariantCulture, out window) || window is < 64 or > 65_536)))
+    {
+        Console.Error.WriteLine("Het itemnummer moet uit de uitvoer van 'find' komen en het venster tussen 64 en 65.536 bytes liggen.");
+        return 2;
+    }
+
+    using var http = new HttpClient { BaseAddress = new Uri("https://api.guildwars2.com/"), Timeout = TimeSpan.FromSeconds(60) };
+    http.DefaultRequestHeaders.UserAgent.ParseAdd("Gw2LegendaryTracker-DatSpike/0.1");
+    var skins = await new Gw2ApiClient(http).GetAllSkinsAsync();
+    var match = skins.FirstOrDefault(s => string.Equals(s.Name, skinName, StringComparison.OrdinalIgnoreCase));
+    if (match is null)
+    {
+        Console.Error.WriteLine($"Geen skin met de naam '{skinName}' gevonden.");
+        return 1;
+    }
+
+    var data = archive.Read(item);
+    Console.WriteLine($"Bestand {item}: {data.Length:N0} bytes");
+    var shown = 0;
+    foreach (var (skin, id, pattern) in Wanted(archive, [match]))
+    {
+        for (var at = 0; shown < 4;)
+        {
+            var found = data.AsSpan(at).IndexOf(pattern);
+            if (found < 0)
+            {
+                break;
+            }
+
+            var position = at + found;
+            at = position + 1;
+            shown++;
+            Console.WriteLine();
+            Console.WriteLine($"== id {id} ('{skin.Name}') op positie {position:N0} ==");
+            HexDump(data, Math.Max(0, position - 128), Math.Min(data.Length, position + 128));
+            Console.WriteLine($"-- getallen in de buurt (±{window} bytes) die bestands-id's van het archief zijn --");
+            var from = Math.Max(0, position - window);
+            var to = Math.Min(data.Length - 4, position + window);
+            var listed = 0;
+            for (var i = from; i <= to && listed < 60; i++)
+            {
+                var value = BitConverter.ToUInt32(data, i);
+                if (value == id || archive.FindEntry(value) is not { } entry)
+                {
+                    continue;
+                }
+
+                string kind;
+                try
+                {
+                    kind = Describe(archive.ReadPrefix(entry, 12));
+                }
+                catch (DatFormatException)
+                {
+                    kind = "(niet te lezen)";
+                }
+
+                listed++;
+                Console.WriteLine($"  {i - position,6:+#;-#;0} bytes: {value,10}  {kind}");
+            }
+        }
+    }
+
+    return shown == 0 ? 1 : 0;
+}
+
+static void HexDump(byte[] data, int from, int to)
+{
+    for (var row = from & ~15; row < to; row += 16)
+    {
+        var hex = new System.Text.StringBuilder();
+        var text = new System.Text.StringBuilder();
+        for (var i = row; i < row + 16; i++)
+        {
+            if (i < from || i >= to)
+            {
+                hex.Append("   ");
+                text.Append(' ');
+                continue;
+            }
+
+            hex.Append(data[i].ToString("X2", CultureInfo.InvariantCulture)).Append(' ');
+            text.Append(data[i] is >= 0x20 and < 0x7F ? (char)data[i] : '.');
+        }
+
+        Console.WriteLine($"{row,10:X8}  {hex} {text}");
+    }
 }
