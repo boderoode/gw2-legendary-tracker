@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Globalization;
 using System.Text.Json.Serialization;
+using Gw2LegendaryTracker.Core.Cosmetics;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
@@ -12,7 +13,7 @@ using Gw2LegendaryTracker.Core.Trading;
 namespace Gw2LegendaryTracker.Infrastructure.Gw2;
 
 /// <summary>Read-only client for the official API. The key is sent only in the Authorization header, never in URLs or messages.</summary>
-public sealed class Gw2ApiClient : IGw2ApiClient
+public sealed class Gw2ApiClient : IGw2ApiClient, ICosmeticsApiClient
 {
     private const int MaxItemsPerRequest = 200;
 
@@ -169,6 +170,126 @@ public sealed class Gw2ApiClient : IGw2ApiClient
             .ToList();
     }
 
+    public async Task<IReadOnlyList<CosmeticSkin>> GetAllSkinsAsync(IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    {
+        var ids = await GetAsync<List<int>>("v2/skins", apiKey: null, cancellationToken).ConfigureAwait(false);
+        var skins = new List<CosmeticSkin>(ids.Count);
+        foreach (var chunk in ids.Chunk(MaxItemsPerRequest))
+        {
+            var query = string.Join(',', chunk.Select(id => id.ToString(CultureInfo.InvariantCulture)));
+            var dtos = await GetAsync<List<SkinDto>>($"v2/skins?ids={query}&lang=en", apiKey: null, cancellationToken, notFoundIsEmpty: true).ConfigureAwait(false);
+            skins.AddRange((dtos ?? []).Select(ToSkin).OfType<CosmeticSkin>());
+            progress?.Report(skins.Count);
+        }
+
+        return skins;
+    }
+
+    public async Task<IReadOnlyList<DyeColor>> GetAllDyeColorsAsync(CancellationToken cancellationToken = default)
+    {
+        var dtos = await GetAsync<List<ColorDto>>("v2/colors?ids=all&lang=en", apiKey: null, cancellationToken).ConfigureAwait(false);
+        return [.. dtos.Select(ToColor).OfType<DyeColor>()];
+    }
+
+    public async Task<IReadOnlySet<int>> GetUnlockedSkinIdsAsync(string apiKey, CancellationToken cancellationToken = default) =>
+        (await GetAsync<List<int>>("v2/account/skins", apiKey, cancellationToken).ConfigureAwait(false)).ToHashSet();
+
+    public async Task<IReadOnlySet<int>> GetUnlockedDyeIdsAsync(string apiKey, CancellationToken cancellationToken = default) =>
+        (await GetAsync<List<int>>("v2/account/dyes", apiKey, cancellationToken).ConfigureAwait(false)).ToHashSet();
+
+    public async Task<IReadOnlyList<string>> GetCharacterNamesAsync(string apiKey, CancellationToken cancellationToken = default) =>
+        await GetAsync<List<string>>("v2/characters", apiKey, cancellationToken).ConfigureAwait(false);
+
+    public async Task<CharacterLook> GetCharacterLookAsync(string apiKey, string characterName, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(characterName);
+
+        var name = Uri.EscapeDataString(characterName);
+        var core = await GetAsync<CharacterCoreDto>($"v2/characters/{name}/core", apiKey, cancellationToken).ConfigureAwait(false);
+        var equipment = await GetAsync<EquipmentDto>($"v2/characters/{name}/equipment", apiKey, cancellationToken).ConfigureAwait(false);
+
+        var slots = new Dictionary<LookSlot, SlotLook>();
+        foreach (var piece in equipment.Equipment ?? [])
+        {
+            if (piece.Slot is null || CharacterOptions.SlotOfEquipment(piece.Slot) is not { } slot)
+            {
+                continue;
+            }
+
+            // Without a skin the item shows its own default skin, which this endpoint does not name.
+            if (piece.Skin is not { } skinId)
+            {
+                continue;
+            }
+
+            var dyes = piece.Dyes ?? [];
+            slots[slot] = new SlotLook(
+                skinId,
+                dyes.ElementAtOrDefault(0),
+                dyes.ElementAtOrDefault(1),
+                dyes.ElementAtOrDefault(2),
+                dyes.ElementAtOrDefault(3));
+        }
+
+        return new CharacterLook(core.Race ?? CharacterOptions.Races[0], core.Gender ?? CharacterOptions.Genders[0], core.Profession ?? CharacterOptions.Professions[0], slots);
+    }
+
+    private static CosmeticSkin? ToSkin(SkinDto dto)
+    {
+        var category = dto.Type switch
+        {
+            "Armor" => SkinCategory.Armor,
+            "Weapon" => SkinCategory.Weapon,
+            "Back" => SkinCategory.Back,
+            "Gathering" => SkinCategory.Gathering,
+            _ => (SkinCategory?)null,
+        };
+
+        if (category is null || string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return null;
+        }
+
+        var slot = category == SkinCategory.Back ? "Back" : dto.Details?.Type;
+        if (string.IsNullOrWhiteSpace(slot))
+        {
+            return null;
+        }
+
+        var dyeSlots = dto.Details?.DyeSlots?.Default?.Count(entry => entry.ValueKind == JsonValueKind.Object) ?? 0;
+        return new CosmeticSkin(
+            dto.Id,
+            dto.Name,
+            dto.Icon,
+            category.Value,
+            slot,
+            dto.Details?.WeightClass,
+            dto.Rarity ?? "Basic",
+            dto.Restrictions ?? [],
+            dyeSlots,
+            dto.Description);
+    }
+
+    private static DyeColor? ToColor(ColorDto dto)
+    {
+        var rgb = dto.Cloth?.Rgb is { Count: 3 } cloth ? cloth : dto.BaseRgb;
+        if (string.IsNullOrWhiteSpace(dto.Name) || rgb is not { Count: 3 })
+        {
+            return null;
+        }
+
+        var categories = dto.Categories ?? [];
+        return new DyeColor(
+            dto.Id,
+            dto.Name,
+            Math.Clamp(rgb[0], 0, 255),
+            Math.Clamp(rgb[1], 0, 255),
+            Math.Clamp(rgb[2], 0, 255),
+            categories.ElementAtOrDefault(0),
+            categories.ElementAtOrDefault(1),
+            categories.ElementAtOrDefault(2));
+    }
+
     private static IEnumerable<InventoryEntry> ToEntries(IEnumerable<StackDto?> stacks, InventorySource source, string character = "") =>
         stacks.Where(s => s is { Count: > 0 }).Select(s => new InventoryEntry(s!.Id, s.Count, source, character));
 
@@ -282,6 +403,25 @@ public sealed class Gw2ApiClient : IGw2ApiClient
     private sealed record BagDto(List<StackDto?>? Inventory);
 
     private sealed record CharacterDto(string? Name, List<BagDto?>? Bags);
+
+    private sealed record DyeSlotsDto(List<JsonElement>? Default);
+
+    private sealed record SkinDetailsDto(
+        string? Type,
+        [property: JsonPropertyName("weight_class")] string? WeightClass,
+        [property: JsonPropertyName("dye_slots")] DyeSlotsDto? DyeSlots);
+
+    private sealed record SkinDto(int Id, string? Name, string? Type, string? Icon, string? Rarity, string? Description, List<string>? Restrictions, SkinDetailsDto? Details);
+
+    private sealed record ColorMaterialDto(List<int>? Rgb);
+
+    private sealed record ColorDto(int Id, string? Name, [property: JsonPropertyName("base_rgb")] List<int>? BaseRgb, ColorMaterialDto? Cloth, List<string>? Categories);
+
+    private sealed record CharacterCoreDto(string? Race, string? Gender, string? Profession);
+
+    private sealed record EquipmentPieceDto(string? Slot, int? Skin, List<int?>? Dyes);
+
+    private sealed record EquipmentDto(List<EquipmentPieceDto>? Equipment);
 
     private sealed record ErrorDto(string? Text);
 }

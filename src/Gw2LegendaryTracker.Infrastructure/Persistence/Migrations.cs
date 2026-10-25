@@ -149,5 +149,44 @@ internal static class Migrations
         );
         CREATE INDEX ix_acquisition_cost_offer ON acquisition_cost (acquisition_id);
         """,
+
+        // v9: cached wardrobe skins and dye colours (public data), and the looks the user saved (user data).
+        """
+        CREATE TABLE cosmetic_skin (
+            id           INTEGER PRIMARY KEY NOT NULL,
+            name         TEXT NOT NULL,
+            icon_url     TEXT NULL,
+            category     INTEGER NOT NULL,
+            slot         TEXT NOT NULL,
+            weight_class TEXT NULL,
+            rarity       TEXT NOT NULL,
+            races        TEXT NOT NULL,
+            dye_slots    INTEGER NOT NULL,
+            description  TEXT NULL
+        );
+
+        CREATE TABLE cosmetic_skin_fetch (
+            id          INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+            fetched_utc TEXT NOT NULL
+        );
+
+        CREATE TABLE dye_color (
+            id       INTEGER PRIMARY KEY NOT NULL,
+            name     TEXT NOT NULL,
+            red      INTEGER NOT NULL,
+            green    INTEGER NOT NULL,
+            blue     INTEGER NOT NULL,
+            hue      TEXT NULL,
+            material TEXT NULL,
+            rarity   TEXT NULL
+        );
+
+        CREATE TABLE look_preset (
+            id          TEXT PRIMARY KEY NOT NULL,
+            name        TEXT NOT NULL,
+            look_json   TEXT NOT NULL,
+            updated_utc TEXT NOT NULL
+        );
+        """,
     ];
 }
