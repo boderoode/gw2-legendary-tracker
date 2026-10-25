@@ -10,8 +10,10 @@
         <StackPanel Margin="24" MaxWidth="640">
 
             <TextBlock Text="Legendary Tracker" Style="{StaticResource HeadingText}" FontSize="24" />
-            <TextBlock Margin="0,4,0,20" Style="{StaticResource MutedText}"
+            <TextBlock Margin="0,4,0,12" Style="{StaticResource MutedText}"
                        Text="Houd je Legendary-voortgang bij, in dit venster of in de overlay boven Guild Wars 2." />
+            <Button Content="Fashion Studio openen" Command="{Binding OpenFashionStudioCommand}" HorizontalAlignment="Left" Margin="0,0,0,20" Padding="12,6"
+                    ToolTip="Bekijk alle skins en kleuren en stel een look samen" />
 
             <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
                 <StackPanel>

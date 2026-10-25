@@ -107,3 +107,10 @@ Verschillen met het oorspronkelijke plan, en waarom:
 
 - Per poort een korte test op de eigen pc, omdat ik hier geen `Gw2.dat` heb.
 - Bevestiging dat de ArenaNet-voorwaarden zijn gelezen (zie het juridische deel hierboven).
+
+## Voortgang
+
+- **Fase C (2D Fashion Studio), eerste versie gebouwd.** Catalogus van alle skins en dye-kleuren (lokaal gecachet, dagelijks tot wekelijks ververst), zoeken en filteren per onderdeel, karakterinstellingen, dye-kanalen, presets en het laden van de look van een karakter. De logica is getest zonder Windows (view model en kernlaag). Het venster zelf is op deze Mac gecompileerd maar nog niet visueel bekeken op Windows.
+- Gemeten op de live API met de eigen leescode: 10.539 skins bruikbaar (3.577 armor, 6.418 wapens, 441 rugstukken, 103 gathering) en 643 kleuren. De 141 overige skins hebben geen naam in de API en worden overgeslagen.
+- Open: een controle van de gebruiker op Windows (uiterlijk, bediening, laadtijd van de eerste synchronisatie van ruim 50 verzoeken).
+- Fase A (spike met `Gw2.dat`) en B (armor op een lichaam) zijn nog niet gestart.

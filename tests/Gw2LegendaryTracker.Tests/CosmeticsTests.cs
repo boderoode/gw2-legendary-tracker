@@ -598,6 +598,8 @@ public class SkinSlotsTests
     [Theory]
     [InlineData("Greatsword", true, false)]
     [InlineData("Scepter", true, false)]
+    [InlineData("Longbow", true, false)]
+    [InlineData("Spear", true, false)]
     [InlineData("Shield", false, true)]
     [InlineData("Torch", false, true)]
     [InlineData("Sword", true, true)]

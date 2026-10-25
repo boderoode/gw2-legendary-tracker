@@ -115,6 +115,22 @@ getal geeft een tekort dat je gelooft.
 - **Beperkingen van het formulier:** één betaalmiddel per aanbod, en Coin staat er niet in (bedragen zijn in koper, wat
   tot fouten leidt). Via een bestand kan beide wel.
 
+## Fashion Studio (in ontwikkeling)
+
+Via *Fashion Studio openen* in het hoofdvenster stel je een look samen. Links blader je door alle skins die bij het
+gekozen onderdeel passen, in het midden zie je je look, rechts kies je ras, geslacht, klasse en kleuren.
+
+- **Wat het doet:** alle armor-, wapen- en rugskins uit de officiële API, de ruim 600 dye-kleuren, zoeken op naam,
+  filters op ras en klasse, en opgeslagen looks (presets) op je eigen computer.
+- **Mijn look:** met *Mijn karakters laden* haal je op wat een karakter nu draagt. Onderdelen die de standaardskin van
+  hun item tonen, laat de API leeg, dus die blijven leeg.
+- **Wat ik heb:** de markering *Ontgrendeld* en het filter *Alleen wat ik heb ontgrendeld* hebben het API-recht `unlocks`
+  nodig. Zonder dat recht werkt alles, maar zonder markering. Maak daarvoor een nieuwe key met dat extra recht.
+- **Het is een 2D-voorbeeld.** De API levert iconen en kleuren, geen 3D-modellen. De kleurvlakken zie je als stalen;
+  het icoon van de skin wordt niet ingekleurd. Het onderzoek naar 3D staat in `docs/character-viewer-feasibility.md`.
+- Skins zonder naam in de API (ongeveer 140 stuks, meestal ongebruikt) worden niet getoond.
+- Opgeslagen looks zitten nog niet in *Exporteren* en *Importeren*; bewaar ze dus niet alleen daar.
+
 ## Wat de app wel en niet telt
 
 De voorraad bestaat uit je **bank, materials, gedeelde inventaris en de tassen van al je personages**. Niet geteld

@@ -3,10 +3,11 @@ namespace Gw2LegendaryTracker.Core.Cosmetics;
 /// <summary>Which skins can go in which slot of the studio.</summary>
 public static class SkinSlots
 {
-    // Aquatic weapons, bundles and toys have no place in the studio's two weapon slots.
+    // Aquatic weapons (trident, speargun), bundles and toys have no place in the studio's two weapon slots.
+    // The API uses "Spear" for aquatic and land spears alike, so both are offered.
     private static readonly HashSet<string> MainHandTypes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "Axe", "Dagger", "Mace", "Pistol", "Scepter", "Sword", "Greatsword", "Hammer", "LongBow", "Rifle", "ShortBow", "Staff",
+        "Axe", "Dagger", "Mace", "Pistol", "Scepter", "Sword", "Greatsword", "Hammer", "LongBow", "Rifle", "ShortBow", "Spear", "Staff",
     };
 
     private static readonly HashSet<string> OffHandTypes = new(StringComparer.OrdinalIgnoreCase)

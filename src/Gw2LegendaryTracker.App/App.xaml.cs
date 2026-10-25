@@ -6,6 +6,7 @@ using Gw2LegendaryTracker.App.Services;
 using Gw2LegendaryTracker.App.ViewModels;
 using Gw2LegendaryTracker.App.Views;
 using Gw2LegendaryTracker.Core.Acquisition;
+using Gw2LegendaryTracker.Core.Cosmetics;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Crafting.Forge;
 using Gw2LegendaryTracker.Core.Export;
@@ -41,6 +42,7 @@ public partial class App : Application
     private AcquisitionService? _acquisitions;
     private HotkeyService? _hotkey;
     private OverlayController? _overlay;
+    private FashionStudioWindow? _fashionStudio;
     private FileAppLog? _log;
     private readonly List<DateTimeOffset> _recentFailures = [];
 
@@ -217,6 +219,11 @@ public partial class App : Application
 
         var mainWindow = new MainWindow { DataContext = _viewModel };
         _viewModel.MainWindowRequested += (_, _) => ShowMainWindow(mainWindow);
+
+        // The studio is created on first use; its data is public, so it works without an account too.
+        var cosmeticsStore = new SqliteCosmeticsStore(database);
+        var fashion = new FashionStudioViewModel(new CosmeticsCatalog(api, cosmeticsStore), api, cosmeticsStore, keys);
+        _viewModel.FashionStudioRequested += (_, _) => ShowFashionStudio(fashion, mainWindow);
         MainWindow = mainWindow;
 
         _hotkey = new HotkeyService();
@@ -273,6 +280,23 @@ public partial class App : Application
             goals.StatusText = $"Recepten konden niet worden geladen: {ex.Message}";
             _log?.Failure("Recepten laden mislukt", ex);
         }
+    }
+
+    private void ShowFashionStudio(FashionStudioViewModel viewModel, Window owner)
+    {
+        if (_fashionStudio is null)
+        {
+            _fashionStudio = new FashionStudioWindow(viewModel) { Owner = owner };
+            _fashionStudio.Closed += (_, _) => _fashionStudio = null;
+        }
+
+        if (_fashionStudio.WindowState == WindowState.Minimized)
+        {
+            _fashionStudio.WindowState = WindowState.Normal;
+        }
+
+        _fashionStudio.Show();
+        _fashionStudio.Activate();
     }
 
     private static void ShowMainWindow(Window window)

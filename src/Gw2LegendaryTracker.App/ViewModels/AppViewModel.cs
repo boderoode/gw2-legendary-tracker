@@ -71,6 +71,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
 
         ToggleOverlayCommand = new RelayCommand(() => OverlayToggleRequested?.Invoke(this, EventArgs.Empty));
         ShowMainWindowCommand = new RelayCommand(() => MainWindowRequested?.Invoke(this, EventArgs.Empty));
+        OpenFashionStudioCommand = new RelayCommand(() => FashionStudioRequested?.Invoke(this, EventArgs.Empty));
         ToggleExpandedCommand = new RelayCommand(() => IsExpanded = !IsExpanded);
         HideOverlayCommand = new RelayCommand(() => OverlayHideRequested?.Invoke(this, EventArgs.Empty));
         SyncNowCommand = new RelayCommand(() => _ = SyncAsync());
@@ -82,9 +83,13 @@ public sealed class AppViewModel : ObservableObject, IDisposable
 
     public event EventHandler? MainWindowRequested;
 
+    public event EventHandler? FashionStudioRequested;
+
     public ICommand ToggleOverlayCommand { get; }
 
     public ICommand ShowMainWindowCommand { get; }
+
+    public ICommand OpenFashionStudioCommand { get; }
 
     public ICommand ToggleExpandedCommand { get; }
 
