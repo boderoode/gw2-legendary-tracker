@@ -81,6 +81,29 @@ Aanpak om dit te dichten, in volgorde:
 Beoordeling: de stappen 1 tot en met 4 passen bij dit plan. Stap 5 wordt afgeraden omdat het herdistributie van assets is. Stap 2 is het open probleem hierboven.
 Aanvullende aanpak uit de gebruikersgids: een bouwscript dat uit `/v2/items` de armor-items met `default_skin` haalt. In deze app is dat niet nodig, `/v2/skins` en `/v2/characters/:id/equipment` geven de skin-ID's rechtstreeks. Houd item-ID's, skin-ID's en bestands-ID's gescheiden en laat een ontbrekende `default_skin` `null`.
 
-## Volgende stap
+## Aangepast plan (mijn voorstel op basis van het plan van de gebruiker)
 
-Eerst een spike op de Windows-pc van de gebruiker: één echt armor-model plus texture uit het eigen `Gw2.dat` lezen, de skin-naar-model-koppeling voor drie stukken bevestigen en dat in een testvenster tonen. Pas daarna beslissen over uitbreiding naar meer categorieën.
+Verschillen met het oorspronkelijke plan, en waarom:
+
+1. **2D eerst, 3D als uitbreiding.** Het grootste risico (skin naar model) kan mislukken of lang duren. De Fashion Studio met catalogus, dye-voorvertoning, presets en de eigen look gebruikt alleen de API en levert altijd waarde. De 3D-weergave wordt een verbetering per categorie, niet een voorwaarde.
+2. **Eén go/no-go-poort per fase** in plaats van één groot plan. Na elke poort beslist de gebruiker, op basis van gemeten resultaat.
+3. **Geen losse CLI of eigen server.** De dat-reader en GLB-exporter komen als bibliotheek in de app (Infrastructure, in C#). WebView2 leest de lokale cache via een virtuele hostnaam naar een map, zonder webserver en zonder netwerk.
+4. **Koppeling zoveel mogelijk automatisch controleren** in plaats van alles met de hand: de API-skins hebben een icoon-URL met het bestands-ID van het 2D-icoon in het dat-bestand. Dat is een mogelijk ankerpunt om skin-ID's aan bestanden te koppelen. Dit is een hypothese die in de spike moet worden bevestigd. Daarna rendert de tool per skin een miniatuur naast het API-icoon, zodat de gebruiker snel kan bevestigen of afkeuren. Alleen bevestigde koppelingen krijgen status `verified`.
+5. **Het manifest is lokaal** (`%LocalAppData%`), niet in de repo, omdat het naar ArenaNet-bestanden verwijst en per spelversie kan veranderen. De app bewaart ook de spelversie of het bestandsformaat waarmee het is gemaakt en markeert het manifest als verouderd bij een afwijking.
+6. **Eerst statische weergave.** Eerste versie: vaste pose, geen animaties, alleen diffuse texture. Skelet-koppeling van het armor aan het lichaam is een apart risico dat in fase B wordt gemeten.
+7. **Dekking per categorie in de UI.** Elk item zonder geverifieerd model toont het icoon met de tekst "geen 3D-voorbeeld beschikbaar". Nooit een verkeerd model.
+
+### Fasen en poorten
+
+| Fase | Inhoud | Poort om door te gaan |
+|---|---|---|
+| A. Spike (Windows-pc van de gebruiker) | Aparte tool onder `tools/`: dat openen, één icoon-bestand en één model plus texture lezen, de icoon-ankerhypothese testen voor een helm, jas en laarzen | Minstens drie stukken correct herkend en getoond, of een duidelijke reden waarom niet |
+| B. Eén armor-stuk op een lichaam | Basislichaam van één ras en geslacht, skelet-koppeling, GLB-export, WebView2 met Three.js | Armor zit op het lichaam zonder zichtbare fouten |
+| C. Fashion Studio 2D | Browser links, voorbeeld midden, editor rechts, dye-voorvertoning, lokale presets, eigen look via de API. Kan parallel aan A en B | Werkt volledig zonder `Gw2.dat` |
+| D. Dekking uitbreiden | Alle armor-slots, rassen, geslachten, dye-masks, daarna wapens en rugitems | Dekkingscijfers per categorie, steekproef door de gebruiker |
+| E. Afwerking | Prestaties, foutafhandeling, haar en gezicht, outfits, gliders, documentatie | Acceptatiecriteria uit het oorspronkelijke verzoek |
+
+### Wat ik daarvoor van de gebruiker nodig heb
+
+- Per poort een korte test op de eigen pc, omdat ik hier geen `Gw2.dat` heb.
+- Bevestiging dat de ArenaNet-voorwaarden zijn gelezen (zie het juridische deel hierboven).
