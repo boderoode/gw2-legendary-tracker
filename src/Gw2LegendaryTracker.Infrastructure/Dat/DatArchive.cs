@@ -2,10 +2,19 @@ using System.Buffers.Binary;
 
 namespace Gw2LegendaryTracker.Infrastructure.Dat;
 
-public sealed class DatFormatException : Exception
+public class DatFormatException : Exception
 {
     public DatFormatException(string message)
         : base(message)
+    {
+    }
+}
+
+/// <summary>The data ended before the file was complete. For a prefix read this only means "read more".</summary>
+public sealed class DatTruncatedException : DatFormatException
+{
+    public DatTruncatedException()
+        : base("De gecomprimeerde gegevens zijn afgekapt.")
     {
     }
 }
@@ -97,7 +106,76 @@ public sealed class DatArchive : IDisposable
         return ReadExactly(entry.Offset, checked((int)entry.Size), $"Entry {index}");
     }
 
+    /// <summary>The full content of a file: decompressed when needed, without block checksums.</summary>
+    public byte[] Read(int index)
+    {
+        var stored = ReadStored(index);
+        return Entries[index].IsCompressed ? DatInflater.Inflate(stored) : StripChecksums(stored);
+    }
+
+    /// <summary>
+    /// The first <paramref name="length"/> bytes of a file (fewer if the file is shorter), reading only as much of a
+    /// compressed file as needed. This keeps it cheap to look at the start of many large files.
+    /// </summary>
+    public byte[] ReadPrefix(int index, int length)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        if ((uint)index >= (uint)Entries.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index));
+        }
+
+        var entry = Entries[index];
+        if (!entry.IsInUse)
+        {
+            throw new DatFormatException($"Entry {index} is not in use.");
+        }
+
+        if (!entry.IsCompressed)
+        {
+            var blocks = Math.Max(1, (length + BlockData - 1) / BlockData);
+            var stored = ReadExactly(entry.Offset, (int)Math.Min(entry.Size, (uint)blocks * Block), $"Entry {index}");
+            var data = StripChecksums(stored);
+            return data.Length <= length ? data : data[..length];
+        }
+
+        // The code tables come first and a few KiB cover them and the start of the output for nearly every file.
+        var wanted = 4096L;
+        while (true)
+        {
+            var take = (int)Math.Min(entry.Size, wanted);
+            var stored = ReadExactly(entry.Offset, take, $"Entry {index}");
+            try
+            {
+                return DatInflater.Inflate(stored, (uint)length);
+            }
+            catch (DatFormatException) when (take < entry.Size)
+            {
+                // With only part of the data, the decoder can fail on the zero padding that follows it and report an
+                // invalid code instead of a cut-off. Either way the answer is to read more.
+                wanted *= 8;
+            }
+        }
+    }
+
     public void Dispose() => _file.Dispose();
+
+    /// <summary>Every 64 KiB block of an uncompressed entry ends with a 4-byte checksum.</summary>
+    private const int Block = 0x10000;
+
+    private const int BlockData = Block - 4;
+
+    internal static byte[] StripChecksums(byte[] stored)
+    {
+        var output = new List<byte>(stored.Length);
+        for (var at = 0; at < stored.Length; at += Block)
+        {
+            var size = Math.Min(Block, stored.Length - at);
+            output.AddRange(stored.AsSpan(at, Math.Max(0, size - 4)));
+        }
+
+        return [.. output];
+    }
 
     private static DatArchive Read(FileStream file)
     {

@@ -9,20 +9,35 @@ using Gw2LegendaryTracker.Infrastructure.Gw2;
 //
 //   dotnet run --project tools/Gw2LegendaryTracker.DatSpike -- info  "C:\path\to\Gw2.dat"
 //   dotnet run --project tools/Gw2LegendaryTracker.DatSpike -- icons "C:\path\to\Gw2.dat"
+//   dotnet run --project tools/Gw2LegendaryTracker.DatSpike -- verify "C:\path\to\Gw2.dat" [number of files, default 500]
 //
 // info   checks that the container of the archive can be read and prints its size figures.
 // icons  checks the idea that the icon id in the URL of an API skin is also a file id in the archive.
+// verify decompresses a spread of files and checks that each one decodes to exactly the size it announces,
+//        and counts what kinds of files came out. Nothing is stored.
 
-if (args.Length != 2 || args[0] is not ("info" or "icons"))
+if (args.Length is < 2 or > 3 || args[0] is not ("info" or "icons" or "verify") || (args.Length == 3 && args[0] != "verify"))
 {
-    Console.Error.WriteLine("Gebruik: DatSpike info|icons <pad naar Gw2.dat>");
+    Console.Error.WriteLine("Gebruik: DatSpike info|icons <pad naar Gw2.dat>  of  DatSpike verify <pad naar Gw2.dat> [aantal bestanden]");
+    return 2;
+}
+
+var sample = 500;
+if (args.Length == 3 && (!int.TryParse(args[2], NumberStyles.None, CultureInfo.InvariantCulture, out sample) || sample is < 1 or > 100_000))
+{
+    Console.Error.WriteLine("Het aantal bestanden moet een getal tussen 1 en 100.000 zijn.");
     return 2;
 }
 
 try
 {
     using var archive = DatArchive.Open(args[1]);
-    return args[0] == "info" ? Info(archive) : await IconsAsync(archive);
+    return args[0] switch
+    {
+        "info" => Info(archive),
+        "icons" => await IconsAsync(archive),
+        _ => Verify(archive, sample),
+    };
 }
 catch (DatFormatException ex)
 {
@@ -99,4 +114,97 @@ static async Task<int> IconsAsync(DatArchive archive)
     }
 
     return 0;
+}
+
+static int Verify(DatArchive archive, int sample)
+{
+    // Files above this stored size are skipped to keep memory use small; the share that was skipped is reported.
+    const uint MaxStored = 8 * 1024 * 1024;
+
+    var candidates = new List<int>();
+    var skippedLarge = 0;
+    for (var i = DatArchive.FirstFileEntry; i < archive.Entries.Count; i++)
+    {
+        var entry = archive.Entries[i];
+        if (!entry.IsInUse || !entry.IsCompressed)
+        {
+            continue;
+        }
+
+        if (entry.Size > MaxStored)
+        {
+            skippedLarge++;
+            continue;
+        }
+
+        candidates.Add(i);
+    }
+
+    var chosen = candidates.Count <= sample
+        ? candidates
+        : [.. Enumerable.Range(0, sample).Select(n => candidates[(int)((long)n * candidates.Count / sample)])];
+
+    var kinds = new Dictionary<string, int>();
+    var failures = new List<string>();
+    long bytes = 0;
+    var ok = 0;
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    foreach (var index in chosen)
+    {
+        try
+        {
+            var data = archive.Read(index);
+            bytes += data.Length;
+            ok++;
+            var kind = Describe(data);
+            kinds[kind] = kinds.GetValueOrDefault(kind) + 1;
+        }
+        catch (DatFormatException ex)
+        {
+            if (failures.Count < 5)
+            {
+                failures.Add($"item {index} (opgeslagen {archive.Entries[index].Size:N0} bytes): {ex.Message}");
+            }
+        }
+    }
+
+    watch.Stop();
+    Console.WriteLine($"Gecomprimeerde bestanden in het archief: {candidates.Count + skippedLarge:N0} (groter dan 8 MiB overgeslagen: {skippedLarge:N0})");
+    Console.WriteLine($"Gecontroleerd: {chosen.Count:N0}   goed uitgepakt: {ok:N0}   mislukt: {chosen.Count - ok:N0}");
+    Console.WriteLine($"Uitgepakt: {bytes / 1_048_576.0:N1} MiB in {watch.Elapsed.TotalSeconds:N1} s");
+    foreach (var failure in failures)
+    {
+        Console.WriteLine($"  mislukt: {failure}");
+    }
+
+    Console.WriteLine("Soorten bestanden (eerste bytes):");
+    foreach (var (kind, count) in kinds.OrderByDescending(k => k.Value).Take(25))
+    {
+        Console.WriteLine($"  {count,6:N0}  {kind}");
+    }
+
+    return chosen.Count == ok ? 0 : 1;
+}
+
+static string Describe(byte[] data)
+{
+    if (data.Length >= 12 && data[0] == (byte)'P' && data[1] == (byte)'F')
+    {
+        return "PF/" + Printable(data.AsSpan(8, 4));
+    }
+
+    return data.Length >= 4 ? Printable(data.AsSpan(0, 4)) : "(korter dan 4 bytes)";
+}
+
+static string Printable(ReadOnlySpan<byte> bytes)
+{
+    foreach (var b in bytes)
+    {
+        if (b is < 0x20 or > 0x7E)
+        {
+            return "0x" + Convert.ToHexString(bytes);
+        }
+    }
+
+    return System.Text.Encoding.ASCII.GetString(bytes);
 }

@@ -12,8 +12,13 @@ internal sealed class SyntheticDat : IDisposable
 
     private readonly string _directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gw2lt-dat-" + Guid.NewGuid().ToString("N"));
 
-    public SyntheticDat(IReadOnlyList<(uint Id, int Entry)> ids, int entryCount = 20, Action<byte[]>? tamper = null)
+    public SyntheticDat(
+        IReadOnlyList<(uint Id, int Entry)> ids,
+        int entryCount = 20,
+        Action<byte[]>? tamper = null,
+        IReadOnlyList<(int Index, byte[] Stored, bool Compressed)>? files = null)
     {
+        files ??= [];
         Directory.CreateDirectory(_directory);
         Path = System.IO.Path.Combine(_directory, "Gw2.dat");
 
@@ -26,7 +31,7 @@ internal sealed class SyntheticDat : IDisposable
 
         var mftOffset = HeaderSize + idTable.Length;
         var mftSize = entryCount * EntrySize;
-        var file = new byte[mftOffset + mftSize];
+        var file = new byte[mftOffset + mftSize + files.Sum(f => f.Stored.Length)];
 
         file[0] = 0x97;
         file[1] = (byte)'A';
@@ -46,6 +51,14 @@ internal sealed class SyntheticDat : IDisposable
         WriteEntry(file, mftOffset, 2, (ulong)HeaderSize, (uint)idTable.Length, 0, 1);
         WriteEntry(file, mftOffset, 5, (ulong)HeaderSize, 8, 8, 1);
         WriteEntry(file, mftOffset, 6, (ulong)HeaderSize, 8, 0, 0);
+
+        var dataAt = mftOffset + mftSize;
+        foreach (var (index, stored, compressed) in files)
+        {
+            stored.CopyTo(file, dataAt);
+            WriteEntry(file, mftOffset, index, (ulong)dataAt, (uint)stored.Length, (ushort)(compressed ? 8 : 0), 1);
+            dataAt += stored.Length;
+        }
 
         tamper?.Invoke(file);
         File.WriteAllBytes(Path, file);
