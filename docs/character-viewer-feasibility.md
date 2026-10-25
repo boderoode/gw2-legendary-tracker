@@ -114,3 +114,6 @@ Verschillen met het oorspronkelijke plan, en waarom:
 - Gemeten op de live API met de eigen leescode: 10.539 skins bruikbaar (3.577 armor, 6.418 wapens, 441 rugstukken, 103 gathering) en 643 kleuren. De 141 overige skins hebben geen naam in de API en worden overgeslagen.
 - Open: een controle van de gebruiker op Windows (uiterlijk, bediening, laadtijd van de eerste synchronisatie van ruim 50 verzoeken).
 - Fase A (spike met `Gw2.dat`) en B (armor op een lichaam) zijn nog niet gestart.
+- **Fase A, stap 1 (container lezen) gebouwd.** `DatArchive` leest alleen-lezen de header, de bestandstabel (MFT) en de tabel met bestands-id's van een `Gw2.dat`, ook terwijl het spel draait. Getest met een nagemaakt archief met dezelfde indeling, niet met een echt `Gw2.dat`. Het uitlezen van bestandsinhoud (decompressie) is bewust nog niet gebouwd: eerst moet blijken dat dit deel op een echt archief klopt.
+- De tool `tools/Gw2LegendaryTracker.DatSpike` heeft twee opdrachten: `info` (grootte en aantallen van het archief) en `icons` (controleert de hypothese dat het icoon-id in de URL van een API-skin ook een bestands-id in het archief is, per categorie). Beide schrijven niets weg en kopiëren niets uit het archief.
+- Wat nog moet gebeuren na een goede uitkomst: decompressie, het lezen van een model en texture, en het uitzoeken van de koppeling van skin naar model.
