@@ -1,237 +1,231 @@
 # GW2 Legendary Tracker
 
-Een Windows-app om je Legendary crafting progress in Guild Wars 2 bij te houden. Eén programma met twee weergaven:
-een gewoon **hoofdvenster** en een compacte **overlay** die boven het spel kan blijven staan. Beide gebruiken dezelfde
-gegevens en dezelfde berekeningen, dus een wijziging in het ene venster is meteen zichtbaar in het andere.
+A Windows app for tracking your Legendary crafting progress in Guild Wars 2. One program with two views:
+a regular **main window** and a compact **overlay** that can stay visible over the game. Both use the same
+data and calculations, so a change in one window is immediately visible in the other.
 
-De app leest alleen mee via de officiële Guild Wars 2 API. Er wordt niets in het spel gewijzigd: geen DLL-injectie,
-geen geheugen uitlezen, geen automatisering.
+The app only reads data through the official Guild Wars 2 API. Nothing in the game is modified: no DLL injection,
+no reading game memory, and no automation.
 
-## Installeren
+## Installation
 
-Je hebt Windows 10 (versie 1809) of nieuwer nodig, 64-bit. Je hoeft niets anders te installeren; .NET zit erbij.
+You need Windows 10 (version 1809) or later, 64-bit. You do not need to install anything else; .NET is included.
 
-**Met de installer (aanbevolen)**
-1. Download `Gw2LegendaryTracker-Setup-<versie>.exe` van de [releases](../../releases).
-2. Start hem. Hij installeert voor jouw gebruiker, zonder beheerdersrechten, en maakt een snelkoppeling in het startmenu.
-3. Verwijderen kan via *Instellingen → Apps*. De uninstaller vraagt of je ook je gegevens wilt verwijderen.
+**Using the installer (recommended)**
+1. Download `Gw2LegendaryTracker-Setup-<version>.exe` from [releases](../../releases).
+2. Run it. It installs for your user account, without administrator privileges, and creates a Start menu shortcut.
+3. You can uninstall it via *Settings → Apps*. The uninstaller asks whether you also want to delete your data.
 
-**Of als zipbestand**
-1. Download `Gw2LegendaryTracker-<versie>-win-x64.zip` van de releases en pak het uit in een eigen map.
-2. Start `Gw2LegendaryTracker.exe`. Verplaatsen kan door de hele map te kopiëren.
+**Or use the ZIP archive**
+1. Download `Gw2LegendaryTracker-<version>-win-x64.zip` from the releases and extract it to a folder of your choice.
+2. Run `Gw2LegendaryTracker.exe`. You can move the app by copying the entire folder.
 
-**Windows zegt dat het programma niet vertrouwd wordt.** De app is niet digitaal ondertekend (dat vraagt een betaald
-certificaat). Klik op *Meer informatie* en dan op *Toch uitvoeren*. Wil je zeker zijn dat het bestand ongewijzigd is,
-vergelijk dan de SHA256-waarde met `SHA256SUMS.txt` bij de release (`Get-FileHash <bestand>` in PowerShell).
+**Windows says the program isn't trusted.** The app is not digitally signed (that requires a paid certificate). Click *More info* and then *Run anyway*. To make sure the file has not been changed, compare its SHA256 value with `SHA256SUMS.txt` from the release (`Get-FileHash <file>` in PowerShell).
 
-## Eerste gebruik
+## First use
 
-1. **Verbind je account.** Maak op <https://account.arena.net/applications> een key aan met alleen de rechten
-   **account**, **inventories**, **characters** en **wallet**. Plak hem in het hoofdvenster en klik op *Verbinden*.
-   De app controleert de key en weigert hem als er rechten ontbreken.
-2. **Voeg de gw2treasures-key toe** voor de recepten van de Legendaries zelf (uitleg staat in het scherm, zie ook
-   [Recepten](#recepten)).
-3. **Kies een Legendary** onder *Mijn Legendaries*. De volgorde bepaalt wie eerst jouw materialen krijgt.
-4. De eerste start downloadt ongeveer 13.000 recepten; dat duurt enkele minuten en je ziet de voortgang.
-5. Start Guild Wars 2 in **Windowed** of **Windowed Fullscreen** en toon de overlay met **Ctrl+Alt+L**.
+1. **Connect your account.** Create a key at <https://account.arena.net/applications> with only the permissions
+   **account**, **inventories**, **characters**, and **wallet**. Paste it into the main window and click *Connect*.
+   The app checks the key and rejects it if any permissions are missing.
+2. **Add your gw2treasures key** for Legendary recipes themselves (instructions are shown in the app; see also
+   [Recipes](#recipes)).
+3. **Choose a Legendary** under *My Legendaries*. The order determines which ones get your materials first.
+4. On first launch, approximately 13,000 recipes are downloaded; this takes a few minutes, and progress is displayed.
+5. Start Guild Wars 2 in **Windowed** or **Windowed Fullscreen** mode and show the overlay with **Ctrl+Alt+L**.
 
-## De overlay
+## The overlay
 
-De overlay is gemaakt om in een ooghoek te lezen terwijl je speelt: binnen twee seconden zie je hoever je bent, wat je
-nu moet doen en wat je nog mist.
+The overlay is designed to be glanced at while playing: in two seconds, you can see how far along you are, what
+you should do next, and what you are still missing.
 
-- **Compact** (standaard): icoon en naam van de gekozen Legendary, je voortgang als één percentage (met de telling
-  ernaast en een dunne balk), de **volgende stap**, en **nog nodig**: de grootste tekorten, elk als "120 / 250" met een
-  mini-balk (goud zolang er iets mist, groen als het gedekt is). Rechtsonder staat wanneer het is bijgewerkt. Het aantal
-  materialen stel je zelf in (1 tot 20).
-- **Uitgebreid** (pijltje in de kop): het venster wordt breder en hoger en toont drie tabs in plaats van alles door
-  elkaar: **Nodig** (alle materialen met een filter *Alleen tekort*, valuta, en wat Legendaries hoger in je lijst al
-  gebruiken), **Onderdelen** (afvinklijst) en **Boom** (uitklapbare crafting tree).
-- **Geen Legendary gekozen:** een korte uitleg en een knop om het hoofdvenster te openen.
-- **Bediening:** slepen aan de kop, vergrendelen tegen slepen, transparantie, automatisch verbergen, en een
-  *click-through*-stand waarin muisklikken door de overlay heen naar het spel gaan. De sneltoets en alle instellingen
-  staan in het hoofdvenster, zodat je de bediening nooit kwijtraakt.
-- **Focus:** een klik op de overlay neemt de focus van het spel niet over.
-- **Voortgang** is het aandeel onderdelen in de crafting tree dat klaar is: je hebt er genoeg van, of je kunt het nu
-  zelf maken met wat je bezit. 100% betekent dat je het doel nu kunt afronden.
-- **Reserveringen** zijn geen aparte aantallen: de volgorde van je Legendaries bepaalt wie eerst materialen krijgt. Het
-  tabblad *Nodig* toont wat Legendaries hoger in de lijst al van jouw voorraad gebruiken.
-- De iconen in de kop komen uit het lettertype *Segoe Fluent Icons* (Windows 11) of *Segoe MDL2 Assets* (Windows 10).
+- **Compact** (default): icon and name of the selected Legendary, your progress as a single percentage (with the count
+  beside it and a thin bar), the **next step**, and **still needed**: the largest shortages, each shown as "120 / 250" with a
+  mini bar (gold while something is missing, green when covered). The bottom-right shows when it was last updated. You
+  choose the number of materials to display (1 to 20).
+- **Expanded** (arrow in the header): the window becomes wider and taller and shows three tabs instead of mixing
+  everything together: **Needed** (all materials, with an *Shortage only* filter, currencies, and what higher-priority
+  Legendaries in your list are already using), **Components** (checklist), and **Tree** (expandable crafting tree).
+- **No Legendary selected:** a short explanation and a button to open the main window.
+- **Controls:** drag by the header, lock it against dragging, adjust transparency, auto-hide, and use a
+  *click-through* mode in which mouse clicks pass through the overlay to the game. The hotkey and all settings
+  are in the main window, so you can always regain control.
+- **Focus:** clicking the overlay does not steal focus from the game.
+- **Progress** is the share of components in the crafting tree that are complete: you have enough of them, or you can
+  craft them now with what you own. 100% means you can complete the goal right now.
+- **Reservations** are not separate quantities: the order of your Legendaries determines who gets materials first. The
+  *Needed* tab shows which materials are already being used from your inventory by higher-priority Legendaries.
+- The icons in the header come from the *Segoe Fluent Icons* font (Windows 11) or *Segoe MDL2 Assets* (Windows 10).
 
-### Bekende beperkingen van de overlay
+### Known overlay limitations
 
-- De overlay is een gewoon Windows-venster dat altijd bovenaan blijft. Dat werkt boven **windowed** en **borderless
-  fullscreen**. **Exclusive fullscreen wordt niet ondersteund** en is niet getest; kies *Windowed Fullscreen*.
-- Het gedrag boven het spel (schermmodi, meerdere monitoren, verschillende schaling, focus) is nog niet systematisch
-  gemeten. Het testplan staat in [`docs/overlay-test-plan.md`](docs/overlay-test-plan.md).
-- De overlay leest niets uit de gameclient: alles komt uit de API, de recepten en wat je zelf afvinkt.
+- The overlay is a regular Windows window that stays on top. This works over **windowed** and **borderless
+  fullscreen** modes. **Exclusive fullscreen is not supported** and has not been tested; choose *Windowed Fullscreen*.
+- Behaviour over the game (display modes, multiple monitors, different scaling settings, focus) has not yet been
+  measured systematically. The test plan is in [`docs/overlay-test-plan.md`](docs/overlay-test-plan.md).
+- The overlay does not read anything from the game client: everything comes from the API, recipes, and items you check off yourself.
 
-## Kosten op de Trading Post (hoofdvenster)
+## Trading Post costs (main window)
 
-Bij je gekozen Legendary toont het hoofdvenster wat het kost om te kopen wat je nog mist, met de huidige
-Trading Post-prijzen. De overlay toont geen prijzen en is hiervoor niet veranderd.
+For your selected Legendary, the main window shows how much it would cost to buy what you are still missing, using current
+Trading Post prices. The overlay does not show prices and has not been changed for this feature.
 
-- **Totaal en je wallet:** wat alles kost bij direct kopen en bij kooporders, en of je genoeg goud hebt of hoeveel je
-  tekortkomt.
-- **Per materiaal:** aantal, prijs per stuk en het bedrag, het duurste bovenaan.
-- **Slimmer kopen:** voor onderdelen die je zelf zou maken, zoals een ingot uit ore, vergelijkt de app de aankoopprijs
-  met de kosten van de ontbrekende grondstoffen. Is kopen goedkoper, dan staat er wat je bespaart. Tips overlappen nooit:
-  als een onderdeel gekocht wordt, kijkt de app niet meer naar wat eronder hoort.
-- **Niet te koop:** wat de Trading Post niet verkoopt (account-bound items, beloningen, ...) staat apart en telt niet
-  mee in het bedrag.
-- **Actualiteit:** prijzen worden hooguit eens per 10 minuten opgehaald en bewaard. Zonder internet zie je de laatst
-  bekende prijzen met het tijdstip, en een melding dat verversen mislukte. *Prijzen verversen* vraagt ze direct opnieuw.
+- **Total and your wallet:** the cost of buying everything immediately versus using buy orders, and whether you have enough gold or how much you are short.
+- **Per material:** quantity, price per item, and total amount, with the most expensive items at the top.
+- **Smarter buying:** for components you would craft yourself, such as an ingot made from ore, the app compares the purchase price
+  with the cost of the missing raw materials. If buying is cheaper, it shows how much you save. Tips never overlap:
+  if a component is bought, the app no longer considers what goes into making it.
+- **Not for sale:** items the Trading Post does not sell (account-bound items, rewards, ...) are listed separately and do not
+  count toward the total.
+- **Freshness:** prices are fetched and cached at most once every 10 minutes. Without internet, you see the last known
+  prices with their timestamp and a notice that refreshing failed. *Refresh prices* requests them again immediately.
 
-**Het is een schatting.** De app rekent met de laagste verkoopprijs. Bij grote aantallen stijgt de prijs, omdat de
-goedkoopste aanbiedingen opraken, dus het echte bedrag kan hoger zijn. Kosten en tijd van het craften zijn niet
-meegerekend. De prijs die je direct betaalt is de laagste aanbiedingsprijs (`sells` in de API); een kooporder
-overbiedt de beste order met 1 koper, maar kost nooit meer dan direct kopen.
+**This is an estimate.** The app calculates using the lowest sell price. For large quantities, the price increases because the
+cheapest listings run out, so the actual total may be higher. Crafting costs and time are not included. The price paid for an
+immediate purchase is the lowest listing price (`sells` in the API); a buy order outbids the best order by 1 copper, but never
+costs more than buying immediately.
 
-## Verkopers en valuta (Karma, ...)
+## Vendors and currencies (Karma, ...)
 
-Niet alles koop je op de Trading Post. Obsidian Shards haal je bijvoorbeeld met Karma bij een verkoper. De app rekent
-daar mee als je de herkomst vastlegt.
+Not everything is bought from the Trading Post. For example, Obsidian Shards can be obtained from a vendor using Karma.
+The app accounts for this when you record where the item comes from.
 
-**Waarom leg je dat zelf vast?** Er is geen bron die de app kan lezen. De officiële API heeft een route voor
-verkopers (`/v2/vendors`), maar die is niet actief (antwoord: *API not active*), op de itempagina's van gw2treasures
-staat het niet, en de wiki was bij het bouwen van deze functie in onderhoud. De app verzint geen prijzen: een verkeerd
-getal geeft een tekort dat je gelooft.
+**Why do you have to record this yourself?** There is no source the app can read. The official API has a route for
+vendors (`/v2/vendors`), but it is inactive (response: *API not active*); gw2treasures item pages do not list it, and
+the wiki was under maintenance when this feature was being built. The app does not make up prices: an incorrect
+number results in a shortage you might trust.
 
-- **Vastleggen:** onder het kopje *Niet te koop op de Trading Post* staat bij elk item de knop **Herkomst
-  vastleggen…**. Je kiest het betaalmiddel (bijvoorbeeld Karma), de prijs, hoeveel stuks je ervoor krijgt, en optioneel
-  de verkoper en de plaats. Zoek de gegevens op met de knoppen **Wiki** en **gw2treasures** bij datzelfde item.
-- **Wat de app er dan mee doet:** het item verdwijnt uit "niet te koop". De planner behandelt de aankoop als een
-  stap: *"Koop nu: 250× Obsidian Shard (bij een verkoper: …)"*, en bij het onderdeel Valuta staat of je genoeg Karma
-  hebt (*"je hebt 194.832 van 6.250"*) of hoeveel je nog nodig hebt. Staat het item ook op de Trading Post, dan zie je
-  de prijs daar ernaast, zodat je kunt kiezen.
-- **Bewaard en meegenomen:** je aanbiedingen staan in de database en zitten in een export, dus ook in een back-up.
-  Een aanbod verwijderen kan onder *Herkomst en eigen gegevens*.
-- **Wiki en gw2treasures:** de knoppen openen de pagina in je browser. De wiki-knop zoekt op de naam van het item (bij
-  een exacte naam kom je direct op de pagina); de gw2treasures-knop opent precies dit item-id. Alleen links naar deze twee
-  sites worden geopend.
-- **Eigen gegevens-map:** *Map met eigen gegevens openen* opent `%LOCALAPPDATA%\Gw2LegendaryTracker\recipes`. Een
-  receptbestand daarin wordt bij het starten ingelezen. Dat is handig voor veel gegevens tegelijk of voor een aanbod
-  met meerdere kosten.
-- **Beperkingen van het formulier:** één betaalmiddel per aanbod, en Coin staat er niet in (bedragen zijn in koper, wat
-  tot fouten leidt). Via een bestand kan beide wel.
+- **Recording a source:** under the *Not available on the Trading Post* heading, each item has a **Record source…**
+  button. Choose the payment currency (for example, Karma), the price, how many items you receive, and optionally
+  the vendor and location. Look up the details using the **Wiki** and **gw2treasures** buttons for that item.
+- **What the app does with it:** the item disappears from "not for sale". The planner treats the purchase as a
+  step: *"Buy now: 250× Obsidian Shard (from vendor: …)"*, and the Currencies section shows whether you have enough Karma
+  (*"you have 194,832 of 6,250"*) or how much more you need. If the item is also on the Trading Post, its price appears
+  beside it so you can choose.
+- **Saved and included:** your offers are stored in the database and included in an export, and therefore in a backup too.
+  You can delete an offer under *Sources and custom data*.
+- **Wiki and gw2treasures:** the buttons open the page in your browser. The Wiki button searches for the item name (an
+  exact name takes you directly to the page); the gw2treasures button opens that exact item ID. Only links to these two
+  sites are opened.
+- **Custom data folder:** *Open custom data folder* opens `%LOCALAPPDATA%\Gw2LegendaryTracker\recipes`. A recipe file
+  placed there is read at startup. This is useful for lots of data at once or for an offer with multiple costs.
+- **Form limitations:** one payment currency per offer, and Coin is not included (amounts are in copper, which leads to
+  errors). Both are possible through a file.
 
-## Fashion Studio (in ontwikkeling)
+## Fashion Studio (in development)
 
-Via *Fashion Studio openen* in het hoofdvenster stel je een look samen. Links blader je door alle skins die bij het
-gekozen onderdeel passen, in het midden zie je je look, rechts kies je ras, geslacht, klasse en kleuren.
+Use *Open Fashion Studio* in the main window to put together a look. Browse all skins that fit the selected slot on the
+left, see your look in the middle, and choose race, gender, profession, and dyes on the right.
 
-- **Wat het doet:** alle armor-, wapen- en rugskins uit de officiële API, de ruim 600 dye-kleuren, zoeken op naam,
-  filters op ras en klasse, en opgeslagen looks (presets) op je eigen computer.
-- **Mijn look:** met *Mijn karakters laden* haal je op wat een karakter nu draagt. Onderdelen die de standaardskin van
-  hun item tonen, laat de API leeg, dus die blijven leeg.
-- **Wat ik heb:** de markering *Ontgrendeld* en het filter *Alleen wat ik heb ontgrendeld* hebben het API-recht `unlocks`
-  nodig. Zonder dat recht werkt alles, maar zonder markering. Maak daarvoor een nieuwe key met dat extra recht.
-- **Het is een 2D-voorbeeld.** De API levert iconen en kleuren, geen 3D-modellen. De kleurvlakken zie je als stalen;
-  het icoon van de skin wordt niet ingekleurd. Het onderzoek naar 3D staat in `docs/character-viewer-feasibility.md`.
-- Skins zonder naam in de API (ongeveer 140 stuks, meestal ongebruikt) worden niet getoond.
-- Opgeslagen looks zitten nog niet in *Exporteren* en *Importeren*; bewaar ze dus niet alleen daar.
+- **What it does:** all armor, weapon, and back skins from the official API, the more than 600 dye colours, name search,
+  race and profession filters, and saved looks (presets) on your own computer.
+- **My look:** *Load my characters* retrieves what a character is currently wearing. The API leaves slots empty when
+  an item displays its default skin, so those slots remain empty.
+- **What I have unlocked:** the *Unlocked* marker and *Only show what I've unlocked* filter require the API permission
+  `unlocks`. Everything else works without that permission, but there are no unlock markers. Create a new key with that extra permission to use these features.
+- **It is a 2D preview.** The API provides icons and colours, not 3D models. Colour swatches are shown as samples; the
+  skin icon itself is not recoloured. Research into 3D is documented in `docs/character-viewer-feasibility.md`.
+- Skins without a name in the API (approximately 140, mostly unused) are not shown.
+- Saved looks are not yet included in *Export* and *Import*, so do not keep your only copy there.
 
-## Wat de app wel en niet telt
+## What the app does and does not count
 
-De voorraad bestaat uit je **bank, materials, gedeelde inventaris en de tassen van al je personages**. Niet geteld
-worden uitgerust gear, de Trading Post, de guildbank en andere plekken die de inventory-endpoints niet geven. Een
-onderdeel dat je zelf hebt gemaakt of gekregen maar dat de app niet ziet, kun je afvinken; alles eronder valt dan weg.
+Inventory consists of your **bank, materials storage, shared inventory, and the bags of all your characters**. It does
+not count equipped gear, the Trading Post, the guild bank, or other locations not provided by the inventory endpoints.
+If you have crafted or obtained a component that the app cannot see, you can check it off; everything below it will then be excluded.
 
-## Recepten
+## Recipes
 
-Het receptboek komt uit drie bronnen:
+The recipe book comes from three sources:
 
-1. **De officiële API:** alle ongeveer 13.200 gewone recepten, eenmalig gedownload en lokaal bewaard.
-2. **gw2treasures:** de Mystic Forge-recepten van Legendaries en hun onderdelen, die de officiële API niet bevat. Van
-   de 206 Legendaries heeft de officiële API alleen recepten voor de 18 Obsidian-harnasstukken.
-3. **Lokale bestanden** in `data\recipes` (meegeleverd, Twilight) en `%LOCALAPPDATA%\Gw2LegendaryTracker\recipes`
-   (van jezelf) voor wat nergens anders staat, ook currency-kosten.
+1. **The official API:** all approximately 13,200 standard recipes, downloaded once and stored locally.
+2. **gw2treasures:** Mystic Forge recipes for Legendaries and their components, which the official API does not include. Of
+   the 206 Legendaries, the official API only has recipes for the 18 Obsidian armor pieces.
+3. **Local files** in `data\recipes` (included, Twilight) and `%LOCALAPPDATA%\Gw2LegendaryTracker\recipes`
+   (your own), for anything not available elsewhere, including currency costs.
 
-**Ophalen bij gw2treasures.** Zodra je een Legendary kiest, haalt de app de recepten van die Legendary en van al zijn
-onderdelen op. Daarvoor is een gratis key nodig die je zelf aanmaakt (de stappen staan in het scherm).
+**Fetching from gw2treasures.** When you select a Legendary, the app fetches the recipes for that Legendary and all its
+components. A free key that you create yourself is required (the steps are shown in the app).
 
-- Het endpoint geeft één item per aanroep; de app loopt de boom af en onthoudt elk onderdeel zeven dagen. Gedeelde
-  onderdelen (Gift of Fortune, Gift of Mastery, ...) worden één keer opgehaald: Twilight kostte 13 aanroepen, Bifrost
-  daarna 6. Zonder internet blijven opgeslagen recepten werken.
-- Minstens 1,6 seconde tussen aanroepen en hooguit 150 per keer. Ruwe materialen worden niet opgezocht.
-- Elk recept wordt vergeleken met de officiële itembeschrijving ("Made by combining these items in the Mystic Forge").
-  Wijkt het af, dan wordt het niet gebruikt en meldt de app dat. Staat er geen beschrijving, dan wordt het recept
-  bewaard maar gemeld als "één bron, niet gecontroleerd".
-- gw2treasures kan dit endpoint later alleen na goedkeuring van je applicatie openstellen; de app meldt dat dan en
-  gebruikt wat is opgeslagen.
-- De data komt van gw2treasures, een community-project. Controleer hun voorwaarden voordat je de app of de
-  receptbestanden deelt buiten privégebruik.
+- The endpoint returns one item per request; the app traverses the tree and remembers each component for seven days. Shared
+  components (Gift of Fortune, Gift of Mastery, ...) are fetched only once: Twilight took 13 requests, and Bifrost
+  took 6 after that. Saved recipes continue to work without internet.
+- At least 1.6 seconds between requests and no more than 150 per run. Raw materials are not looked up.
+- Each recipe is compared with the official item description ("Made by combining these items in the Mystic Forge").
+  If it differs, it is not used and the app reports it. If there is no description, the recipe is saved but flagged as
+  "one source, not verified".
+- gw2treasures may later make this endpoint available only after approving your application; the app reports this and
+  uses what has already been saved.
+- The data comes from gw2treasures, a community project. Check their terms before sharing the app or recipe files
+  beyond private use.
 
-**Berekening.** De engine gebruikt eerst wat je bezit en rekent de rest recursief door. Hij hergebruikt overschot, kiest
-bij meerdere recepten de route met de minste ontbrekende stuks (daarna de minste craftacties, daarna het laagste
-receptnummer) en wijst de eerstvolgende stap aan. Recepten die guild-upgrades vereisen en recepten die je eerst moet
-leren worden niet meegerekend.
+**Calculation.** The engine uses what you own first and calculates the remainder recursively. It reuses surplus, chooses
+the route with the fewest missing items when multiple recipes exist (then the fewest crafting actions, then the lowest
+recipe ID), and identifies the next step. Recipes requiring guild upgrades and recipes you must learn first are not counted.
 
-**Eigen receptbestanden** hebben dit formaat. Ids zijn negatief zodat ze nooit botsen met API-recepten; ongeldige
-regels worden overgeslagen en gemeld. Zet bij elk item en elke valuta de **naam**: de app controleert id's en namen
-tegen de officiële API, zodat een verkeerd id opvalt.
+**Custom recipe files** use this format. IDs are negative so they never conflict with API recipes; invalid entries are skipped
+and reported. Include the **name** for every item and currency: the app checks IDs and names against the official API so an incorrect ID stands out.
 
 ```json
 { "recipes": [
   { "id": -1, "output": { "itemId": 100, "count": 1, "name": "Gift of Might" },
     "ingredients": [ { "itemId": 5, "count": 2, "name": "Some Item" }, { "currencyId": 23, "count": 250, "name": "Spirit Shard" } ] },
-  { "id": -2, "vendor": { "name": "Naam van de verkoper", "location": "Plaats" },
+  { "id": -2, "vendor": { "name": "Vendor name", "location": "Location" },
     "output": { "itemId": 19925, "count": 1, "name": "Obsidian Shard" },
     "ingredients": [ { "currencyId": 2, "count": 25, "name": "Karma" } ] }
 ] }
 ```
 
-Een recept met een `vendor`-regel is een aanbod van een verkoper; zonder die regel is het een Mystic Forge-recept.
+A recipe with a `vendor` entry is a vendor offer; without that entry, it is a Mystic Forge recipe.
 
-## Gegevens, privacy en beveiliging
+## Data, privacy, and security
 
-**Netwerkverkeer.** De app praat met `api.guildwars2.com` (je account met jouw key, plus publieke lijsten en Trading Post-prijzen),
-`api.gw2treasures.com` (recepten, met jouw gw2treasures-key) en `render.guildwars2.com` (itemiconen). Er is geen
-telemetrie, geen analyse en geen andere server. De GW2-key wordt alleen gebruikt voor leesverzoeken.
+**Network traffic.** The app communicates with `api.guildwars2.com` (your account using your key, plus public lists and Trading Post prices),
+`api.gw2treasures.com` (recipes, using your gw2treasures key), and `render.guildwars2.com` (item icons). There is no
+telemetry, no analytics, and no other server. The GW2 key is only used for read requests.
 
-**Opslag** in `%LOCALAPPDATA%\Gw2LegendaryTracker\`:
+**Storage** in `%LOCALAPPDATA%\Gw2LegendaryTracker\`:
 
-| Bestand of map | Inhoud |
+| File or folder | Contents |
 | --- | --- |
-| `tracker.db` | SQLite: instellingen, doelen, afvinkingen, notities, je eigen herkomstgegevens, laatste inventaris, gecachete itemnamen, recepten en Trading Post-prijzen. Het schema is geversioneerd; updates migreren bestaande gegevens. |
-| `apikey.bin`, `forgekey.bin` | De twee keys, versleuteld met Windows DPAPI (alleen jouw Windows-account op deze pc kan ze lezen). **Nooit** in de database, in instellingen of in logs. |
-| `logs\` | Logbestanden, zie hieronder. |
-| `backups\` | Automatische back-ups vlak voor een import (de laatste vijf). |
-| `recipes\` | Je eigen receptbestanden (optioneel). |
+| `tracker.db` | SQLite: settings, goals, checkmarks, notes, your custom source data, last inventory, cached item names, recipes, and Trading Post prices. The schema is versioned; updates migrate existing data. |
+| `apikey.bin`, `forgekey.bin` | The two keys, encrypted with Windows DPAPI (only your Windows account on this PC can read them). **Never** stored in the database, settings, or logs. |
+| `logs\` | Log files, see below. |
+| `backups\` | Automatic backups immediately before an import (the last five). |
+| `recipes\` | Your own recipe files (optional). |
 
-Zonder internet blijven je eerder opgehaalde gegevens en je afvinkingen beschikbaar.
+Previously retrieved data and your checkmarks remain available without internet.
 
-### Export en import
+### Export and import
 
-Onder "Gegevens en back-up" exporteer je je Legendaries, volgorde, afvinkingen, notities, herkomstgegevens en instellingen naar een
-bestand, en importeer je ze weer, bijvoorbeeld op een andere pc. **API-keys zitten nooit in een export.**
+Under "Data and backup", you can export your Legendaries, their order, checkmarks, notes, source data, and settings to a
+file, and import them again, for example on another PC. **API keys are never included in an export.**
 
-- Importeren vervangt je huidige Legendaries en instellingen. De app controleert het bestand eerst volledig en vraagt
-  bevestiging; een ongeldig bestand verandert niets en kost ook geen back-up.
-- Vlak voor een import bewaart de app wat je nu hebt in `backups\`, dus een vergissing is terug te draaien.
-- Kleine fouten in een verder geldig bestand worden overgeslagen en gemeld; een bestand dat geen geldige export is of
-  van een nieuwere versie komt, wordt als geheel geweigerd.
+- Importing replaces your current Legendaries and settings. The app validates the entire file first and asks for
+  confirmation; an invalid file changes nothing and does not create a backup either.
+- Immediately before an import, the app saves your current data in `backups\`, so you can undo a mistake.
+- Minor errors in an otherwise valid file are skipped and reported; a file that is not a valid export or comes from
+  a newer version is rejected entirely.
 
-### Problemen en logbestanden
+### Problems and log files
 
-De app schrijft een logbestand in `logs\` (één bestand per dag, een week bewaard, hooguit 1 MB per dag). Open de map met
-de knop **Logmap openen** in het hoofdvenster.
+The app writes a log file in `logs\` (one file per day, retained for one week, at most 1 MB per day). Open the folder with
+the **Open log folder** button in the main window.
 
-**Veilig delen.** Voordat iets in het logbestand komt, worden Guild Wars 2-keys, gw2treasures-keys, bearer-tokens,
-key-achtige waarden in webadressen en je Windows-gebruikersnaam in paden verwijderd. De app logt geen accountnaam,
-inventaris of notities. Lees het bestand toch even door voordat je het deelt. Een regel ziet er zo uit:
+**Safe to share.** Before anything is written to the log, Guild Wars 2 keys, gw2treasures keys, bearer tokens,
+key-like values in web addresses, and your Windows username in paths are removed. The app does not log your account name,
+inventory, or notes. Still, review the file before sharing it. A line looks like this:
 
 ```
-2026-10-22T19:30:00.0000000+00:00 [WRN] Synchronisatie mislukt: Geen verbinding met de Guild Wars 2-servers.
+2026-10-22T19:30:00.0000000+00:00 [WRN] Synchronization failed: No connection to the Guild Wars 2 servers.
 ```
 
-Onverwachte fouten worden gelogd en gemeld; je gegevens zijn veilig, want alles wordt direct opgeslagen. Blijven er
-binnen een minuut meerdere fouten komen, dan sluit de app zichzelf af.
+Unexpected errors are logged and reported; your data is safe because everything is saved immediately. If multiple errors
+continue to occur within a minute, the app shuts itself down.
 
-## Ontwikkelen
+## Development
 
-Vereisten: de **.NET SDK 10** (de exacte ondergrens staat in `global.json`) en Git. Bouwen kan ook op macOS en Linux
-(`EnableWindowsTargeting`); starten kan alleen op Windows.
+Requirements: the **.NET SDK 10** (the exact minimum version is specified in `global.json`) and Git. The project can also
+be built on macOS and Linux (`EnableWindowsTargeting`); it can only be run on Windows.
 
 ```powershell
 git clone https://github.com/boderoode/gw2-legendary-tracker.git
@@ -241,77 +235,77 @@ dotnet test
 dotnet run --project src/Gw2LegendaryTracker.App
 ```
 
-In **VS Code** staan taken (bouwen, testen, publiceren) en een startconfiguratie klaar in `.vscode`; installeer de
-voorgestelde extensies (C# Dev Kit). Het formatteren en de analyzers staan strikt: waarschuwingen zijn fouten
+In **VS Code**, tasks (build, test, publish) and a launch configuration are ready in `.vscode`; install the
+recommended extensions (C# Dev Kit). Formatting and analyzers are strict: warnings are errors
 (`Directory.Build.props`, `.editorconfig`).
 
 ```
-src/Gw2LegendaryTracker.Core            Domein: instellingen, voorraad, crafting-engine, doelen, export. Geen UI, geen I/O.
-src/Gw2LegendaryTracker.Infrastructure  SQLite, API-clients, DPAPI, logbestand
-src/Gw2LegendaryTracker.App             WPF: hoofdvenster, overlay, sneltoets
-tests/Gw2LegendaryTracker.Tests         xUnit (de DPAPI-tests draaien alleen op Windows)
-tools/Gw2LegendaryTracker.PackBuilder   Hulpprogramma voor ontwikkelaars: receptbestanden genereren en controleren
-installer/                              Inno Setup-script
-scripts/build.ps1                       Bouwt, test en verpakt zoals de release-workflow
+src/Gw2LegendaryTracker.Core            Domain: settings, inventory, crafting engine, goals, export. No UI, no I/O.
+src/Gw2LegendaryTracker.Infrastructure  SQLite, API clients, DPAPI, log file
+src/Gw2LegendaryTracker.App             WPF: main window, overlay, hotkey
+tests/Gw2LegendaryTracker.Tests         xUnit (DPAPI tests run only on Windows)
+tools/Gw2LegendaryTracker.PackBuilder   Developer utility: generate and validate recipe files
+installer/                              Inno Setup script
+scripts/build.ps1                       Builds, tests, and packages as in the release workflow
 ```
 
-### Een build maken
+### Creating a build
 
 ```powershell
-./scripts/build.ps1               # herstellen (vergrendeld), bouwen, testen, publiceren, zippen, checksums
-./scripts/build.ps1 -Installer    # ...en de installer (vereist Inno Setup 6)
+./scripts/build.ps1               # restore (locked), build, test, publish, zip, checksums
+./scripts/build.ps1 -Installer    # ...and the installer (requires Inno Setup 6)
 ```
 
-Dit is wat er in `artifacts\` komt, en wat de CI ook doet. Handmatig: 
+This is what goes into `artifacts\`, and what CI does as well. Manually:
 
 ```powershell
 dotnet publish src/Gw2LegendaryTracker.App -c Release -r win-x64 --self-contained -o artifacts/win-x64
 ```
 
-**Reproduceerbaarheid.** Dezelfde invoer geeft dezelfde bestanden: de pakketversies en hashes staan vast in
-`packages.lock.json` (de CI herstelt in vergrendelde modus en faalt als er iets afwijkt), de SDK-versie in
-`global.json`, release-builds vervangen bronpaden door een vaste waarde, en `.gitattributes` zorgt voor dezelfde
-regeleinden in elke checkout. Gecontroleerd:
+**Reproducibility.** The same inputs produce the same files: package versions and hashes are pinned in
+`packages.lock.json` (CI restores in locked mode and fails if anything differs), the SDK version is pinned in
+`global.json`, release builds replace source paths with a fixed value, and `.gitattributes` ensures the same line endings
+in every checkout. Verified:
 
-- dezelfde broncode, gebouwd vanuit twee verschillende mappen: alle 412 bestanden van de publish hebben dezelfde SHA256;
-- twee afzonderlijke Windows-runs van de CI op dezelfde commit: ook alle 412 bestanden gelijk.
+- The same source code, built from two different directories: all 412 published files have the same SHA256.
+- Two separate Windows CI runs on the same commit: all 412 files are identical as well.
 
-Niet beloofd: het **zipbestand en de installer zelf** (die bevatten tijdstempels; hun inhoud is wel gelijk), en
-bit-voor-bit gelijke bestanden tussen **verschillende besturingssystemen** of SDK-versies. Een build op macOS en een
-op Windows verschillen onder andere in padscheidingstekens in de assemblies, in bestandsversies in `deps.json` en in de
-opmaak van `runtimeconfig.json`. De bestanden uit de release zijn dus die van de Windows-CI.
+Not guaranteed: the **ZIP archive and installer themselves** (they contain timestamps; their contents are identical), and
+bit-for-bit identical files across **different operating systems** or SDK versions. A build on macOS and one on Windows
+differ in, among other things, path separators in assemblies, file versions in `deps.json`, and the formatting of
+`runtimeconfig.json`. The files in the release are therefore the ones produced by Windows CI.
 
-### Een release maken
+### Creating a release
 
-1. Zet de versie in `src/Gw2LegendaryTracker.App/Gw2LegendaryTracker.App.csproj` (`<Version>`), schrijf de notities in
-   `docs/release-notes/v<versie>.md` (de workflow weigert een release zonder) en commit.
-2. Repeteer de hele release zonder iets te publiceren: *Actions → Release → Run workflow*. Dit bouwt ook de installer.
-3. Maak een tag met dezelfde versie en push hem: `git tag v1.0.0` en `git push origin v1.0.0`. De workflow controleert
-   dat tag en projectversie gelijk zijn, bouwt en test alles, en maakt een release met installer, zip en
+1. Set the version in `src/Gw2LegendaryTracker.App/Gw2LegendaryTracker.App.csproj` (`<Version>`), write the notes in
+   `docs/release-notes/v<version>.md` (the workflow refuses a release without them), and commit.
+2. Rehearse the entire release without publishing anything: *Actions → Release → Run workflow*. This also builds the installer.
+3. Create a tag with the same version and push it: `git tag v1.0.0` and `git push origin v1.0.0`. The workflow checks
+   that the tag and project version match, builds and tests everything, and creates a release with the installer, ZIP, and
    `SHA256SUMS.txt`.
 
-### Receptdata genereren (alleen ontwikkelaars)
+### Generating recipe data (developers only)
 
-`data/recipes/legendary.json` is een terugval en testgeval. Opnieuw genereren en controleren:
+`data/recipes/legendary.json` is a fallback and test case. To regenerate and validate it:
 
 ```powershell
-$env:GW2TREASURES_KEY = "<key van api.gw2treasures.com>"
-dotnet run --project tools/Gw2LegendaryTracker.PackBuilder -- --root 30704   # 30704 = Twilight; herhaal --root voor meer
+$env:GW2TREASURES_KEY = "<key from api.gw2treasures.com>"
+dotnet run --project tools/Gw2LegendaryTracker.PackBuilder -- --root 30704   # 30704 = Twilight; repeat --root for more
 ```
 
-Het hulpprogramma schrijft niets als een id of naam niet klopt met de officiële API of een recept de officiële
-beschrijving tegenspreekt.
+The tool writes nothing if an ID or name does not match the official API or if a recipe contradicts the official
+description.
 
-## Status en bekende beperkingen
+## Status and known limitations
 
-Versie 1.0.0. Alle tien fasen van het ontwerp zijn gebouwd. De eigenaar gebruikt de app en de overlay op Windows; het
-systematische overlay-testplan en de installer op een schone computer zijn nog niet doorlopen.
+Version 1.0.0. All ten design phases have been implemented. The owner uses the app and overlay on Windows; the
+systematic overlay test plan and the installer on a clean computer have not yet been completed.
 
-- Alleen Nederlandstalig; alleen Windows 10 (1809) of nieuwer, x64.
-- Programma en installer zijn niet digitaal ondertekend, dus Windows toont een waarschuwing.
-- Geen eigen programma-icoon.
-- Exclusive fullscreen wordt niet ondersteund (zie de overlay).
-- De Legendary-recepten zijn afhankelijk van gw2treasures (zie Recepten).
-- Verkopersgegevens (Karma-aankopen e.d.) moet je zelf vastleggen, omdat er geen bron voor is (zie Verkopers en valuta).
-- De overlay is bewust niet veranderd voor verkopers; in de uitgebreide weergave verschijnen Karma en andere valuta wel vanzelf in het onderdeel Currencies zodra het plan ze nodig heeft.
-- Eigen, vaste reserveringen bestaan niet; de volgorde van je Legendaries regelt de verdeling.
+- Dutch language only; Windows 10 (1809) or later, x64 only. (English WIP)
+- The app and installer are not digitally signed, so Windows displays a warning.
+- No custom application icon.
+- Exclusive fullscreen is not supported (see the overlay section).
+- Legendary recipes depend on gw2treasures (see Recipes).
+- Vendor data (Karma purchases, etc.) must be entered manually because there is no source for it (see Vendors and currencies).
+- The overlay has deliberately not been changed for vendors; in the expanded view, Karma and other currencies appear automatically in the Currencies section when the plan requires them.
+- Custom, fixed reservations do not exist; the order of your Legendaries controls the allocation.
