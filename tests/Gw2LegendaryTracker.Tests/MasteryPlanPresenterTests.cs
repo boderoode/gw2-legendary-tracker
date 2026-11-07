@@ -24,6 +24,8 @@ public sealed class MasteryPlanPresenterTests
         Assert.Equal(1, summary.DoneCount);
         Assert.Equal(3, summary.TotalCount);
         Assert.Equal("33% · 1/3 stappen", summary.ProgressText);
+        Assert.Equal("33%", summary.PercentText);
+        Assert.Equal("1/3 stappen", summary.CountText);
         Assert.Equal("Nog ongeveer 1 u, plus 1 stap zonder schatting", summary.RemainingText);
         Assert.Equal(["Jade"], summary.Regions);
         Assert.Equal("1/2 stappen", summary.Phases[0].ProgressText);

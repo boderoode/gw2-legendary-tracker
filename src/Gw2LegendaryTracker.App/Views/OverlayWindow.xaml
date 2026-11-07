@@ -5,7 +5,7 @@
         Title="GW2 Legendary Tracker overlay"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanResizeWithGrip" Topmost="True" ShowInTaskbar="False" ShowActivated="False"
-        MinWidth="260" MinHeight="140" Width="300" Height="280"
+        MinWidth="260" MinHeight="140" Width="300" Height="300"
         Opacity="{Binding Opacity}">
 
     <Window.Resources>
@@ -196,11 +196,12 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Header: the goal, and three quiet buttons. It is also the drag handle. -->
+            <!-- Header: the goal or the plan, and three quiet buttons. It is also the drag handle. -->
             <Grid x:Name="DragHandle" Grid.Row="0" Background="Transparent" MouseLeftButtonDown="OnDragHandleMouseDown">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -208,10 +209,31 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Border Width="28" Height="28" CornerRadius="6" ClipToBounds="True" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <Border.Visibility>
+                        <Binding Path="IsLegendaryMode" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                    </Border.Visibility>
                     <Image Source="{Binding Goals.SelectedIconUrl}" />
                 </Border>
                 <TextBlock Grid.Column="1" Text="{Binding Goals.SelectedName}" FontSize="14" FontWeight="SemiBold"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding Goals.SelectedName}" />
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding Goals.SelectedName}">
+                    <TextBlock.Visibility>
+                        <Binding Path="IsLegendaryMode" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                    </TextBlock.Visibility>
+                </TextBlock>
+                <!-- Masteries: a star in the place of the item icon, and the plan's title. -->
+                <Border Width="28" Height="28" CornerRadius="6" Margin="0,0,10,0" VerticalAlignment="Center" Background="{StaticResource AccentSoftBrush}">
+                    <Border.Visibility>
+                        <Binding Path="IsMasteryMode" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                    </Border.Visibility>
+                    <TextBlock Text="&#xE734;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14"
+                               Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Grid.Column="1" Text="{Binding Masteries.OverlayTitle}" FontSize="14" FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding Masteries.OverlayTitle}">
+                    <TextBlock.Visibility>
+                        <Binding Path="IsMasteryMode" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                    </TextBlock.Visibility>
+                </TextBlock>
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button Content="&#xE72C;" Style="{StaticResource IconButton}" Command="{Binding SyncNowCommand}"
                             ToolTip="Nu bijwerken" AutomationProperties.Name="Nu bijwerken" />
@@ -222,215 +244,466 @@
                 </StackPanel>
             </Grid>
 
-            <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto" Focusable="False">
-                <StackPanel>
-                    <!-- Empty state: nothing selected yet. -->
-                    <StackPanel Margin="0,8,0,0">
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Visible" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Goals.HasSelection}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
-                        <TextBlock Text="Kies in het hoofdvenster een Legendary om te volgen." Style="{StaticResource Wrapping}" />
-                        <Button Content="Hoofdvenster openen" Style="{StaticResource SoftButton}" Command="{Binding ShowMainWindowCommand}"
-                                HorizontalAlignment="Left" Margin="0,12,0,0" />
-                    </StackPanel>
+            <!-- What the overlay shows; remembered across restarts. -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                <RadioButton Content="Legendaries" GroupName="OverlayMode" Style="{StaticResource PillTab}" IsChecked="{Binding IsLegendaryMode, Mode=TwoWay}"
+                             AutomationProperties.Name="Overlay toont Legendaries" />
+                <RadioButton Content="Masteries" GroupName="OverlayMode" Style="{StaticResource PillTab}" IsChecked="{Binding IsMasteryMode, Mode=TwoWay}"
+                             AutomationProperties.Name="Overlay toont Masteries" />
+            </StackPanel>
 
+            <ScrollViewer Grid.Row="2" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto" Focusable="False">
+                <StackPanel>
                     <StackPanel>
                         <StackPanel.Visibility>
-                            <Binding Path="Goals.HasSelection" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            <Binding Path="IsLegendaryMode" Converter="{x:Static local:VisibilityConverter.Instance}" />
                         </StackPanel.Visibility>
-
-                        <!-- 1. How far along: one number, the count beside it, a thin bar. -->
-                        <StackPanel>
-                            <StackPanel.Visibility>
-                                <Binding Path="Goals.HasPlanNumbers" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                            </StackPanel.Visibility>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding Goals.SelectedPercentText}" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" />
-                                <TextBlock Grid.Column="1" Text="{Binding Goals.SelectedPartsText}" Style="{StaticResource Secondary}"
-                                           HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8,0,0,3" TextTrimming="CharacterEllipsis" />
-                            </Grid>
-                            <ProgressBar Height="4" Margin="0,6,0,0" Style="{StaticResource SoftBar}" Value="{Binding Goals.SelectedProgress, Mode=OneWay}" AutomationProperties.Name="Voortgang" />
+                        <!-- Empty state: nothing selected yet. -->
+                        <StackPanel Margin="0,8,0,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Goals.HasSelection}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="Kies in het hoofdvenster een Legendary om te volgen." Style="{StaticResource Wrapping}" />
+                            <Button Content="Hoofdvenster openen" Style="{StaticResource SoftButton}" Command="{Binding ShowMainWindowCommand}"
+                                    HorizontalAlignment="Left" Margin="0,12,0,0" />
                         </StackPanel>
 
-                        <!-- When the numbers cannot be trusted (no recipe data), say so instead. -->
-                        <TextBlock Text="{Binding Goals.RecipeNotice}" Style="{StaticResource Wrapping}" FontSize="12" Foreground="{StaticResource AccentBrush}" Margin="0,2,0,0">
-                            <TextBlock.Visibility>
-                                <Binding Path="Goals.HasRecipeNotice" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                            </TextBlock.Visibility>
-                        </TextBlock>
+                        <StackPanel>
+                            <StackPanel.Visibility>
+                                <Binding Path="Goals.HasSelection" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            </StackPanel.Visibility>
 
-                        <!-- 2. What to do now. -->
-                        <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="8" Background="{StaticResource SurfaceBrush}">
-                            <Border.Visibility>
-                                <Binding Path="Goals.HasNextStep" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                            </Border.Visibility>
+                            <!-- 1. How far along: one number, the count beside it, a thin bar. -->
                             <StackPanel>
-                                <TextBlock Text="VOLGENDE STAP" Style="{StaticResource Caption}" Margin="0,0,0,4" />
+                                <StackPanel.Visibility>
+                                    <Binding Path="Goals.HasPlanNumbers" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                </StackPanel.Visibility>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <Border Width="24" Height="24" CornerRadius="5" ClipToBounds="True" Margin="0,0,10,0" VerticalAlignment="Top">
-                                        <Image Source="{Binding Goals.NextStepIconUrl}" />
-                                    </Border>
-                                    <TextBlock Grid.Column="1" Text="{Binding Goals.NextStepText}" FontSize="14" FontWeight="SemiBold" Style="{StaticResource Wrapping}" />
+                                    <TextBlock Text="{Binding Goals.SelectedPercentText}" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Goals.SelectedPartsText}" Style="{StaticResource Secondary}"
+                                               HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8,0,0,3" TextTrimming="CharacterEllipsis" />
                                 </Grid>
+                                <ProgressBar Height="4" Margin="0,6,0,0" Style="{StaticResource SoftBar}" Value="{Binding Goals.SelectedProgress, Mode=OneWay}" AutomationProperties.Name="Voortgang" />
                             </StackPanel>
-                        </Border>
 
-                        <!-- 3. What is still missing (compact view: the biggest gaps). -->
-                        <StackPanel Margin="0,14,0,0" Style="{StaticResource HideWhenExpanded}">
-                            <StackPanel.Resources>
-                                <Style TargetType="ItemsControl">
-                                    <Setter Property="Focusable" Value="False" />
-                                </Style>
-                            </StackPanel.Resources>
-                            <StackPanel>
-                                <StackPanel.Visibility>
-                                    <Binding Path="Goals.HasOverlayShortages" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                </StackPanel.Visibility>
-                                <TextBlock Text="NOG NODIG" Style="{StaticResource Caption}" />
-                                <ItemsControl ItemsSource="{Binding Goals.OverlayShortages}" ItemTemplate="{StaticResource CoverageRow}" />
-                            </StackPanel>
-                            <TextBlock Text="Je hebt alles wat nodig is." Style="{StaticResource Secondary}">
+                            <!-- When the numbers cannot be trusted (no recipe data), say so instead. -->
+                            <TextBlock Text="{Binding Goals.RecipeNotice}" Style="{StaticResource Wrapping}" FontSize="12" Foreground="{StaticResource AccentBrush}" Margin="0,2,0,0">
                                 <TextBlock.Visibility>
-                                    <Binding Path="Goals.ShowAllCovered" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    <Binding Path="Goals.HasRecipeNotice" Converter="{x:Static local:VisibilityConverter.Instance}" />
                                 </TextBlock.Visibility>
                             </TextBlock>
-                        </StackPanel>
 
-                        <!-- Expanded view: three tabs instead of six stacked blocks. -->
-                        <StackPanel Margin="0,14,0,0">
-                            <StackPanel.Visibility>
-                                <Binding Path="IsExpanded" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                            </StackPanel.Visibility>
+                            <!-- 2. What to do now. -->
+                            <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="8" Background="{StaticResource SurfaceBrush}">
+                                <Border.Visibility>
+                                    <Binding Path="Goals.HasNextStep" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                </Border.Visibility>
+                                <StackPanel>
+                                    <TextBlock Text="VOLGENDE STAP" Style="{StaticResource Caption}" Margin="0,0,0,4" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="24" Height="24" CornerRadius="5" ClipToBounds="True" Margin="0,0,10,0" VerticalAlignment="Top">
+                                            <Image Source="{Binding Goals.NextStepIconUrl}" />
+                                        </Border>
+                                        <TextBlock Grid.Column="1" Text="{Binding Goals.NextStepText}" FontSize="14" FontWeight="SemiBold" Style="{StaticResource Wrapping}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                                <RadioButton Content="Nodig" GroupName="OverlayTabs" Style="{StaticResource PillTab}" IsChecked="{Binding IsNeedsTab, Mode=TwoWay}" />
-                                <RadioButton Content="Onderdelen" GroupName="OverlayTabs" Style="{StaticResource PillTab}" IsChecked="{Binding IsPartsTab, Mode=TwoWay}" />
-                                <RadioButton Content="Boom" GroupName="OverlayTabs" Style="{StaticResource PillTab}" IsChecked="{Binding IsTreeTab, Mode=TwoWay}" />
+                            <!-- 3. What is still missing (compact view: the biggest gaps). -->
+                            <StackPanel Margin="0,14,0,0" Style="{StaticResource HideWhenExpanded}">
+                                <StackPanel.Resources>
+                                    <Style TargetType="ItemsControl">
+                                        <Setter Property="Focusable" Value="False" />
+                                    </Style>
+                                </StackPanel.Resources>
+                                <StackPanel>
+                                    <StackPanel.Visibility>
+                                        <Binding Path="Goals.HasOverlayShortages" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </StackPanel.Visibility>
+                                    <TextBlock Text="NOG NODIG" Style="{StaticResource Caption}" />
+                                    <ItemsControl ItemsSource="{Binding Goals.OverlayShortages}" ItemTemplate="{StaticResource CoverageRow}" />
+                                </StackPanel>
+                                <TextBlock Text="Je hebt alles wat nodig is." Style="{StaticResource Secondary}">
+                                    <TextBlock.Visibility>
+                                        <Binding Path="Goals.ShowAllCovered" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </TextBlock.Visibility>
+                                </TextBlock>
                             </StackPanel>
 
-                            <!-- Tab: Nodig -->
-                            <StackPanel>
+                            <!-- Expanded view: three tabs instead of six stacked blocks. -->
+                            <StackPanel Margin="0,14,0,0">
                                 <StackPanel.Visibility>
-                                    <Binding Path="IsNeedsTab" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    <Binding Path="IsExpanded" Converter="{x:Static local:VisibilityConverter.Instance}" />
                                 </StackPanel.Visibility>
-                                <Grid Margin="0,0,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="MATERIALEN" Style="{StaticResource Caption}" Margin="0" VerticalAlignment="Center" />
-                                    <CheckBox Grid.Column="1" Content="Alleen tekort" Style="{StaticResource PillToggle}" IsChecked="{Binding OverlayShowOnlyMissing, Mode=TwoWay}" />
-                                </Grid>
-                                <TextBlock Text="{Binding Goals.MaterialsHint}" Style="{StaticResource Secondary}" Margin="0,0,0,8" />
-                                <ItemsControl ItemsSource="{Binding Goals.MaterialRows}" ItemTemplate="{StaticResource CoverageRow}" Focusable="False" />
 
-                                <StackPanel Margin="0,8,0,0">
-                                    <StackPanel.Visibility>
-                                        <Binding Path="Goals.HasCurrencies" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                    </StackPanel.Visibility>
-                                    <TextBlock Text="VALUTA" Style="{StaticResource Caption}" />
-                                    <ItemsControl ItemsSource="{Binding Goals.CurrencyRows}" ItemTemplate="{StaticResource CurrencyRow}" Focusable="False" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <RadioButton Content="Nodig" GroupName="OverlayTabs" Style="{StaticResource PillTab}" IsChecked="{Binding IsNeedsTab, Mode=TwoWay}" />
+                                    <RadioButton Content="Onderdelen" GroupName="OverlayTabs" Style="{StaticResource PillTab}" IsChecked="{Binding IsPartsTab, Mode=TwoWay}" />
+                                    <RadioButton Content="Boom" GroupName="OverlayTabs" Style="{StaticResource PillTab}" IsChecked="{Binding IsTreeTab, Mode=TwoWay}" />
                                 </StackPanel>
 
-                                <StackPanel Margin="0,8,0,0">
+                                <!-- Tab: Nodig -->
+                                <StackPanel>
                                     <StackPanel.Visibility>
-                                        <Binding Path="Goals.HasReservations" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                        <Binding Path="IsNeedsTab" Converter="{x:Static local:VisibilityConverter.Instance}" />
                                     </StackPanel.Visibility>
-                                    <TextBlock Text="AL IN GEBRUIK DOOR HOGERE LEGENDARIES" Style="{StaticResource Caption}" />
-                                    <ItemsControl ItemsSource="{Binding Goals.ReservationRows}" Focusable="False">
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="MATERIALEN" Style="{StaticResource Caption}" Margin="0" VerticalAlignment="Center" />
+                                        <CheckBox Grid.Column="1" Content="Alleen tekort" Style="{StaticResource PillToggle}" IsChecked="{Binding OverlayShowOnlyMissing, Mode=TwoWay}" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding Goals.MaterialsHint}" Style="{StaticResource Secondary}" Margin="0,0,0,8" />
+                                    <ItemsControl ItemsSource="{Binding Goals.MaterialRows}" ItemTemplate="{StaticResource CoverageRow}" Focusable="False" />
+
+                                    <StackPanel Margin="0,8,0,0">
+                                        <StackPanel.Visibility>
+                                            <Binding Path="Goals.HasCurrencies" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                        </StackPanel.Visibility>
+                                        <TextBlock Text="VALUTA" Style="{StaticResource Caption}" />
+                                        <ItemsControl ItemsSource="{Binding Goals.CurrencyRows}" ItemTemplate="{StaticResource CurrencyRow}" Focusable="False" />
+                                    </StackPanel>
+
+                                    <StackPanel Margin="0,8,0,0">
+                                        <StackPanel.Visibility>
+                                            <Binding Path="Goals.HasReservations" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                        </StackPanel.Visibility>
+                                        <TextBlock Text="AL IN GEBRUIK DOOR HOGERE LEGENDARIES" Style="{StaticResource Caption}" />
+                                        <ItemsControl ItemsSource="{Binding Goals.ReservationRows}" Focusable="False">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Text}" Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,0,0,4" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Tab: Onderdelen -->
+                                <StackPanel>
+                                    <StackPanel.Visibility>
+                                        <Binding Path="IsPartsTab" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </StackPanel.Visibility>
+                                    <TextBlock Text="Vink af wat je al hebt gemaakt of gekregen." Style="{StaticResource Secondary}" Margin="0,0,0,8" />
+                                    <TextBlock Text="Nog geen onderdelen om af te vinken.">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Goals.HasChecklist}" Value="False">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <ItemsControl ItemsSource="{Binding Goals.Checklist}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding Text}" Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,0,0,4" />
+                                                <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" Focusable="False" Margin="0,0,0,10"
+                                                          ToolTip="{Binding Name}" AutomationProperties.Name="{Binding Name}"
+                                                          VerticalAlignment="Top" VerticalContentAlignment="Top">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding StatusText}" Style="{StaticResource Secondary}" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                </CheckBox>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
                                 </StackPanel>
-                            </StackPanel>
 
-                            <!-- Tab: Onderdelen -->
-                            <StackPanel>
+                                <!-- Tab: Boom -->
+                                <StackPanel>
+                                    <StackPanel.Visibility>
+                                        <Binding Path="IsTreeTab" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </StackPanel.Visibility>
+                                    <TreeView ItemsSource="{Binding Goals.TreeRoots}" Focusable="False" AutomationProperties.Name="Crafting tree">
+                                        <TreeView.ItemContainerStyle>
+                                            <Style TargetType="TreeViewItem">
+                                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                                <Setter Property="Focusable" Value="False" />
+                                            </Style>
+                                        </TreeView.ItemContainerStyle>
+                                        <TreeView.ItemTemplate>
+                                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                                <StackPanel Orientation="Horizontal" Margin="0,3">
+                                                    <Border Width="16" Height="16" CornerRadius="3" ClipToBounds="True" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                        <Image Source="{Binding IconUrl}" />
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource TreeStatusText}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </HierarchicalDataTemplate>
+                                        </TreeView.ItemTemplate>
+                                    </TreeView>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Masteries: the imported plan. Same order as above: how far, what now, then the details when expanded. -->
+                    <StackPanel DataContext="{Binding Masteries}">
+                        <StackPanel.Visibility>
+                            <Binding Path="DataContext.IsMasteryMode" RelativeSource="{RelativeSource AncestorType=Window}" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                        </StackPanel.Visibility>
+
+                        <!-- Empty state: no plan imported yet. -->
+                        <StackPanel Margin="0,8,0,0">
+                            <StackPanel.Visibility>
+                                <Binding Path="HasNoPlan" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            </StackPanel.Visibility>
+                            <TextBlock Text="Importeer in het hoofdvenster (tab Masteries) een masteryplan van een AI." Style="{StaticResource Wrapping}" />
+                            <Button Content="Hoofdvenster openen" Style="{StaticResource SoftButton}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                                    Command="{Binding DataContext.ShowMasteriesInMainWindowCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                        </StackPanel>
+
+                        <StackPanel>
+                            <StackPanel.Visibility>
+                                <Binding Path="HasPlan" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                            </StackPanel.Visibility>
+
+                            <!-- 1. How far along the plan is. -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding PercentText}" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" />
+                                <TextBlock Grid.Column="1" Text="{Binding CountText}" Style="{StaticResource Secondary}"
+                                           HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8,0,0,3" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                            <ProgressBar Height="4" Margin="0,6,0,0" Style="{StaticResource SoftBar}" Value="{Binding Progress, Mode=OneWay}" AutomationProperties.Name="Voortgang van het plan" />
+                            <TextBlock Text="{Binding RemainingText}" Style="{StaticResource Secondary}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding RemainingText}" />
+
+                            <!-- 2. What to do now. -->
+                            <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="8" Background="{StaticResource SurfaceBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="VOLGENDE STAP" Style="{StaticResource Caption}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding NextStepEmptyText}" Style="{StaticResource Wrapping}" FontSize="12" Foreground="{StaticResource MutedBrush}">
+                                        <TextBlock.Visibility>
+                                            <Binding Path="HasNextStep" Converter="{x:Static local:InverseVisibilityConverter.Instance}" />
+                                        </TextBlock.Visibility>
+                                    </TextBlock>
+                                    <Grid DataContext="{Binding NextStep}">
+                                        <Grid.Visibility>
+                                            <Binding Path="DataContext.Masteries.HasNextStep" RelativeSource="{RelativeSource AncestorType=Window}" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                        </Grid.Visibility>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Style="{StaticResource Wrapping}" />
+                                            <TextBlock Text="{Binding MetaText}" Style="{StaticResource Secondary}" Margin="0,2,0,0" TextWrapping="Wrap">
+                                                <TextBlock.Visibility>
+                                                    <Binding Path="HasMeta" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                                </TextBlock.Visibility>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="6,-4,-6,0">
+                                            <Button Content="&#xE73E;" Style="{StaticResource IconButton}" ToolTip="Klaar: vink deze stap af"
+                                                    AutomationProperties.Name="{Binding CheckBoxName}" CommandParameter="{Binding}"
+                                                    Command="{Binding DataContext.Masteries.MarkDoneCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                            <Button Content="&#xE707;" Style="{StaticResource IconButton}" ToolTip="{Binding WaypointToolTip}"
+                                                    AutomationProperties.Name="Kopieer waypoint" CommandParameter="{Binding Waypoint}"
+                                                    Command="{Binding DataContext.Masteries.OverlayCopyWaypointCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                <Button.Visibility>
+                                                    <Binding Path="HasWaypoint" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                                </Button.Visibility>
+                                            </Button>
+                                            <Button Content="&#xE774;" Style="{StaticResource IconButton}" ToolTip="{Binding LinkToolTip}"
+                                                    AutomationProperties.Name="Open de wiki" CommandParameter="{Binding FirstLink.Url}"
+                                                    Command="{Binding DataContext.Masteries.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                <Button.Visibility>
+                                                    <Binding Path="HasLinks" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                                </Button.Visibility>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Without "progression" nothing ticks off by itself; say so once, quietly. -->
+                            <TextBlock Text="Je key mag je voortgang niet lezen: vink stappen zelf af." Style="{StaticResource Secondary}" TextWrapping="Wrap" Margin="0,8,0,0">
+                                <TextBlock.Visibility>
+                                    <Binding Path="NeedsProgressionPermission" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                </TextBlock.Visibility>
+                            </TextBlock>
+
+                            <!-- Expanded view: the current phase, or all phases. -->
+                            <StackPanel Margin="0,14,0,0">
                                 <StackPanel.Visibility>
-                                    <Binding Path="IsPartsTab" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    <Binding Path="DataContext.IsExpanded" RelativeSource="{RelativeSource AncestorType=Window}" Converter="{x:Static local:VisibilityConverter.Instance}" />
                                 </StackPanel.Visibility>
-                                <TextBlock Text="Vink af wat je al hebt gemaakt of gekregen." Style="{StaticResource Secondary}" Margin="0,0,0,8" />
-                                <TextBlock Text="Nog geen onderdelen om af te vinken.">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Secondary}">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Goals.HasChecklist}" Value="False">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <ItemsControl ItemsSource="{Binding Goals.Checklist}" Focusable="False">
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <RadioButton Content="Deze fase" GroupName="OverlayMasteryTabs" Style="{StaticResource PillTab}"
+                                                 IsChecked="{Binding DataContext.IsPhaseTab, Mode=TwoWay, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                    <RadioButton Content="Fases" GroupName="OverlayMasteryTabs" Style="{StaticResource PillTab}"
+                                                 IsChecked="{Binding DataContext.IsPhasesTab, Mode=TwoWay, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                </StackPanel>
+
+                                <!-- Tab: Deze fase -->
+                                <StackPanel>
+                                    <StackPanel.Visibility>
+                                        <Binding Path="DataContext.IsPhaseTab" RelativeSource="{RelativeSource AncestorType=Window}" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </StackPanel.Visibility>
+                                    <TextBlock Text="Alle stappen zijn klaar." Style="{StaticResource Secondary}">
+                                        <TextBlock.Visibility>
+                                            <Binding Path="HasOverlayPhase" Converter="{x:Static local:InverseVisibilityConverter.Instance}" />
+                                        </TextBlock.Visibility>
+                                    </TextBlock>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.Visibility>
+                                            <Binding Path="HasOverlayPhase" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                        </Grid.Visibility>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding OverlayPhaseTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding OverlayPhaseTitle}" />
+                                        <TextBlock Grid.Column="1" Text="{Binding OverlayPhaseProgressText}" Style="{StaticResource Secondary}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <ItemsControl ItemsSource="{Binding OverlaySteps}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,10">
+                                                    <Grid.Style>
+                                                        <!-- Done steps stay in reach to undo a slip, but step back. -->
+                                                        <Style TargetType="Grid">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsDone}" Value="True">
+                                                                    <Setter Property="Opacity" Value="0.55" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" Focusable="False" VerticalAlignment="Top" Margin="0,1,8,0"
+                                                              AutomationProperties.Name="{Binding CheckBoxName}" ToolTip="Afvinken" />
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}" />
+                                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                            <Path Style="{StaticResource StepStatusIcon}" Width="10" Height="10" Margin="0,0,5,0" />
+                                                            <TextBlock Text="{Binding StatusText}" Style="{StaticResource Secondary}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding WaitingText}" Style="{StaticResource Secondary}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0">
+                                                            <TextBlock.Visibility>
+                                                                <Binding Path="HasWaitingText" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                                            </TextBlock.Visibility>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding MetaText}" Style="{StaticResource Secondary}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" ToolTip="{Binding MetaText}">
+                                                            <TextBlock.Visibility>
+                                                                <Binding Path="HasMeta" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                                            </TextBlock.Visibility>
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" Margin="4,-4,-6,0">
+                                                        <Button Content="&#xE707;" Style="{StaticResource IconButton}" ToolTip="{Binding WaypointToolTip}"
+                                                                AutomationProperties.Name="Kopieer waypoint" CommandParameter="{Binding Waypoint}"
+                                                                Command="{Binding DataContext.Masteries.OverlayCopyWaypointCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                            <Button.Visibility>
+                                                                <Binding Path="HasWaypoint" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                                            </Button.Visibility>
+                                                        </Button>
+                                                        <Button Content="&#xE774;" Style="{StaticResource IconButton}" ToolTip="{Binding LinkToolTip}"
+                                                                AutomationProperties.Name="Open de wiki" CommandParameter="{Binding FirstLink.Url}"
+                                                                Command="{Binding DataContext.Masteries.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                                            <Button.Visibility>
+                                                                <Binding Path="HasLinks" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                                            </Button.Visibility>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <!-- Tab: Fases -->
+                                <ItemsControl ItemsSource="{Binding PhaseOverview}" Focusable="False">
+                                    <ItemsControl.Visibility>
+                                        <Binding Path="DataContext.IsPhasesTab" RelativeSource="{RelativeSource AncestorType=Window}" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </ItemsControl.Visibility>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" Focusable="False" Margin="0,0,0,10"
-                                                      ToolTip="{Binding Name}" AutomationProperties.Name="{Binding Name}"
-                                                      VerticalAlignment="Top" VerticalContentAlignment="Top">
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource Secondary}" TextTrimming="CharacterEllipsis" />
+                                            <Grid Margin="0,0,0,9" AutomationProperties.Name="{Binding AccessibleName}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                    <!-- Not colour alone: the current phase also says so. -->
+                                                    <TextBlock Text="nu · " FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}">
+                                                        <TextBlock.Visibility>
+                                                            <Binding Path="IsCurrent" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                                        </TextBlock.Visibility>
+                                                    </TextBlock>
+                                                    <TextBlock Text="{Binding ProgressText}" Style="{StaticResource Secondary}" />
                                                 </StackPanel>
-                                            </CheckBox>
+                                                <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Margin="0,5,0,0" Height="3" Style="{StaticResource SoftBar}" Value="{Binding Progress, Mode=OneWay}" />
+                                            </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </StackPanel>
-
-                            <!-- Tab: Boom -->
-                            <StackPanel>
-                                <StackPanel.Visibility>
-                                    <Binding Path="IsTreeTab" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                </StackPanel.Visibility>
-                                <TreeView ItemsSource="{Binding Goals.TreeRoots}" Focusable="False" AutomationProperties.Name="Crafting tree">
-                                    <TreeView.ItemContainerStyle>
-                                        <Style TargetType="TreeViewItem">
-                                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                                            <Setter Property="Focusable" Value="False" />
-                                        </Style>
-                                    </TreeView.ItemContainerStyle>
-                                    <TreeView.ItemTemplate>
-                                        <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                                <Border Width="16" Height="16" CornerRadius="3" ClipToBounds="True" Margin="0,0,6,0" VerticalAlignment="Center">
-                                                    <Image Source="{Binding IconUrl}" />
-                                                </Border>
-                                                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                                                <TextBlock Text="{Binding StatusText}" Style="{StaticResource TreeStatusText}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </HierarchicalDataTemplate>
-                                    </TreeView.ItemTemplate>
-                                </TreeView>
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- 4. Status: small, in the corner. The full text is in the tooltip. -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0" ToolTip="{Binding SyncText}">
+            <!-- 4. Status: small, in the corner. The full text is in the tooltip. A short confirmation (a copied waypoint) takes its place for a moment. -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0" ToolTip="{Binding SyncText}">
+                <StackPanel.Visibility>
+                    <Binding Path="Masteries.HasOverlayNotice" Converter="{x:Static local:InverseVisibilityConverter.Instance}" />
+                </StackPanel.Visibility>
                 <Ellipse Style="{StaticResource SyncDot}" Margin="0,0,6,0" />
                 <TextBlock Text="{Binding SyncShortText}" Style="{StaticResource Secondary}" FontSize="11" />
             </StackPanel>
+            <TextBlock Grid.Row="3" Text="{Binding Masteries.OverlayNotice}" Style="{StaticResource Secondary}" FontSize="11" Foreground="{StaticResource AccentBrush}"
+                       HorizontalAlignment="Right" Margin="0,8,0,0" AutomationProperties.LiveSetting="Polite">
+                <TextBlock.Visibility>
+                    <Binding Path="Masteries.HasOverlayNotice" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                </TextBlock.Visibility>
+            </TextBlock>
         </Grid>
     </Border>
 </Window>

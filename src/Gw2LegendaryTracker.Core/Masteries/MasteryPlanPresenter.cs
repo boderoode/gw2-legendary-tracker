@@ -23,10 +23,15 @@ public sealed record MasteryTrackView(int Id, string Name, int Trained, int Max,
 /// <param name="Earned">Points earned in the region; <c>null</c> when unknown.</param>
 public sealed record MasteryRegionView(string Region, string DisplayName, int? Earned, int? Spent, string PointsText, IReadOnlyList<MasteryTrackView> Tracks);
 
+/// <param name="PercentText">E.g. "42%"; the overlay shows it large.</param>
+/// <param name="CountText">E.g. "21/50 stappen".</param>
+/// <param name="ProgressText">Both together, e.g. "42% · 21/50 stappen".</param>
 public sealed record MasteryPlanSummary(
     int DoneCount,
     int TotalCount,
     double Progress,
+    string PercentText,
+    string CountText,
     string ProgressText,
     string RemainingText,
     MasteryStepView? NextStep,
@@ -75,13 +80,16 @@ public static class MasteryPlanPresenter
         var all = phases.SelectMany(p => p.Steps).ToList();
         var done = all.Count(s => s.Status.IsDone);
         var progress = Fraction(done, all.Count);
-        var percent = (progress * 100).ToString("0", culture);
+        var percent = (progress * 100).ToString("0", culture) + "%";
+        var count = CountText(done, all.Count, culture);
 
         return new MasteryPlanSummary(
             done,
             all.Count,
             progress,
-            $"{percent}% · {CountText(done, all.Count, culture)}",
+            percent,
+            count,
+            $"{percent} · {count}",
             RemainingText(all, culture),
             NextStep(all),
             phases,

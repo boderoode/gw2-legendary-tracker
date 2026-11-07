@@ -81,6 +81,10 @@ public sealed class MasteryStepRow : ObservableObject
     /// <summary>The overlay has room for one link: the first the plan gives.</summary>
     public MasteryLinkRow? FirstLink => Links.Count > 0 ? Links[0] : null;
 
+    public string? LinkToolTip => FirstLink is { } link ? $"Wiki: {link.Label}" : null;
+
+    public string? WaypointToolTip => Waypoint is null ? null : $"Kopieer waypoint {Waypoint}";
+
     public MasteryStepState State { get; private set; }
 
     public string StatusText { get; private set; } = string.Empty;
@@ -330,6 +334,14 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
     public string ProgressText => _summary?.ProgressText ?? string.Empty;
 
     public string RemainingText => _summary?.RemainingText ?? string.Empty;
+
+    /// <summary>Overlay: the percentage shown large, and the step count beside it.</summary>
+    public string PercentText => _summary?.PercentText ?? string.Empty;
+
+    public string CountText => _summary?.CountText ?? string.Empty;
+
+    /// <summary>Overlay header: the plan's title, or the name of the mode while there is no plan.</summary>
+    public string OverlayTitle => HasPlan ? PlanTitle : "Masteries";
 
     public MasteryStepRow? NextStep
     {

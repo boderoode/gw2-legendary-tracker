@@ -12,7 +12,7 @@ public sealed class OverlayController : IDisposable
     private static readonly TimeSpan BoundsPersistDelay = TimeSpan.FromMilliseconds(500);
     private const double DefaultMargin = 24;
     private const double CompactWidth = 300;
-    private const double CompactHeight = 280;
+    private const double CompactHeight = 300;
     private const double ExpandedWidth = 360;
     private const double ExpandedHeight = 520;
 
