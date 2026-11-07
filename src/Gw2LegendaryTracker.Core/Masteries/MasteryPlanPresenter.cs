@@ -95,6 +95,23 @@ public static class MasteryPlanPresenter
             .ThenBy(s => s.Order)
             .FirstOrDefault();
 
+    /// <summary>The phase to work on now: the first one in the plan that still has open steps; <c>null</c> when all is done.</summary>
+    public static MasteryPhaseView? CurrentPhase(MasteryPlanSummary summary)
+    {
+        ArgumentNullException.ThrowIfNull(summary);
+        return summary.Phases.FirstOrDefault(p => p.DoneCount < p.TotalCount);
+    }
+
+    /// <summary>
+    /// The steps of a phase as the overlay lists them: open steps first in the plan's order, then the done ones, so a
+    /// step ticked by mistake stays in reach.
+    /// </summary>
+    public static IReadOnlyList<MasteryStepView> OverlaySteps(MasteryPhaseView phase)
+    {
+        ArgumentNullException.ThrowIfNull(phase);
+        return [.. phase.Steps.OrderBy(s => s.Status.IsDone).ThenBy(s => s.Order)];
+    }
+
     /// <summary>Applies the filters of the tab. Phases without visible steps are left out; their progress stays that of the whole phase.</summary>
     /// <param name="region"><c>null</c> for all regions.</param>
     public static IReadOnlyList<MasteryPhaseView> Filter(IReadOnlyList<MasteryPhaseView> phases, bool onlyOpen, string? region)
