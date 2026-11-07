@@ -40,6 +40,8 @@
                         </TextBlock>
                         <TextBlock Text="2. Klik op &quot;New Key&quot; en geef de key een naam, bijvoorbeeld &quot;Legendary Tracker&quot;." Margin="0,2,0,0" />
                         <TextBlock Text="3. Zet een vinkje bij: account, inventories, characters en wallet. Meer is niet nodig." Margin="0,2,0,0" />
+                        <TextBlock Style="{StaticResource MutedText}" Margin="16,2,0,0"
+                                   Text="Optioneel: progression (Masteries vinken vanzelf af) en unlocks (Fashion Studio ziet wat je al hebt). Zonder deze rechten werkt alles, alleen met minder automatisch." />
                         <TextBlock Text="4. Kopieer de key en plak hem hieronder." Margin="0,2,0,8" />
 
                         <PasswordBox x:Name="ApiKeyBox" Padding="8" FontSize="14" MaxLength="100"

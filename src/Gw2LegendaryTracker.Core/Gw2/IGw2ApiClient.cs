@@ -1,5 +1,6 @@
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Items;
+using Gw2LegendaryTracker.Core.Masteries;
 using Gw2LegendaryTracker.Core.Trading;
 
 namespace Gw2LegendaryTracker.Core.Gw2;
@@ -37,4 +38,19 @@ public interface IGw2ApiClient
 
     /// <summary>The names of all wallet currencies (public), e.g. to pick one in a form.</summary>
     Task<IReadOnlyDictionary<int, string>> GetAllCurrencyNamesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>All mastery tracks with their levels (public, no key needed). Malformed tracks are left out.</summary>
+    Task<IReadOnlyList<MasteryDefinition>> GetMasteriesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>The mastery tracks the account has trained in. Needs the "progression" permission.</summary>
+    Task<IReadOnlyList<AccountMastery>> GetAccountMasteriesAsync(string apiKey, CancellationToken cancellationToken = default);
+
+    /// <summary>Mastery points per region and the unlocked mastery tracks. Needs the "progression" permission.</summary>
+    Task<AccountMasteryPoints> GetAccountMasteryPointsAsync(string apiKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Progress on the given achievements. Needs the "progression" permission. Achievements the account has
+    /// no progress on are left out of the result.
+    /// </summary>
+    Task<IReadOnlyList<AchievementProgress>> GetAccountAchievementsAsync(string apiKey, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default);
 }

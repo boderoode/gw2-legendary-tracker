@@ -352,6 +352,14 @@ public class LegendaryCatalogRefreshTests
         public Task<IReadOnlyDictionary<int, string>> GetCurrencyNamesAsync(IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => throw Offline();
 
         public Task<IReadOnlyDictionary<int, string>> GetAllCurrencyNamesAsync(CancellationToken cancellationToken = default) => throw Offline();
+
+        public Task<IReadOnlyList<Core.Masteries.MasteryDefinition>> GetMasteriesAsync(CancellationToken cancellationToken = default) => throw Offline();
+
+        public Task<IReadOnlyList<Core.Masteries.AccountMastery>> GetAccountMasteriesAsync(string apiKey, CancellationToken cancellationToken = default) => throw Offline();
+
+        public Task<Core.Masteries.AccountMasteryPoints> GetAccountMasteryPointsAsync(string apiKey, CancellationToken cancellationToken = default) => throw Offline();
+
+        public Task<IReadOnlyList<Core.Masteries.AchievementProgress>> GetAccountAchievementsAsync(string apiKey, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default) => throw Offline();
     }
 }
 

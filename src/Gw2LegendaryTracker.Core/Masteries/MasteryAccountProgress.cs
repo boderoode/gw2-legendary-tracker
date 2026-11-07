@@ -9,6 +9,9 @@ public sealed record RegionPoints(string Region, int Spent, int Earned);
 
 public sealed record AchievementProgress(int Id, bool Done, int Current, int Max);
 
+/// <summary>The answer of <c>/v2/account/mastery/points</c>.</summary>
+public sealed record AccountMasteryPoints(IReadOnlyList<RegionPoints> Totals, IReadOnlyList<int> Unlocked);
+
 /// <summary>The mastery-related account data from the last successful mastery sync.</summary>
 public sealed record MasteryAccountProgress(
     DateTimeOffset CapturedUtc,

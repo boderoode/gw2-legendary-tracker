@@ -8,6 +8,7 @@ using Gw2LegendaryTracker.Core.Cosmetics;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
+using Gw2LegendaryTracker.Core.Masteries;
 using Gw2LegendaryTracker.Core.Trading;
 
 namespace Gw2LegendaryTracker.Infrastructure.Gw2;
@@ -168,6 +169,60 @@ public sealed class Gw2ApiClient : IGw2ApiClient, ICosmeticsApiClient
                 RecipeSource.Api,
                 RequiresGuildUpgrades: r.GuildIngredients is { Count: > 0 }))
             .ToList();
+    }
+
+    public async Task<IReadOnlyList<MasteryDefinition>> GetMasteriesAsync(CancellationToken cancellationToken = default)
+    {
+        var dtos = await GetAsync<List<MasteryDto?>>("v2/masteries?ids=all&lang=en", apiKey: null, cancellationToken).ConfigureAwait(false);
+
+        // A track we cannot read completely is dropped: a plan could otherwise be checked against wrong levels.
+        return [.. dtos
+            .Where(d => d is { Id: > 0, Levels.Count: > 0 } && !string.IsNullOrWhiteSpace(d.Name) && !string.IsNullOrWhiteSpace(d.Region)
+                && d.Levels.All(l => l is { PointCost: >= 0, ExpCost: >= 0 }))
+            .Select(d => new MasteryDefinition(
+                d!.Id,
+                d.Name!,
+                d.Region!,
+                d.Order,
+                [.. d.Levels!.Select(l => new MasteryLevelDefinition(l!.Name ?? string.Empty, l.PointCost, l.ExpCost))]))];
+    }
+
+    public async Task<IReadOnlyList<AccountMastery>> GetAccountMasteriesAsync(string apiKey, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
+        var dtos = await GetAsync<List<AccountMasteryDto?>>("v2/account/masteries", apiKey, cancellationToken).ConfigureAwait(false);
+        return [.. dtos.Where(d => d is { Id: > 0, Level: >= 0 }).Select(d => new AccountMastery(d!.Id, d.Level))];
+    }
+
+    public async Task<AccountMasteryPoints> GetAccountMasteryPointsAsync(string apiKey, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
+        var dto = await GetAsync<MasteryPointsDto>("v2/account/mastery/points", apiKey, cancellationToken).ConfigureAwait(false);
+        return new AccountMasteryPoints(
+            [.. (dto.Totals ?? [])
+                .Where(t => t is not null && !string.IsNullOrWhiteSpace(t.Region))
+                .Select(t => new RegionPoints(t!.Region!, Math.Max(0, t.Spent), Math.Max(0, t.Earned)))],
+            [.. (dto.Unlocked ?? []).Where(id => id > 0).Distinct()]);
+    }
+
+    public async Task<IReadOnlyList<AchievementProgress>> GetAccountAchievementsAsync(string apiKey, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(apiKey);
+        ArgumentNullException.ThrowIfNull(ids);
+
+        var result = new List<AchievementProgress>();
+        foreach (var chunk in ids.Where(id => id > 0).Distinct().Chunk(MaxItemsPerRequest))
+        {
+            var query = string.Join(',', chunk.Select(id => id.ToString(CultureInfo.InvariantCulture)));
+
+            // The API answers 404 when the account has progress on none of the ids, 206 when only on some.
+            var dtos = await GetAsync<List<AchievementDto?>>($"v2/account/achievements?ids={query}", apiKey, cancellationToken, notFoundIsEmpty: true).ConfigureAwait(false);
+            result.AddRange((dtos ?? [])
+                .Where(d => d is { Id: > 0 })
+                .Select(d => new AchievementProgress(d!.Id, d.Done, Math.Max(0, d.Current ?? 0), Math.Max(0, d.Max ?? 0))));
+        }
+
+        return result;
     }
 
     public async Task<IReadOnlyList<CosmeticSkin>> GetAllSkinsAsync(IProgress<int>? progress = null, CancellationToken cancellationToken = default)
@@ -424,4 +479,19 @@ public sealed class Gw2ApiClient : IGw2ApiClient, ICosmeticsApiClient
     private sealed record EquipmentDto(List<EquipmentPieceDto>? Equipment);
 
     private sealed record ErrorDto(string? Text);
+
+    private sealed record MasteryLevelDto(
+        string? Name,
+        [property: JsonPropertyName("point_cost")] int PointCost,
+        [property: JsonPropertyName("exp_cost")] long ExpCost);
+
+    private sealed record MasteryDto(int Id, string? Name, string? Region, int Order, List<MasteryLevelDto?>? Levels);
+
+    private sealed record AccountMasteryDto(int Id, int Level);
+
+    private sealed record RegionPointsDto(string? Region, int Spent, int Earned);
+
+    private sealed record MasteryPointsDto(List<RegionPointsDto?>? Totals, List<int>? Unlocked);
+
+    private sealed record AchievementDto(int Id, bool Done, int? Current, int? Max);
 }
