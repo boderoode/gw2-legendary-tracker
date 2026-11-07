@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Gw2LegendaryTracker.Core.Acquisition;
 using Gw2LegendaryTracker.Core.Crafting;
@@ -46,7 +47,13 @@ public static class UserDataSerializer
 
     public const int MaxGoals = 200;
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    // Accents and other non-ASCII text are written as is: the file is never embedded in HTML, and escaping (é as é) would make
+    // a mastery plan with much Dutch text up to three times larger.
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     public static string Serialize(
         AppSettings settings,
@@ -142,7 +149,8 @@ public static class UserDataSerializer
             return null;
         }
 
-        var parsed = MasteryPlanSerializer.Parse(element.GetRawText(), definitions);
+        // The file as a whole is already within MaxBytes; inside it the plan is indented and escaped, so it may be longer than 1 MB.
+        var parsed = MasteryPlanSerializer.Parse(element.GetRawText(), definitions, maxBytes: MaxBytes);
         if (!parsed.Succeeded)
         {
             warnings.Add($"Het masteryplan in het bestand is overgeslagen: {parsed.Error}");

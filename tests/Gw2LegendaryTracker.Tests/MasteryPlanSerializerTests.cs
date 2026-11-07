@@ -269,7 +269,6 @@ public sealed class MasteryPlanSerializerTests
         var step = result.Plan!.Phases[0].Steps[0];
         Assert.Null(step.MasteryId);
         Assert.Null(step.MasteryLevel);
-        Assert.False(step.CanAutoComplete);
         Assert.Contains(result.Warnings, w => w.Contains("masteryId 999", StringComparison.Ordinal));
     }
 
@@ -313,7 +312,7 @@ public sealed class MasteryPlanSerializerTests
 
         var result = Parse(node);
 
-        Assert.False(result.Plan!.Phases[0].Steps[0].CanAutoComplete);
+        Assert.Null(result.Plan!.Phases[0].Steps[0].MasteryId);
         Assert.Contains(result.Warnings, w => w.Contains("zelf af", StringComparison.Ordinal));
     }
 
@@ -325,7 +324,7 @@ public sealed class MasteryPlanSerializerTests
 
         var result = Parse(node);
 
-        Assert.False(result.Plan!.Phases[1].Steps[0].CanAutoComplete);
+        Assert.Null(result.Plan!.Phases[1].Steps[0].AchievementId);
         Assert.Contains(result.Warnings, w => w.Contains("achievement-stap zonder achievementId", StringComparison.Ordinal));
     }
 

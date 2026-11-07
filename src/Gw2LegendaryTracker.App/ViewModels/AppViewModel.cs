@@ -397,7 +397,21 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     {
         if (HasApiKey)
         {
-            _ = SyncAsync();
+            _ = RefreshMasteriesAsync();
+        }
+    }
+
+    /// <summary>Only the mastery data, not the whole account: a new plan may use achievements whose progress is unknown.</summary>
+    private async Task RefreshMasteriesAsync()
+    {
+        try
+        {
+            await _sync.RefreshMasteriesAsync();
+        }
+        catch (Exception ex)
+        {
+            // MasteryProgressService reports API and storage failures itself; this catches anything unforeseen (e.g. the key store).
+            _log.Failure("Mastery-gegevens verversen mislukt", ex);
         }
     }
 

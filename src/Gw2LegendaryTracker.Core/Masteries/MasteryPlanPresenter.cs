@@ -126,7 +126,7 @@ public static class MasteryPlanPresenter
         var defs = definitions?.Values ?? [];
         var points = (progress?.Points ?? []).GroupBy(p => p.Region, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-        var trained = (progress?.Masteries ?? []).GroupBy(m => m.Id).ToDictionary(g => g.Key, g => g.Max(m => m.Level) + 1);
+        var trained = progress?.TrainedLevels() ?? new Dictionary<int, int>();
 
         // Regions in the order the game added them (lowest track id first); regions only known from the points come last.
         var regions = defs.GroupBy(d => d.Region, StringComparer.OrdinalIgnoreCase)
@@ -198,7 +198,9 @@ public static class MasteryPlanPresenter
             return $"Nog geen tijdsinschatting ({unknown})";
         }
 
-        var total = FormatMinutes(withTime.Sum(s => s.Step.EstimatedMinutes!.Value), culture);
+        // At most 300 steps of at most 60,000 minutes each: an int cannot overflow, but sum as long to never depend on that.
+        var minutes = withTime.Sum(s => (long)s.Step.EstimatedMinutes!.Value);
+        var total = FormatMinutes((int)Math.Min(minutes, int.MaxValue), culture);
         return withoutTime == 0 ? $"Nog ongeveer {total}" : $"Nog ongeveer {total}, plus {unknown}";
     }
 

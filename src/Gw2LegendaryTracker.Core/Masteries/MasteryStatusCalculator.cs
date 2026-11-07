@@ -32,14 +32,14 @@ public static class MasteryStatusCalculator
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentNullException.ThrowIfNull(overrides);
 
-        var levels = (progress?.Masteries ?? []).GroupBy(m => m.Id).ToDictionary(g => g.Key, g => g.Max(m => m.Level));
+        var trained = progress?.TrainedLevels() ?? new Dictionary<int, int>();
         var achievements = (progress?.Achievements ?? []).GroupBy(a => a.Id).ToDictionary(g => g.Key, g => g.Any(a => a.Done));
 
         var done = new Dictionary<string, bool>(StringComparer.Ordinal);
         var facts = new Dictionary<string, (bool Tracked, bool Auto, bool? Manual)>(StringComparer.Ordinal);
         foreach (var step in plan.AllSteps)
         {
-            var (tracked, auto) = Automatic(step, progress, definitions, levels, achievements);
+            var (tracked, auto) = Automatic(step, progress, definitions, trained, achievements);
             bool? manual = overrides.TryGetValue(step.Id, out var value) ? value : null;
             facts[step.Id] = (tracked, auto, manual);
             done[step.Id] = manual ?? auto;
@@ -72,7 +72,7 @@ public static class MasteryStatusCalculator
         MasteryStep step,
         MasteryAccountProgress? progress,
         IReadOnlyDictionary<int, MasteryDefinition>? definitions,
-        Dictionary<int, int> levels,
+        IReadOnlyDictionary<int, int> trained,
         Dictionary<int, bool> achievements)
     {
         if (progress is null)
@@ -80,10 +80,11 @@ public static class MasteryStatusCalculator
             return (false, false);
         }
 
+        // Level n (zero-based) is trained once more than n levels are trained.
         if (step.Type == MasteryStepType.MasteryLevel && step.MasteryId is { } masteryId && step.MasteryLevel is { } level
             && definitions is not null && definitions.ContainsKey(masteryId))
         {
-            return (true, levels.TryGetValue(masteryId, out var trained) && trained >= level);
+            return (true, trained.GetValueOrDefault(masteryId) > level);
         }
 
         if (step.AchievementId is { } achievementId)

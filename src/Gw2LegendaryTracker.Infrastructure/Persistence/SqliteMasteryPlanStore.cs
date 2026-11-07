@@ -33,8 +33,8 @@ public sealed class SqliteMasteryPlanStore : IMasteryPlanStore
             importedUtc = DateTimeOffset.Parse(reader.GetString(1), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
         }
 
-        // The stored plan was cleaned when it was imported; checking its mastery ids again is not needed here.
-        var parsed = MasteryPlanSerializer.Parse(json, definitions: null);
+        // The stored plan was cleaned and size-checked when it was imported; it is read back without the import limits.
+        var parsed = MasteryPlanSerializer.ReadStored(json);
         if (!parsed.Succeeded)
         {
             throw new InvalidOperationException($"Het opgeslagen masteryplan kan niet worden gelezen: {parsed.Error}");

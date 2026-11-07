@@ -159,12 +159,12 @@ levels, the same meaning as `/v2/account/masteries`), `achievementId`, `map`, `w
 `estimatedMinutes`, `priority` (`high`, `normal` or `low`), `requires` (step ids), `links` (`label` and `url`) and `notes`.
 The full example is in [docs/mastery-plan-prompt.md](docs/mastery-plan-prompt.md).
 
-- **Refused as a whole:** an empty file, more than 1 MB, invalid JSON, another format, a newer version, no phases, more than
+- **Refused as a whole:** an empty file, more than 1 MB (also once the app has written out every field), invalid JSON, another format, a newer version, no phases, more than
   20 phases or 300 steps, a missing, too long (over 64 characters) or duplicate id, `requires` pointing to an unknown step,
   or steps that wait for each other in a circle.
 - **Corrected with a warning:** an unknown `type` becomes `other` and an unknown `priority` becomes `normal`; a `masteryId`
   that does not exist or a `masteryLevel` out of range is cleared (the step becomes manual); links outside
-  `https://wiki.guildwars2.com` are left out; an invalid waypoint and negative minutes are cleared; texts that are too long
+  `https://wiki.guildwars2.com` are left out; an invalid waypoint and negative or unrealistic (over 1000 hours) minutes are cleared; texts that are too long
   are shortened. When the game's mastery tracks have not been fetched yet (offline), ids are kept and checked later.
 - **Export plan** writes the plan in the same format, so you can give it back to an AI to adjust it.
 

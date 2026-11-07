@@ -7,8 +7,9 @@ namespace Gw2LegendaryTracker.Core.Masteries;
 /// Fetches the account's mastery data as part of a sync. It never fails the sync: a missing "progression"
 /// permission or a failed fetch only changes <see cref="Status"/>, and the last known data stays available.
 /// </summary>
-public sealed class MasteryProgressService
+public sealed class MasteryProgressService : IDisposable
 {
+    private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly IGw2ApiClient _api;
     private readonly IMasteryProgressStore _store;
     private readonly MasteryCatalog _catalog;
@@ -35,8 +36,11 @@ public sealed class MasteryProgressService
     /// <summary>Raised after <see cref="Progress"/> or <see cref="Status"/> changed; may be raised on any thread.</summary>
     public event EventHandler? Changed;
 
-    /// <summary>The account data from the last successful mastery sync, or <c>null</c>.</summary>
-    public MasteryAccountProgress? Progress => Volatile.Read(ref _progress);
+    /// <summary>
+    /// The account data from the last successful mastery sync, or <c>null</c>. Also <c>null</c> while the key lacks the
+    /// "progression" permission: the stored data may then belong to an earlier key or account and must not tick off steps.
+    /// </summary>
+    public MasteryAccountProgress? Progress => Status.State == MasterySyncState.NoPermission ? null : Volatile.Read(ref _progress);
 
     public MasterySyncStatus Status => Volatile.Read(ref _status);
 
@@ -52,10 +56,26 @@ public sealed class MasteryProgressService
 
     /// <summary>Refreshes the mastery tracks when stale and, with the "progression" permission, the account's mastery data.</summary>
     /// <param name="permissions">The permissions of the key, from <c>/v2/tokeninfo</c>.</param>
+    /// <remarks>One refresh runs at a time; a second call waits, so it reads the achievements of the plan that is active by then.</remarks>
     public async Task RefreshAsync(string apiKey, IReadOnlyCollection<string> permissions, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(permissions);
 
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await RefreshCoreAsync(apiKey, permissions, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public void Dispose() => _gate.Dispose();
+
+    private async Task RefreshCoreAsync(string apiKey, IReadOnlyCollection<string> permissions, CancellationToken cancellationToken)
+    {
         try
         {
             await _catalog.RefreshIfStaleAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -75,13 +95,21 @@ public sealed class MasteryProgressService
         MasteryAccountProgress progress;
         try
         {
-            var masteries = await _api.GetAccountMasteriesAsync(apiKey, cancellationToken).ConfigureAwait(false);
-            var points = await _api.GetAccountMasteryPointsAsync(apiKey, cancellationToken).ConfigureAwait(false);
+            // Independent requests: ask them at once, so a sync does not take three round trips longer.
             var ids = _achievementIds();
+            var masteries = _api.GetAccountMasteriesAsync(apiKey, cancellationToken);
+            var points = _api.GetAccountMasteryPointsAsync(apiKey, cancellationToken);
             var achievements = ids.Count == 0
-                ? []
-                : await _api.GetAccountAchievementsAsync(apiKey, ids, cancellationToken).ConfigureAwait(false);
-            progress = new MasteryAccountProgress(_time.GetUtcNow(), masteries, points.Totals, points.Unlocked, achievements);
+                ? Task.FromResult<IReadOnlyList<AchievementProgress>>([])
+                : _api.GetAccountAchievementsAsync(apiKey, ids, cancellationToken);
+            await Task.WhenAll(masteries, points, achievements).ConfigureAwait(false);
+            var pointsResult = await points.ConfigureAwait(false);
+            progress = new MasteryAccountProgress(
+                _time.GetUtcNow(),
+                await masteries.ConfigureAwait(false),
+                pointsResult.Totals,
+                pointsResult.Unlocked,
+                await achievements.ConfigureAwait(false));
         }
         catch (Gw2ApiException ex)
         {

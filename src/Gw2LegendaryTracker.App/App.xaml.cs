@@ -41,6 +41,8 @@ public partial class App : Application
     private GoalService? _goalService;
     private PlanningService? _planning;
     private AcquisitionService? _acquisitions;
+    private MasteryPlanService? _masteryPlans;
+    private MasteryProgressService? _masteryProgress;
     private HotkeyService? _hotkey;
     private OverlayController? _overlay;
     private FashionStudioWindow? _fashionStudio;
@@ -91,6 +93,8 @@ public partial class App : Application
         _acquisitions?.Dispose();
         _planning?.Dispose();
         _goalService?.Dispose();
+        _masteryProgress?.Dispose();
+        _masteryPlans?.Dispose();
         _http?.Dispose();
         _forgeHttp?.Dispose();
         _state?.Dispose();
@@ -177,8 +181,8 @@ public partial class App : Application
         var keys = new DpapiApiKeyStore(DataPath("apikey.bin"));
         var inventory = new InventoryProvider();
         var masteryCatalog = new MasteryCatalog(api, new SqliteMasteryDefinitionStore(database));
-        var masteryPlans = new MasteryPlanService(new SqliteMasteryPlanStore(database), masteryCatalog);
-        var masteryProgress = new MasteryProgressService(api, new SqliteMasteryProgressStore(database), masteryCatalog, () => masteryPlans.AchievementIds);
+        var masteryPlans = _masteryPlans = new MasteryPlanService(new SqliteMasteryPlanStore(database), masteryCatalog);
+        var masteryProgress = _masteryProgress = new MasteryProgressService(api, new SqliteMasteryProgressStore(database), masteryCatalog, () => masteryPlans.AchievementIds);
         var sync = new SyncService(api, keys, new SqliteSnapshotStore(database), _state, inventory, masteries: masteryProgress);
         var catalog = new ItemCatalog(api, new SqliteItemInfoStore(database));
 

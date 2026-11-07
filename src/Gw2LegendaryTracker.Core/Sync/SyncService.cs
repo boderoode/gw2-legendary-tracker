@@ -50,6 +50,38 @@ public sealed class SyncService
         }
     }
 
+    /// <summary>
+    /// Fetches only the mastery data, e.g. after a new plan was imported that uses other achievements. Unlike
+    /// <see cref="SyncAsync"/> it is never skipped: when a sync is busy with the masteries, this waits and then runs again.
+    /// Problems are reported in the mastery status; the Legendary sync status is not touched.
+    /// </summary>
+    public async Task RefreshMasteriesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_masteries is null)
+        {
+            return;
+        }
+
+        var key = await _keys.LoadAsync(cancellationToken).ConfigureAwait(false);
+        if (key is null)
+        {
+            return;
+        }
+
+        Gw2TokenInfo token;
+        try
+        {
+            token = await _api.GetTokenInfoAsync(key, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Gw2ApiException)
+        {
+            // Offline or an invalid key: the next full sync reports it.
+            return;
+        }
+
+        await _masteries.RefreshAsync(key, token.Permissions, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Runs one synchronisation. Returns immediately when one is already running.</summary>
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {

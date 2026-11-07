@@ -200,12 +200,18 @@ internal sealed class FakeApiClient : IGw2ApiClient
 
     public List<IReadOnlyCollection<int>> AchievementRequests { get; } = [];
 
-    public Task<IReadOnlyList<MasteryDefinition>> GetMasteriesAsync(CancellationToken cancellationToken = default)
+    /// <summary>When set, <see cref="GetMasteriesAsync"/> waits for it, to test overlapping refreshes.</summary>
+    public TaskCompletionSource? MasteryDefinitionGate { get; set; }
+
+    public async Task<IReadOnlyList<MasteryDefinition>> GetMasteriesAsync(CancellationToken cancellationToken = default)
     {
         MasteryDefinitionCalls++;
-        return MasteryDefinitionFailure is null
-            ? Task.FromResult<IReadOnlyList<MasteryDefinition>>([.. Masteries])
-            : Task.FromException<IReadOnlyList<MasteryDefinition>>(MasteryDefinitionFailure);
+        if (MasteryDefinitionGate is not null)
+        {
+            await MasteryDefinitionGate.Task;
+        }
+
+        return MasteryDefinitionFailure is null ? [.. Masteries] : throw MasteryDefinitionFailure;
     }
 
     public Task<IReadOnlyList<AccountMastery>> GetAccountMasteriesAsync(string apiKey, CancellationToken cancellationToken = default)

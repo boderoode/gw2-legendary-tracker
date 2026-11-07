@@ -48,7 +48,7 @@ public static class MasteryPromptBuilder
             return "Er is nog geen voortgang bekend. Ga uit van een account zonder getrainde masteries, tenzij ik onder \"Mijn wensen\" iets anders aangeef.";
         }
 
-        var trained = (progress?.Masteries ?? []).GroupBy(m => m.Id).ToDictionary(g => g.Key, g => g.Max(m => m.Level) + 1);
+        var trained = progress?.TrainedLevels() ?? new Dictionary<int, int>();
         var unlocked = (progress?.Unlocked ?? []).ToHashSet();
         var tracks = (definitions?.Values ?? [])
             .OrderBy(d => d.Region, StringComparer.Ordinal).ThenBy(d => d.Order).ThenBy(d => d.Id)
@@ -62,7 +62,7 @@ public static class MasteryPromptBuilder
                 [.. d.Levels.Select((l, i) => new LevelDto(i, l.Name, l.PointCost))]))
             .ToList();
 
-        var achievementIds = plan?.AllSteps.Select(s => s.AchievementId).OfType<int>().ToHashSet() ?? [];
+        var achievementIds = plan?.AchievementIds.ToHashSet() ?? [];
         var data = new ProgressDto(
             progress?.CapturedUtc.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             progress is null ? null : [.. progress.Points.Select(p => new PointsDto(p.Region, p.Earned, p.Spent))],

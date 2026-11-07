@@ -167,13 +167,15 @@ public sealed class SqliteMasteryStoreTests
     }
 }
 
-public sealed class MasteryPlanServiceTests
+public sealed class MasteryPlanServiceTests : IDisposable
 {
     private readonly InMemoryPlanStore _store = new();
     private readonly MasteryCatalog _catalog = new(new FakeApiClient(), new FakeMasteryDefinitionStore { Stored = [.. MasteryTestData.Definitions.Values] });
     private readonly MasteryPlanService _service;
 
     public MasteryPlanServiceTests() => _service = new MasteryPlanService(_store, _catalog, new ManualTime());
+
+    public void Dispose() => _service.Dispose();
 
     [Fact]
     public async Task A_new_version_of_the_plan_keeps_the_choices_of_steps_that_still_exist()
@@ -394,12 +396,12 @@ public sealed class MasteryExportTests : IDisposable
         var catalog = new MasteryCatalog(new FakeApiClient(), new FakeMasteryDefinitionStore { Stored = [.. MasteryTestData.Definitions.Values] });
         await catalog.LoadAsync();
         using var goals = new GoalService(new FakeGoalStore());
-        var source = new MasteryPlanService(new MemoryPlanStore(), catalog, new ManualTime());
+        using var source = new MasteryPlanService(new MemoryPlanStore(), catalog, new ManualTime());
         await source.ReplaceAsync(MasteryTestData.Plan());
         await source.SetOverrideAsync("s2", true);
         var exported = new UserDataTransferService(_state, goals, new ManualTime(), masteryPlans: source, masteryCatalog: catalog).Export();
 
-        var target = new MasteryPlanService(new MemoryPlanStore(), catalog, new ManualTime());
+        using var target = new MasteryPlanService(new MemoryPlanStore(), catalog, new ManualTime());
         var outcome = await new UserDataTransferService(_state, goals, new ManualTime(), masteryPlans: target, masteryCatalog: catalog).ImportAsync(exported);
 
         Assert.True(outcome.Succeeded, outcome.Message);
@@ -413,7 +415,7 @@ public sealed class MasteryExportTests : IDisposable
     {
         var catalog = new MasteryCatalog(new FakeApiClient(), new FakeMasteryDefinitionStore());
         using var goals = new GoalService(new FakeGoalStore());
-        var plans = new MasteryPlanService(new MemoryPlanStore(), catalog, new ManualTime());
+        using var plans = new MasteryPlanService(new MemoryPlanStore(), catalog, new ManualTime());
         await plans.ReplaceAsync(MasteryTestData.Plan());
         var transfer = new UserDataTransferService(_state, goals, new ManualTime(), masteryPlans: plans, masteryCatalog: catalog);
 

@@ -144,7 +144,11 @@ public sealed class MasteryProgressSyncTests : IDisposable
         _masteries = new MasteryProgressService(_api, _progressStore, catalog, () => [6000], _time);
     }
 
-    public void Dispose() => _state.Dispose();
+    public void Dispose()
+    {
+        _masteries.Dispose();
+        _state.Dispose();
+    }
 
     private SyncService CreateSync() =>
         new(_api, new FakeApiKeyStore { Key = TestData.Key }, new FakeSnapshotStore(), _state, new InventoryProvider(), _time, _masteries);
@@ -233,7 +237,7 @@ public sealed class MasteryProgressSyncTests : IDisposable
     [Fact]
     public async Task Without_achievements_in_the_plan_none_are_asked()
     {
-        var masteries = new MasteryProgressService(_api, _progressStore, new MasteryCatalog(_api, new FakeMasteryDefinitionStore(), _time), () => [], _time);
+        using var masteries = new MasteryProgressService(_api, _progressStore, new MasteryCatalog(_api, new FakeMasteryDefinitionStore(), _time), () => [], _time);
 
         await masteries.RefreshAsync(TestData.Key, AllPermissions);
 

@@ -34,15 +34,18 @@ public sealed class MasteryStepRow : ObservableObject
         Waypoint = step.Waypoint;
         Notes = step.Notes;
         Links = [.. step.Links.Select(l => new MasteryLinkRow(l.Label, l.Url))];
-        State = view.Status.State;
-        StatusText = view.StatusText;
-        WaitingText = view.WaitingText;
-        IsTracked = view.Status.IsTracked;
-        AutoDone = view.Status.AutoDone;
-        IsOverridden = view.Status.IsOverridden;
-        CanReset = view.Status.IsTracked && hasManualChoice;
         IsHighPriority = step.Priority == MasteryPriority.High;
-        _isDone = view.Status.IsDone;
+        Apply(view, hasManualChoice);
+    }
+
+    /// <summary>
+    /// Takes over a new status of the same step. The row object stays, so the check box keeps keyboard focus and the list
+    /// keeps its scroll position while you tick off steps one after the other.
+    /// </summary>
+    public void Update(MasteryStepView view, bool hasManualChoice)
+    {
+        Apply(view, hasManualChoice);
+        RaiseAllPropertiesChanged();
     }
 
     public string Id { get; }
@@ -74,22 +77,22 @@ public sealed class MasteryStepRow : ObservableObject
 
     public bool HasLinks => Links.Count > 0;
 
-    public MasteryStepState State { get; }
+    public MasteryStepState State { get; private set; }
 
-    public string StatusText { get; }
+    public string StatusText { get; private set; } = string.Empty;
 
-    public string? WaitingText { get; }
+    public string? WaitingText { get; private set; }
 
     public bool HasWaitingText => WaitingText is not null;
 
-    public bool IsTracked { get; }
+    public bool IsTracked { get; private set; }
 
-    public bool AutoDone { get; }
+    public bool AutoDone { get; private set; }
 
-    public bool IsOverridden { get; }
+    public bool IsOverridden { get; private set; }
 
     /// <summary>A manual choice overrules the account data; offer to go back to automatic.</summary>
-    public bool CanReset { get; }
+    public bool CanReset { get; private set; }
 
     public bool IsHighPriority { get; }
 
@@ -109,6 +112,18 @@ public sealed class MasteryStepRow : ObservableObject
             RaisePropertyChanged(nameof(IsDone));
             _setDone(this, value);
         }
+    }
+
+    private void Apply(MasteryStepView view, bool hasManualChoice)
+    {
+        State = view.Status.State;
+        StatusText = view.StatusText;
+        WaitingText = view.WaitingText;
+        IsTracked = view.Status.IsTracked;
+        AutoDone = view.Status.AutoDone;
+        IsOverridden = view.Status.IsOverridden;
+        CanReset = view.Status.IsTracked && hasManualChoice;
+        _isDone = view.Status.IsDone;
     }
 }
 
@@ -137,13 +152,29 @@ public sealed class MasteryPhaseRow : ObservableObject
 
     public bool HasGoal => Goal.Length > 0;
 
-    public double Progress { get; }
+    public double Progress { get; private set; }
 
-    public string ProgressText { get; }
+    public string ProgressText { get; private set; }
 
-    public IReadOnlyList<MasteryStepRow> Steps { get; }
+    public IReadOnlyList<MasteryStepRow> Steps { get; private set; }
 
     public string AccessibleName => $"Fase {Title}, {ProgressText}";
+
+    /// <summary>Takes over new progress; the step list is only replaced when other steps are visible, so focus stays put.</summary>
+    public void Update(MasteryPhaseView view, IReadOnlyList<MasteryStepRow> steps)
+    {
+        Progress = view.Progress;
+        ProgressText = view.ProgressText;
+        if (!Steps.SequenceEqual(steps))
+        {
+            Steps = steps;
+        }
+
+        RaisePropertyChanged(nameof(Progress));
+        RaisePropertyChanged(nameof(ProgressText));
+        RaisePropertyChanged(nameof(AccessibleName));
+        RaisePropertyChanged(nameof(Steps));
+    }
 
     public bool IsExpanded
     {
@@ -178,6 +209,9 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
     private readonly Dispatcher _dispatcher;
     private readonly TimeProvider _time;
     private readonly Dictionary<string, bool> _expanded = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, MasteryStepRow> _stepRows = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, MasteryPhaseRow> _phaseRows = new(StringComparer.Ordinal);
+    private MasteryPlan? _rowsPlan;
 
     private MasteryPlanSummary? _summary;
     private IReadOnlyList<MasteryPhaseRow> _phases = [];
@@ -212,6 +246,7 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
         _plans.Changed += OnDataChanged;
         _catalog.Changed += OnDataChanged;
         _progress.Changed += OnDataChanged;
+        _plans.PlanReplaced += OnPlanReplaced;
 
         CopyPromptCommand = new RelayCommand(CopyPrompt);
         CopyWaypointCommand = new RelayCommand<string>(waypoint =>
@@ -231,7 +266,10 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
     /// <summary>The view puts the text on the clipboard (only the view may touch it).</summary>
     public event EventHandler<ClipboardRequest>? ClipboardRequested;
 
-    /// <summary>A new plan may use achievements whose progress is not known yet; a sync fetches them.</summary>
+    /// <summary>
+    /// A new plan (imported here or restored with the user data) may use achievements whose progress is not known yet;
+    /// fetching the mastery data again finds them.
+    /// </summary>
     public event EventHandler? SyncRequested;
 
     public ICommand CopyPromptCommand { get; }
@@ -489,7 +527,6 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
         Report(false, $"Plan \"{preview.Result.Plan!.Title}\" geïmporteerd. Een back-up van je vorige gegevens staat in {Path.GetDirectoryName(backup)}.");
         Warnings = FormatWarnings(preview.Result.Warnings);
         _log.Info($"Masteryplan geïmporteerd ({preview.StepCount} stappen, {preview.Result.Warnings.Count} waarschuwing(en))");
-        SyncRequested?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task ExportAsync(string path)
@@ -519,6 +556,7 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
         _plans.Changed -= OnDataChanged;
         _catalog.Changed -= OnDataChanged;
         _progress.Changed -= OnDataChanged;
+        _plans.PlanReplaced -= OnPlanReplaced;
     }
 
     internal static string FormatWarnings(IReadOnlyList<string> warnings) =>
@@ -548,6 +586,8 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
 
     private void OnDataChanged(object? sender, EventArgs e) => _dispatcher.InvokeAsync(Rebuild);
 
+    private void OnPlanReplaced(object? sender, EventArgs e) => SyncRequested?.Invoke(this, EventArgs.Empty);
+
     private void Rebuild()
     {
         var plan = _plans.Plan;
@@ -557,6 +597,14 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
             r.Region,
             r.PointsText,
             [.. r.Tracks.Select(t => new MasteryTrackRow(t.Name, t.Text, t.Max == 0 ? 0 : (double)t.Trained / t.Max))]))];
+
+        // Rows are kept per plan and updated in place; only another plan starts with fresh rows.
+        if (!ReferenceEquals(plan, _rowsPlan))
+        {
+            _stepRows.Clear();
+            _phaseRows.Clear();
+            _rowsPlan = plan;
+        }
 
         if (plan is null)
         {
@@ -571,26 +619,59 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
             var overrides = _plans.Overrides;
             var statuses = MasteryStatusCalculator.Compute(plan, progress, definitions, overrides);
             _summary = MasteryPlanPresenter.Summarize(plan, statuses);
-            RegionOptions = [AllRegions, .. _summary.Regions];
+            if (!_regionOptions.SequenceEqual([AllRegions, .. _summary.Regions]))
+            {
+                RegionOptions = [AllRegions, .. _summary.Regions];
+            }
+
             if (!_regionOptions.Contains(_regionFilter))
             {
                 _regionFilter = AllRegions;
             }
 
             var filtered = MasteryPlanPresenter.Filter(_summary.Phases, _onlyOpen, _regionFilter == AllRegions ? null : _regionFilter);
-            Phases = [.. filtered.Select(p => new MasteryPhaseRow(
-                p,
-                [.. p.Steps.Select(s => Row(s, overrides))],
-                _expanded.TryGetValue(p.Phase.Id, out var open) ? open : p.DoneCount < p.TotalCount,
-                (id, isOpen) => _expanded[id] = isOpen))];
+            var phases = filtered.Select(p => PhaseRow(p, [.. p.Steps.Select(s => Row(s, overrides))])).ToList();
+            if (!_phases.SequenceEqual(phases))
+            {
+                Phases = phases;
+            }
+
             NextStep = _summary.NextStep is { } next ? Row(next, overrides) : null;
         }
 
         RaiseAllPropertiesChanged();
     }
 
-    private MasteryStepRow Row(MasteryStepView view, IReadOnlyDictionary<string, bool> overrides) =>
-        new(view, overrides.ContainsKey(view.Step.Id), SetDone);
+    private MasteryPhaseRow PhaseRow(MasteryPhaseView view, IReadOnlyList<MasteryStepRow> steps)
+    {
+        if (_phaseRows.TryGetValue(view.Phase.Id, out var row))
+        {
+            row.Update(view, steps);
+            return row;
+        }
+
+        row = new MasteryPhaseRow(
+            view,
+            steps,
+            _expanded.TryGetValue(view.Phase.Id, out var open) ? open : view.DoneCount < view.TotalCount,
+            (id, isOpen) => _expanded[id] = isOpen);
+        _phaseRows[view.Phase.Id] = row;
+        return row;
+    }
+
+    private MasteryStepRow Row(MasteryStepView view, IReadOnlyDictionary<string, bool> overrides)
+    {
+        var hasChoice = overrides.ContainsKey(view.Step.Id);
+        if (_stepRows.TryGetValue(view.Step.Id, out var row))
+        {
+            row.Update(view, hasChoice);
+            return row;
+        }
+
+        row = new MasteryStepRow(view, hasChoice, SetDone);
+        _stepRows[view.Step.Id] = row;
+        return row;
+    }
 
     /// <summary>
     /// Ticking a step that the account data already agrees with removes the manual choice, so the step follows the account

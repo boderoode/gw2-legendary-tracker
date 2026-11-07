@@ -22,6 +22,13 @@ public sealed record MasteryAccountProgress(
 {
     public static MasteryAccountProgress Empty(DateTimeOffset capturedUtc) => new(capturedUtc, [], [], [], []);
 
+    /// <summary>
+    /// How many levels of each track are trained, by track id. The API reports the zero-based index of the highest trained
+    /// level, so this is that index + 1; a track that is absent has 0 trained levels.
+    /// </summary>
+    public IReadOnlyDictionary<int, int> TrainedLevels() =>
+        Masteries.GroupBy(m => m.Id).ToDictionary(g => g.Key, g => g.Max(m => m.Level) + 1);
+
     public bool Equals(MasteryAccountProgress? other) =>
         other is not null && CapturedUtc == other.CapturedUtc && Masteries.SequenceEqual(other.Masteries)
         && Points.SequenceEqual(other.Points) && Unlocked.SequenceEqual(other.Unlocked) && Achievements.SequenceEqual(other.Achievements);

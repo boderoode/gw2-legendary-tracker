@@ -48,6 +48,9 @@ public static partial class MasteryPlanSerializer
 
     public const int MaxLinksPerStep = 10;
 
+    /// <summary>A step estimated at more than 1000 hours is not a real estimate.</summary>
+    public const int MaxEstimatedMinutes = 60_000;
+
     private const string WikiHost = "wiki.guildwars2.com";
 
     private static readonly JsonSerializerOptions ReadOptions = new(JsonSerializerDefaults.Web)
@@ -119,14 +122,27 @@ public static partial class MasteryPlanSerializer
     /// The known mastery tracks by id, to check <c>masteryId</c> and <c>masteryLevel</c>. <c>null</c> or empty when they
     /// are not available (offline, never fetched): the ids are then kept and one warning says they were not checked.
     /// </param>
-    public static MasteryPlanParseResult Parse(string? text, IReadOnlyDictionary<int, MasteryDefinition>? definitions)
+    /// <param name="maxBytes">
+    /// The size limit. Plans from outside use <see cref="MaxBytes"/>; the app's own stored copy and a plan inside a user data
+    /// export (which has its own limit) pass a larger value, because escaping and indentation can make the same plan longer.
+    /// </param>
+    public static MasteryPlanParseResult Parse(string? text, IReadOnlyDictionary<int, MasteryDefinition>? definitions, int maxBytes = MaxBytes) =>
+        ParseCore(text, definitions, maxBytes, checkStoredSize: true);
+
+    /// <summary>
+    /// Reads the app's own stored copy of a plan. It passed <see cref="Parse"/> when it was imported, so no size limits apply:
+    /// a stored plan must always load again.
+    /// </summary>
+    public static MasteryPlanParseResult ReadStored(string? json) => ParseCore(json, definitions: null, int.MaxValue, checkStoredSize: false);
+
+    private static MasteryPlanParseResult ParseCore(string? text, IReadOnlyDictionary<int, MasteryDefinition>? definitions, int maxBytes, bool checkStoredSize)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
             return MasteryPlanParseResult.Failure("Het plan is leeg.");
         }
 
-        if (Encoding.UTF8.GetByteCount(text) > MaxBytes)
+        if (Encoding.UTF8.GetByteCount(text) > maxBytes)
         {
             return MasteryPlanParseResult.Failure("Het plan is te groot (meer dan 1 MB).");
         }
@@ -162,7 +178,16 @@ public static partial class MasteryPlanSerializer
             return MasteryPlanParseResult.Failure("Het plan heeft geen geldige versie.");
         }
 
-        return new Cleaner(definitions).Clean(envelope);
+        var result = new Cleaner(definitions).Clean(envelope);
+
+        // The app writes every field explicitly (also null and empty ones), so a compact source can grow when it is written
+        // back. Refuse a plan that the app could not export and import again.
+        if (checkStoredSize && result.Plan is { } plan && Encoding.UTF8.GetByteCount(JsonSerializer.Serialize(ToDto(plan), CompactOptions)) > MaxBytes)
+        {
+            return MasteryPlanParseResult.Failure("Het plan is te groot (meer dan 1 MB) zodra de app het opslaat. Maak het plan kleiner, bijvoorbeeld met kortere teksten.");
+        }
+
+        return result;
     }
 
     private sealed class Cleaner(IReadOnlyDictionary<int, MasteryDefinition>? definitions)
@@ -352,6 +377,11 @@ public static partial class MasteryPlanSerializer
             if (minutes is < 0)
             {
                 _warnings.Add($"{label} heeft een negatieve tijdsinschatting; die wordt weggelaten.");
+                minutes = null;
+            }
+            else if (minutes is > MaxEstimatedMinutes)
+            {
+                _warnings.Add($"{label} heeft een onrealistisch hoge tijdsinschatting (meer dan 1000 uur); die wordt weggelaten.");
                 minutes = null;
             }
 

@@ -40,10 +40,6 @@ public sealed record MasteryStep(
     IReadOnlyList<MasteryLink> Links,
     string? Notes)
 {
-    /// <summary>True when the step can be marked done from the account data.</summary>
-    public bool CanAutoComplete =>
-        (Type == MasteryStepType.MasteryLevel && MasteryId is not null && MasteryLevel is not null) || AchievementId is not null;
-
     public bool Equals(MasteryStep? other) =>
         other is not null
         && Id == other.Id && Title == other.Title && Description == other.Description && Type == other.Type
@@ -73,6 +69,9 @@ public sealed record MasteryPlan(
     IReadOnlyList<MasteryPhase> Phases)
 {
     public IEnumerable<MasteryStep> AllSteps => Phases.SelectMany(p => p.Steps);
+
+    /// <summary>The achievements the plan's steps refer to, each once.</summary>
+    public IReadOnlyCollection<int> AchievementIds => [.. AllSteps.Select(s => s.AchievementId).OfType<int>().Distinct()];
 
     public bool Equals(MasteryPlan? other) =>
         other is not null && Title == other.Title && CreatedUtc == other.CreatedUtc && Author == other.Author

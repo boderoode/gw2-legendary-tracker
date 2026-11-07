@@ -10,7 +10,9 @@ public sealed class MasteryCatalog
     private readonly IGw2ApiClient _api;
     private readonly IMasteryDefinitionStore _store;
     private readonly TimeProvider _time;
+    private readonly Lock _refreshLock = new();
     private IReadOnlyDictionary<int, MasteryDefinition>? _definitions;
+    private Task? _refreshing;
 
     public MasteryCatalog(IGw2ApiClient api, IMasteryDefinitionStore store, TimeProvider? time = null)
     {
@@ -51,8 +53,25 @@ public sealed class MasteryCatalog
         await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Fetches and stores the tracks. An empty answer never replaces stored tracks.</summary>
-    public async Task RefreshAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Fetches and stores the tracks. An empty answer never replaces stored tracks. A refresh that is already running
+    /// is shared, so start-up and a sync never download and write the tracks twice at the same time.
+    /// </summary>
+    public Task RefreshAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_refreshLock)
+        {
+            if (_refreshing is { IsCompleted: false } running)
+            {
+                return running;
+            }
+
+            _refreshing = RefreshCoreAsync(cancellationToken);
+            return _refreshing;
+        }
+    }
+
+    private async Task RefreshCoreAsync(CancellationToken cancellationToken)
     {
         var fresh = await _api.GetMasteriesAsync(cancellationToken).ConfigureAwait(false);
         if (fresh.Count == 0)
