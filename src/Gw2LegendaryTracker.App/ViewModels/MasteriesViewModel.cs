@@ -212,6 +212,7 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
     private readonly Dictionary<string, MasteryStepRow> _stepRows = new(StringComparer.Ordinal);
     private readonly Dictionary<string, MasteryPhaseRow> _phaseRows = new(StringComparer.Ordinal);
     private MasteryPlan? _rowsPlan;
+    private Dictionary<string, string> _regionCodes = new(StringComparer.Ordinal);
 
     private MasteryPlanSummary? _summary;
     private IReadOnlyList<MasteryPhaseRow> _phases = [];
@@ -594,7 +595,7 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
         var definitions = _catalog.Definitions;
         var progress = _progress.Progress;
         Regions = [.. MasteryPlanPresenter.Regions(progress, definitions).Select(r => new MasteryRegionRow(
-            r.Region,
+            r.DisplayName,
             r.PointsText,
             [.. r.Tracks.Select(t => new MasteryTrackRow(t.Name, t.Text, t.Max == 0 ? 0 : (double)t.Trained / t.Max))]))];
 
@@ -619,9 +620,11 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
             var overrides = _plans.Overrides;
             var statuses = MasteryStatusCalculator.Compute(plan, progress, definitions, overrides);
             _summary = MasteryPlanPresenter.Summarize(plan, statuses);
-            if (!_regionOptions.SequenceEqual([AllRegions, .. _summary.Regions]))
+            // The filter shows what people call a region; the plan and the presenter use the region code.
+            _regionCodes = _summary.Regions.GroupBy(MasteryRegions.DisplayName, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+            if (!_regionOptions.SequenceEqual([AllRegions, .. _regionCodes.Keys]))
             {
-                RegionOptions = [AllRegions, .. _summary.Regions];
+                RegionOptions = [AllRegions, .. _regionCodes.Keys];
             }
 
             if (!_regionOptions.Contains(_regionFilter))
@@ -629,7 +632,7 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
                 _regionFilter = AllRegions;
             }
 
-            var filtered = MasteryPlanPresenter.Filter(_summary.Phases, _onlyOpen, _regionFilter == AllRegions ? null : _regionFilter);
+            var filtered = MasteryPlanPresenter.Filter(_summary.Phases, _onlyOpen, _regionCodes.GetValueOrDefault(_regionFilter));
             var phases = filtered.Select(p => PhaseRow(p, [.. p.Steps.Select(s => Row(s, overrides))])).ToList();
             if (!_phases.SequenceEqual(phases))
             {

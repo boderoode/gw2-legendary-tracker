@@ -18,8 +18,10 @@ public sealed record MasteryPhaseView(MasteryPhase Phase, int DoneCount, int Tot
 
 public sealed record MasteryTrackView(int Id, string Name, int Trained, int Max, string Text);
 
+/// <param name="Region">The region code of <c>/v2/masteries</c>, e.g. <c>Maguuma</c>.</param>
+/// <param name="DisplayName">What people call the region, e.g. "Heart of Thorns".</param>
 /// <param name="Earned">Points earned in the region; <c>null</c> when unknown.</param>
-public sealed record MasteryRegionView(string Region, int? Earned, int? Spent, string PointsText, IReadOnlyList<MasteryTrackView> Tracks);
+public sealed record MasteryRegionView(string Region, string DisplayName, int? Earned, int? Spent, string PointsText, IReadOnlyList<MasteryTrackView> Tracks);
 
 public sealed record MasteryPlanSummary(
     int DoneCount,
@@ -55,7 +57,7 @@ public static class MasteryPlanPresenter
                     order++,
                     status,
                     StatusText(status),
-                    Join(step.Region, step.Map),
+                    Join(step.Region is { } region ? MasteryRegions.DisplayName(region) : null, step.Map),
                     step.EstimatedMinutes is { } minutes ? FormatMinutes(minutes, culture) : null,
                     status.WaitingFor.Count > 0 ? "Wacht op: " + string.Join(", ", status.WaitingFor.Select(id => titles.GetValueOrDefault(id, id))) : null));
             }
@@ -124,7 +126,8 @@ public static class MasteryPlanPresenter
     {
         culture ??= CultureInfo.CurrentCulture;
         var defs = definitions?.Values ?? [];
-        var points = (progress?.Points ?? []).GroupBy(p => p.Region, StringComparer.OrdinalIgnoreCase)
+        // The points endpoint names regions by expansion; match them to the track regions by code.
+        var points = (progress?.Points ?? []).GroupBy(p => MasteryRegions.CodeOf(p.Region), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var trained = progress?.TrainedLevels() ?? new Dictionary<int, int>();
 
@@ -148,9 +151,9 @@ public static class MasteryPlanPresenter
                 .ToList();
 
             var text = points.TryGetValue(region, out var p)
-                ? string.Create(culture, $"{p.Earned:N0} punten verdiend, {p.Spent:N0} uitgegeven")
+                ? string.Create(culture, $"{p.Earned:N0} {(p.Earned == 1 ? "punt" : "punten")} verdiend, {p.Spent:N0} uitgegeven")
                 : progress is null ? "Punten onbekend" : "Nog geen punten";
-            result.Add(new MasteryRegionView(region, p?.Earned, p?.Spent, text, tracks));
+            result.Add(new MasteryRegionView(region, MasteryRegions.DisplayName(region), p?.Earned, p?.Spent, text, tracks));
         }
 
         return result;

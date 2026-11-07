@@ -413,7 +413,8 @@ public static partial class MasteryPlanSerializer
                 title,
                 Text(dto.Description, MaxLongText, $"de beschrijving van {lower}"),
                 type,
-                NullIfEmpty(Text(dto.Region, MaxShortText, $"de regio van {lower}")),
+                // An AI sometimes writes the expansion ("End of Dragons") instead of the region code ("Jade"); both mean the same.
+                NullIfEmpty(Text(dto.Region, MaxShortText, $"de regio van {lower}")) is { } region ? MasteryRegions.CodeOf(region) : null,
                 masteryId,
                 masteryLevel,
                 achievementId,

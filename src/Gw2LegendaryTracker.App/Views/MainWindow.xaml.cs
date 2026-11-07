@@ -106,7 +106,7 @@ public partial class MainWindow : Window
 
         var answer = MessageBox.Show(
             this,
-            "Dit vervangt je huidige Legendaries, afvinkingen, notities en instellingen door de inhoud van het bestand.\n\nEr wordt eerst automatisch een back-up gemaakt. Doorgaan?",
+            "Dit vervangt je huidige Legendaries, afvinkingen, notities en instellingen door de inhoud van het bestand, en ook je masteryplan als het bestand er een bevat.\n\nEr wordt eerst automatisch een back-up gemaakt. Doorgaan?",
             "Importeren",
             MessageBoxButton.YesNo,
             MessageBoxImage.Question,

@@ -65,7 +65,7 @@ public static class MasteryPromptBuilder
         var achievementIds = plan?.AchievementIds.ToHashSet() ?? [];
         var data = new ProgressDto(
             progress?.CapturedUtc.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
-            progress is null ? null : [.. progress.Points.Select(p => new PointsDto(p.Region, p.Earned, p.Spent))],
+            progress is null ? null : [.. progress.Points.Select(p => new PointsDto(MasteryRegions.CodeOf(p.Region), p.Region, p.Earned, p.Spent))],
             tracks,
             progress is null ? null : [.. progress.Achievements.Where(a => achievementIds.Contains(a.Id)).Select(a => new AchievementDto(a.Id, a.Done, a.Current, a.Max))]);
 
@@ -94,7 +94,9 @@ public static class MasteryPromptBuilder
 
     private sealed record ProgressDto(string? CapturedUtc, List<PointsDto>? RegionPoints, List<TrackDto> MasteryTracks, List<AchievementDto>? PlanAchievements);
 
-    private sealed record PointsDto(string Region, int Earned, int Spent);
+    /// <param name="Region">The region code as in <c>/v2/masteries</c>, the value a plan uses.</param>
+    /// <param name="Expansion">The name the points endpoint uses, e.g. "Heart of Thorns".</param>
+    private sealed record PointsDto(string Region, string Expansion, int Earned, int Spent);
 
     /// <param name="TrainedLevels"><c>null</c> when the account's progress is unknown.</param>
     private sealed record TrackDto(int MasteryId, string Name, string Region, int MaxLevels, int? TrainedLevels, bool? Unlocked, List<LevelDto> Levels);

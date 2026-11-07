@@ -37,7 +37,7 @@ public sealed class MasteryPlanPresenterTests
         var first = summary.Phases[0].Steps[0];
         var second = summary.Phases[0].Steps[1];
 
-        Assert.Equal("Jade · Seitung Province", first.WhereText);
+        Assert.Equal("End of Dragons · Seitung Province", first.WhereText);
         Assert.Equal("30 min", first.TimeText);
         Assert.Equal("Beschikbaar", first.StatusText);
         Assert.Equal("Geblokkeerd", second.StatusText);
@@ -116,6 +116,7 @@ public sealed class MasteryPlanPresenterTests
         var regions = MasteryPlanPresenter.Regions(progress, MasteryTestData.Definitions, Dutch);
 
         Assert.Equal(["Maguuma", "Jade"], regions.Select(r => r.Region));
+        Assert.Equal(["Heart of Thorns", "End of Dragons"], regions.Select(r => r.DisplayName));
         var jade = regions[1];
         Assert.Equal(20, jade.Earned);
         Assert.Equal(12, jade.Spent);
