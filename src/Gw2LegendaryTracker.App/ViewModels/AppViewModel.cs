@@ -39,6 +39,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     private readonly DispatcherTimer _opacityTimer;
     private double? _pendingOpacity;
     private int? _pendingMainTab;
+    private string? _pendingMode;
     private bool _isOverlayVisible;
     private string? _hotkeyError;
     private string? _errorMessage;
@@ -227,7 +228,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     /// <summary>The overlay shows the mastery plan. Remembered across restarts.</summary>
     public bool IsMasteryMode
     {
-        get => OverlayModes.IsMasteries(Overlay.Mode);
+        get => OverlayModes.IsMasteries(_pendingMode ?? Overlay.Mode);
         set => SelectMode(value, OverlayModes.Masteries);
     }
 
@@ -466,6 +467,12 @@ public sealed class AppViewModel : ObservableObject, IDisposable
             return;
         }
 
+        // Shown at once, like the main tab; the stored value follows when the save has landed, and a quick second
+        // click is compared with what is shown, not with what is still being saved.
+        _pendingMode = mode;
+        Masteries.ClearOverlayNotice();
+        RaisePropertyChanged(nameof(IsMasteryMode));
+        RaisePropertyChanged(nameof(IsLegendaryMode));
         Persist(s => s with { Overlay = s.Overlay with { Mode = mode } });
     }
 
@@ -589,6 +596,11 @@ public sealed class AppViewModel : ObservableObject, IDisposable
             if (_pendingMainTab is { } tab && MainTabs.IndexOf(settings.SelectedMainTab) == tab)
             {
                 _pendingMainTab = null;
+            }
+
+            if (_pendingMode is { } mode && OverlayModes.IsMasteries(settings.Overlay.Mode) == OverlayModes.IsMasteries(mode))
+            {
+                _pendingMode = null;
             }
 
             RaiseAllPropertiesChanged();

@@ -11,9 +11,9 @@ using Gw2LegendaryTracker.Infrastructure.Persistence;
 
 namespace Gw2LegendaryTracker.App.ViewModels;
 
-/// <summary>Text the view should put on the clipboard, and what to tell the user when that worked.</summary>
-/// <param name="FromOverlay">Asked from the overlay: the answer belongs there, not in the main window.</param>
-public sealed record ClipboardRequest(string Text, string SuccessMessage, bool FromOverlay = false);
+/// <summary>Text the view should put on the clipboard.</summary>
+/// <param name="Completed">Called with <c>null</c> when it worked, or with the reason it failed; the requester tells the user.</param>
+public sealed record ClipboardRequest(string Text, Action<string?> Completed);
 
 public sealed record MasteryLinkRow(string Label, string Url);
 
@@ -84,6 +84,11 @@ public sealed class MasteryStepRow : ObservableObject
     public string? LinkToolTip => FirstLink is { } link ? $"Wiki: {link.Label}" : null;
 
     public string? WaypointToolTip => Waypoint is null ? null : $"Kopieer waypoint {Waypoint}";
+
+    /// <summary>Names for screen readers that say which step a button belongs to.</summary>
+    public string WaypointButtonName => $"Kopieer waypoint van {Title}";
+
+    public string LinkButtonName => $"Open de wiki voor {Title}";
 
     public MasteryStepState State { get; private set; }
 
@@ -244,6 +249,8 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
     private IReadOnlyList<MasteryStepRow> _overlaySteps = [];
     private IReadOnlyList<MasteryPhaseOverviewRow> _phaseOverview = [];
     private MasteryPhaseView? _overlayPhase;
+    private string? _overlayOrderPhaseId;
+    private IReadOnlyList<string> _overlayOrder = [];
     private string? _overlayNotice;
 
     public MasteriesViewModel(
@@ -276,9 +283,11 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
 
         CopyPromptCommand = new RelayCommand(CopyPrompt);
         CopyWaypointCommand = new RelayCommand<string>(waypoint =>
-            ClipboardRequested?.Invoke(this, new ClipboardRequest(waypoint, $"Waypoint {waypoint} gekopieerd. Plak hem in de chat van het spel.")));
+            Copy(waypoint, $"Waypoint {waypoint} gekopieerd. Plak hem in de chat van het spel."));
         OverlayCopyWaypointCommand = new RelayCommand<string>(waypoint =>
-            ClipboardRequested?.Invoke(this, new ClipboardRequest(waypoint, $"Waypoint {waypoint} gekopieerd", FromOverlay: true)));
+            ClipboardRequested?.Invoke(this, new ClipboardRequest(
+                waypoint,
+                error => ShowOverlayNotice(error is null ? $"Waypoint {waypoint} gekopieerd" : "Kopiëren mislukt, probeer het nog eens"))));
         OpenLinkCommand = new RelayCommand<string>(Services.LinkOpener.Open);
         ResetCommand = new RelayCommand<MasteryStepRow>(row => Run(() => _plans.SetOverrideAsync(row.Id, null)));
         MarkDoneCommand = new RelayCommand<MasteryStepRow>(row => row.IsDone = true);
@@ -541,6 +550,13 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
         _overlayNoticeTimer.Start();
     }
 
+    /// <summary>Removes the confirmation at once, e.g. when the overlay switches to the Legendaries.</summary>
+    public void ClearOverlayNotice()
+    {
+        _overlayNoticeTimer.Stop();
+        OverlayNotice = null;
+    }
+
     /// <summary>Loads what is stored, then refreshes the public mastery tracks in the background when they are old.</summary>
     public async Task InitializeAsync()
     {
@@ -659,10 +675,18 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
     private void CopyPrompt()
     {
         var prompt = MasteryPromptBuilder.Build(_progress.Progress, _catalog.Definitions, _plans.Plan);
-        ClipboardRequested?.Invoke(this, new ClipboardRequest(
+        Copy(
             prompt,
-            "De AI-prompt staat op het klembord. Plak hem in een AI-chat, vul eventueel je wensen aan, en importeer het antwoord met \"Plan plakken uit klembord\"."));
+            "De AI-prompt staat op het klembord. Plak hem in een AI-chat, vul eventueel je wensen aan, en importeer het antwoord met \"Plan plakken uit klembord\".");
     }
+
+    /// <summary>Copies from the tab; the tab's message strip says whether it worked.</summary>
+    private void Copy(string text, string successMessage) =>
+        ClipboardRequested?.Invoke(this, new ClipboardRequest(
+            text,
+            error => Report(
+                error is not null,
+                error is null ? successMessage : $"Kopiëren naar het klembord is niet gelukt. Probeer het nog eens. ({error})")));
 
     private async Task RefreshCatalogAsync()
     {
@@ -702,6 +726,7 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
         {
             _stepRows.Clear();
             _phaseRows.Clear();
+            _overlayOrderPhaseId = null;
             _rowsPlan = plan;
         }
 
@@ -746,13 +771,25 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
             NextStep = _summary.NextStep is { } next ? rows[next.Step.Id] : null;
 
             _overlayPhase = MasteryPlanPresenter.CurrentPhase(_summary);
-            List<MasteryStepRow> overlaySteps = _overlayPhase is null ? [] : [.. MasteryPlanPresenter.OverlaySteps(_overlayPhase).Select(s => rows[s.Step.Id])];
+            // The order is fixed when a phase becomes current: a ticked step stays under the mouse instead of moving away
+            // and putting another step under a quick second click.
+            if (_overlayPhase?.Phase.Id != _overlayOrderPhaseId)
+            {
+                _overlayOrderPhaseId = _overlayPhase?.Phase.Id;
+                _overlayOrder = _overlayPhase is null ? [] : MasteryPlanPresenter.OverlayOrder(_overlayPhase);
+            }
+
+            List<MasteryStepRow> overlaySteps = [.. _overlayOrder.Select(id => rows[id])];
             if (!_overlaySteps.SequenceEqual(overlaySteps))
             {
                 OverlaySteps = overlaySteps;
             }
 
-            PhaseOverview = [.. _summary.Phases.Select(p => new MasteryPhaseOverviewRow(p.Phase.Title, p.ProgressText, p.Progress, ReferenceEquals(p, _overlayPhase)))];
+            List<MasteryPhaseOverviewRow> overview = [.. _summary.Phases.Select(p => new MasteryPhaseOverviewRow(p.Phase.Title, p.ProgressText, p.Progress, ReferenceEquals(p, _overlayPhase)))];
+            if (!_phaseOverview.SequenceEqual(overview))
+            {
+                PhaseOverview = overview;
+            }
         }
 
         RaiseAllPropertiesChanged();

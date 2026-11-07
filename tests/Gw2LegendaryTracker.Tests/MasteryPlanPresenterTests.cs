@@ -137,7 +137,7 @@ public sealed class MasteryPlanPresenterTests
     }
 
     [Fact]
-    public void The_current_phase_is_the_first_with_open_steps()
+    public void Without_priorities_the_current_phase_is_the_first_with_open_steps()
     {
         Assert.Equal("p1", MasteryPlanPresenter.CurrentPhase(Summarize(MasteryTestData.Plan()))!.Phase.Id);
         Assert.Equal("p2", MasteryPlanPresenter.CurrentPhase(Summarize(MasteryTestData.Plan(), overrides: new() { ["s1"] = true, ["s2"] = true }))!.Phase.Id);
@@ -163,6 +163,22 @@ public sealed class MasteryPlanPresenterTests
     }
 
     [Fact]
+    public void The_current_phase_is_the_phase_of_the_next_step()
+    {
+        // A high-priority step in a later phase is the next step; the overlay must not show another phase beside it.
+        var node = MasteryTestData.Node();
+        MasteryTestData.Step(node, 0, 0)["priority"] = "low";
+        MasteryTestData.Step(node, 1, 0)["requires"] = new JsonArray();
+        MasteryTestData.Step(node, 1, 0)["priority"] = "high";
+        var plan = MasteryPlanSerializer.Parse(node.ToJsonString(), MasteryTestData.Definitions).Plan!;
+
+        var summary = Summarize(plan);
+
+        Assert.Equal("s3", summary.NextStep!.Step.Id);
+        Assert.Equal("p2", MasteryPlanPresenter.CurrentPhase(summary)!.Phase.Id);
+    }
+
+    [Fact]
     public void When_everything_is_done_there_is_no_current_phase()
     {
         var summary = Summarize(MasteryTestData.Plan(), overrides: new() { ["s1"] = true, ["s2"] = true, ["s3"] = true });
@@ -175,8 +191,8 @@ public sealed class MasteryPlanPresenterTests
     {
         var summary = Summarize(MasteryTestData.Plan(), overrides: new() { ["s1"] = true });
 
-        Assert.Equal(["s2", "s1"], MasteryPlanPresenter.OverlaySteps(summary.Phases[0]).Select(s => s.Step.Id));
-        Assert.Equal(["s1", "s2"], MasteryPlanPresenter.OverlaySteps(Summarize(MasteryTestData.Plan()).Phases[0]).Select(s => s.Step.Id));
+        Assert.Equal(["s2", "s1"], MasteryPlanPresenter.OverlayOrder(summary.Phases[0]));
+        Assert.Equal(["s1", "s2"], MasteryPlanPresenter.OverlayOrder(Summarize(MasteryTestData.Plan()).Phases[0]));
     }
 
     [Theory]

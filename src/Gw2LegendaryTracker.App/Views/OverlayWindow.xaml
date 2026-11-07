@@ -189,6 +189,47 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <!-- The pills that choose what the overlay shows: a size smaller than the tabs, so the compact view keeps its room. -->
+        <Style x:Key="ModePill" TargetType="RadioButton" BasedOn="{StaticResource PillTab}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Chrome" Background="Transparent" CornerRadius="10" Padding="9,2">
+                            <TextBlock Text="{TemplateBinding Content}" FontSize="11" FontWeight="SemiBold" Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource HoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A plan step's waypoint and wiki buttons; shared by the next-step card and the steps of the phase. -->
+        <DataTemplate x:Key="StepLinkActions">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="&#xE707;" Style="{StaticResource IconButton}" ToolTip="{Binding WaypointToolTip}"
+                        AutomationProperties.Name="{Binding WaypointButtonName}" CommandParameter="{Binding Waypoint}"
+                        Command="{Binding DataContext.Masteries.OverlayCopyWaypointCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                    <Button.Visibility>
+                        <Binding Path="HasWaypoint" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                    </Button.Visibility>
+                </Button>
+                <Button Content="&#xE774;" Style="{StaticResource IconButton}" ToolTip="{Binding LinkToolTip}"
+                        AutomationProperties.Name="{Binding LinkButtonName}" CommandParameter="{Binding FirstLink.Url}"
+                        Command="{Binding DataContext.Masteries.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                    <Button.Visibility>
+                        <Binding Path="HasLinks" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                    </Button.Visibility>
+                </Button>
+            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
 
     <Border Background="{StaticResource BackgroundBrush}" BorderBrush="{StaticResource EdgeBrush}" BorderThickness="1"
@@ -245,10 +286,10 @@
             </Grid>
 
             <!-- What the overlay shows; remembered across restarts. -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
-                <RadioButton Content="Legendaries" GroupName="OverlayMode" Style="{StaticResource PillTab}" IsChecked="{Binding IsLegendaryMode, Mode=TwoWay}"
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,6,0,0">
+                <RadioButton Content="Legendaries" GroupName="OverlayMode" Style="{StaticResource ModePill}" IsChecked="{Binding IsLegendaryMode, Mode=TwoWay}"
                              AutomationProperties.Name="Overlay toont Legendaries" />
-                <RadioButton Content="Masteries" GroupName="OverlayMode" Style="{StaticResource PillTab}" IsChecked="{Binding IsMasteryMode, Mode=TwoWay}"
+                <RadioButton Content="Masteries" GroupName="OverlayMode" Style="{StaticResource ModePill}" IsChecked="{Binding IsMasteryMode, Mode=TwoWay}"
                              AutomationProperties.Name="Overlay toont Masteries" />
             </StackPanel>
 
@@ -522,20 +563,7 @@
                                             <Button Content="&#xE73E;" Style="{StaticResource IconButton}" ToolTip="Klaar: vink deze stap af"
                                                     AutomationProperties.Name="{Binding CheckBoxName}" CommandParameter="{Binding}"
                                                     Command="{Binding DataContext.Masteries.MarkDoneCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                                            <Button Content="&#xE707;" Style="{StaticResource IconButton}" ToolTip="{Binding WaypointToolTip}"
-                                                    AutomationProperties.Name="Kopieer waypoint" CommandParameter="{Binding Waypoint}"
-                                                    Command="{Binding DataContext.Masteries.OverlayCopyWaypointCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                                                <Button.Visibility>
-                                                    <Binding Path="HasWaypoint" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                                </Button.Visibility>
-                                            </Button>
-                                            <Button Content="&#xE774;" Style="{StaticResource IconButton}" ToolTip="{Binding LinkToolTip}"
-                                                    AutomationProperties.Name="Open de wiki" CommandParameter="{Binding FirstLink.Url}"
-                                                    Command="{Binding DataContext.Masteries.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                                                <Button.Visibility>
-                                                    <Binding Path="HasLinks" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                                </Button.Visibility>
-                                            </Button>
+                                            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource StepLinkActions}" Focusable="False" IsTabStop="False" />
                                         </StackPanel>
                                     </Grid>
                                 </StackPanel>
@@ -620,22 +648,8 @@
                                                             </TextBlock.Visibility>
                                                         </TextBlock>
                                                     </StackPanel>
-                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Top" Margin="4,-4,-6,0">
-                                                        <Button Content="&#xE707;" Style="{StaticResource IconButton}" ToolTip="{Binding WaypointToolTip}"
-                                                                AutomationProperties.Name="Kopieer waypoint" CommandParameter="{Binding Waypoint}"
-                                                                Command="{Binding DataContext.Masteries.OverlayCopyWaypointCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                                                            <Button.Visibility>
-                                                                <Binding Path="HasWaypoint" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                                            </Button.Visibility>
-                                                        </Button>
-                                                        <Button Content="&#xE774;" Style="{StaticResource IconButton}" ToolTip="{Binding LinkToolTip}"
-                                                                AutomationProperties.Name="Open de wiki" CommandParameter="{Binding FirstLink.Url}"
-                                                                Command="{Binding DataContext.Masteries.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}">
-                                                            <Button.Visibility>
-                                                                <Binding Path="HasLinks" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                                            </Button.Visibility>
-                                                        </Button>
-                                                    </StackPanel>
+                                                    <ContentControl Grid.Column="2" Content="{Binding}" ContentTemplate="{StaticResource StepLinkActions}"
+                                                                    Focusable="False" IsTabStop="False" VerticalAlignment="Top" Margin="4,-4,-6,0" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -649,7 +663,7 @@
                                     </ItemsControl.Visibility>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Grid Margin="0,0,0,9" AutomationProperties.Name="{Binding AccessibleName}">
+                                            <Grid Margin="0,0,0,9">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
@@ -658,7 +672,7 @@
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
-                                                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}">
+                                                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}" AutomationProperties.Name="{Binding AccessibleName}">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                                                             <Style.Triggers>

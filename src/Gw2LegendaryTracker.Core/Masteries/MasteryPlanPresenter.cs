@@ -103,21 +103,29 @@ public static class MasteryPlanPresenter
             .ThenBy(s => s.Order)
             .FirstOrDefault();
 
-    /// <summary>The phase to work on now: the first one in the plan that still has open steps; <c>null</c> when all is done.</summary>
+    /// <summary>
+    /// The phase to work on now: the phase of the next step, so the overlay never points at two phases at once. When no
+    /// step is available (everything open waits on something), the first phase with open steps; <c>null</c> when all is done.
+    /// </summary>
     public static MasteryPhaseView? CurrentPhase(MasteryPlanSummary summary)
     {
         ArgumentNullException.ThrowIfNull(summary);
+        if (summary.NextStep is { } next)
+        {
+            return summary.Phases.First(p => p.Phase.Id == next.PhaseId);
+        }
+
         return summary.Phases.FirstOrDefault(p => p.DoneCount < p.TotalCount);
     }
 
     /// <summary>
-    /// The steps of a phase as the overlay lists them: open steps first in the plan's order, then the done ones, so a
-    /// step ticked by mistake stays in reach.
+    /// The order in which the overlay lists the steps of a phase: open steps first in the plan's order, then the done ones.
+    /// The overlay fixes this order when a phase becomes current, so a ticked step stays where it is under the mouse.
     /// </summary>
-    public static IReadOnlyList<MasteryStepView> OverlaySteps(MasteryPhaseView phase)
+    public static IReadOnlyList<string> OverlayOrder(MasteryPhaseView phase)
     {
         ArgumentNullException.ThrowIfNull(phase);
-        return [.. phase.Steps.OrderBy(s => s.Status.IsDone).ThenBy(s => s.Order)];
+        return [.. phase.Steps.OrderBy(s => s.Status.IsDone).ThenBy(s => s.Order).Select(s => s.Step.Id)];
     }
 
     /// <summary>Applies the filters of the tab. Phases without visible steps are left out; their progress stays that of the whole phase.</summary>

@@ -35,6 +35,8 @@ public sealed class OverlayController : IDisposable
 
         _window.LocationChanged += OnBoundsChanged;
         _window.SizeChanged += OnBoundsChanged;
+        // Using the overlay (ticking a step, copying a waypoint, switching tabs) counts as activity for auto-hide.
+        _window.PreviewMouseDown += (_, _) => RestartAutoHide();
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.OverlayToggleRequested += (_, _) => Toggle();
         _viewModel.OverlayHideRequested += (_, _) => Hide();
