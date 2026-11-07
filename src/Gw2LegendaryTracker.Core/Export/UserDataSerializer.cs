@@ -3,6 +3,7 @@ using System.Text.Json;
 using Gw2LegendaryTracker.Core.Acquisition;
 using Gw2LegendaryTracker.Core.Crafting;
 using Gw2LegendaryTracker.Core.Goals;
+using Gw2LegendaryTracker.Core.Masteries;
 using Gw2LegendaryTracker.Core.Settings;
 
 namespace Gw2LegendaryTracker.Core.Export;
@@ -11,17 +12,22 @@ namespace Gw2LegendaryTracker.Core.Export;
 /// <param name="Warnings">Things that were left out or corrected; the import still succeeded.</param>
 /// <param name="Error">Why the file cannot be imported at all; <c>null</c> on success.</param>
 /// <param name="Acquisitions">The vendor offers in the file, or <c>null</c> when the file has none (an older export): current ones are then kept.</param>
+/// <param name="MasteryPlan">The mastery plan in the file, or <c>null</c> when it has none (or an unusable one): the current plan is then kept.</param>
 public sealed record ImportResult(
     AppSettings? Settings,
     IReadOnlyList<Goal> Goals,
     IReadOnlyList<string> Warnings,
     string? Error,
-    IReadOnlyList<NewOffer>? Acquisitions = null)
+    IReadOnlyList<NewOffer>? Acquisitions = null,
+    MasteryPlanBackup? MasteryPlan = null)
 {
     public bool Succeeded => Error is null;
 
     public static ImportResult Failure(string error) => new(null, [], [], error);
 }
+
+/// <summary>The active mastery plan with its manual choices, as it travels in a user data export.</summary>
+public sealed record MasteryPlanBackup(MasteryPlan Plan, IReadOnlyDictionary<string, bool> ManualChoices);
 
 /// <summary>
 /// Reads and writes the user's own data: goals (order, notes, ticks) and settings.
@@ -32,19 +38,34 @@ public static class UserDataSerializer
 {
     public const string FormatName = "gw2-legendary-tracker-export";
 
-    public const int CurrentVersion = 1;
+    /// <summary>Version 2 added the mastery plan; version 1 files are still read.</summary>
+    public const int CurrentVersion = 2;
 
-    /// <summary>A real export is a few kilobytes; anything much larger is not one.</summary>
-    public const int MaxBytes = 1_000_000;
+    /// <summary>A real export is a few kilobytes plus a mastery plan of at most 1 MB; anything much larger is not one.</summary>
+    public const int MaxBytes = 2_500_000;
 
     public const int MaxGoals = 200;
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    public static string Serialize(AppSettings settings, IReadOnlyList<Goal> goals, DateTimeOffset exportedUtc, IReadOnlyList<AcquisitionOffer>? acquisitions = null)
+    public static string Serialize(
+        AppSettings settings,
+        IReadOnlyList<Goal> goals,
+        DateTimeOffset exportedUtc,
+        IReadOnlyList<AcquisitionOffer>? acquisitions = null,
+        MasteryPlanBackup? masteryPlan = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(goals);
+
+        MasteryPlanDto? planDto = null;
+        if (masteryPlan is not null)
+        {
+            using var document = JsonDocument.Parse(MasteryPlanSerializer.Serialize(masteryPlan.Plan));
+            planDto = new MasteryPlanDto(
+                document.RootElement.Clone(),
+                [.. masteryPlan.ManualChoices.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => new ManualChoiceDto(c.Key, c.Value))]);
+        }
 
         var envelope = new Envelope(
             FormatName,
@@ -57,11 +78,13 @@ public static class UserDataSerializer
                 o.OutputCount,
                 [.. o.Costs.Select(c => new CostDto(c.Key.Kind == MaterialKind.Currency ? CurrencyKind : ItemKind, c.Key.Id, c.Count))],
                 o.VendorName,
-                o.Location))]);
+                o.Location))],
+            planDto);
         return JsonSerializer.Serialize(envelope, JsonOptions) + "\n";
     }
 
-    public static ImportResult Parse(string? json)
+    /// <param name="masteryDefinitions">Known mastery tracks, to check the ids in a mastery plan; see <see cref="MasteryPlanSerializer.Parse"/>.</param>
+    public static ImportResult Parse(string? json, IReadOnlyDictionary<int, MasteryDefinition>? masteryDefinitions = null)
     {
         if (string.IsNullOrWhiteSpace(json))
         {
@@ -104,7 +127,50 @@ public static class UserDataSerializer
             CleanGoals(envelope.Goals, warnings),
             warnings,
             null,
-            CleanOffers(envelope.Acquisitions, warnings));
+            CleanOffers(envelope.Acquisitions, warnings),
+            CleanMasteryPlan(envelope.MasteryPlan, masteryDefinitions, warnings));
+    }
+
+    /// <summary>
+    /// A missing or empty mastery plan keeps the current one: an export from a pc without a plan should not wipe out
+    /// a plan on this one. A plan that cannot be read is skipped with a warning; the rest of the file is still imported.
+    /// </summary>
+    private static MasteryPlanBackup? CleanMasteryPlan(MasteryPlanDto? dto, IReadOnlyDictionary<int, MasteryDefinition>? definitions, List<string> warnings)
+    {
+        if (dto?.Plan is not { ValueKind: JsonValueKind.Object } element)
+        {
+            return null;
+        }
+
+        var parsed = MasteryPlanSerializer.Parse(element.GetRawText(), definitions);
+        if (!parsed.Succeeded)
+        {
+            warnings.Add($"Het masteryplan in het bestand is overgeslagen: {parsed.Error}");
+            return null;
+        }
+
+        warnings.AddRange(parsed.Warnings.Select(w => $"Masteryplan: {w}"));
+        var stepIds = parsed.Plan!.AllSteps.Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        var choices = new Dictionary<string, bool>(StringComparer.Ordinal);
+        var skipped = 0;
+        foreach (var choice in dto.ManualChoices ?? [])
+        {
+            if (choice?.StepId is { } id && stepIds.Contains(id))
+            {
+                choices[id] = choice.Done;
+            }
+            else
+            {
+                skipped++;
+            }
+        }
+
+        if (skipped > 0)
+        {
+            warnings.Add($"{skipped.ToString(CultureInfo.InvariantCulture)} afvinking(en) bij het masteryplan horen bij geen enkele stap en zijn overgeslagen.");
+        }
+
+        return new MasteryPlanBackup(parsed.Plan, choices);
     }
 
     private static AppSettings? CleanSettings(AppSettings? settings, List<string> warnings)
@@ -226,7 +292,19 @@ public static class UserDataSerializer
     private const string ItemKind = "item";
     private const string CurrencyKind = "currency";
 
-    private sealed record Envelope(string? Format, int Version, string? ExportedUtc, AppSettings? Settings, List<GoalDto?>? Goals, List<OfferDto?>? Acquisitions = null);
+    private sealed record Envelope(
+        string? Format,
+        int Version,
+        string? ExportedUtc,
+        AppSettings? Settings,
+        List<GoalDto?>? Goals,
+        List<OfferDto?>? Acquisitions = null,
+        MasteryPlanDto? MasteryPlan = null);
+
+    /// <param name="Plan">The plan in its own <c>gw2-mastery-plan</c> format, so it can also be handed to an AI as is.</param>
+    private sealed record MasteryPlanDto(JsonElement? Plan, List<ManualChoiceDto?>? ManualChoices);
+
+    private sealed record ManualChoiceDto(string? StepId, bool Done);
 
     private sealed record OfferDto(int ItemId, int OutputCount, List<CostDto?>? Costs, string? VendorName, string? Location);
 

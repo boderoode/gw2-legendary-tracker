@@ -95,7 +95,7 @@ public sealed class DataTransferViewModel : ObservableObject
         }
 
         // Validate first: a file that cannot be imported must not even cost a back-up.
-        var parsed = UserDataSerializer.Parse(read.Text);
+        var parsed = _transfer.Validate(read.Text);
         if (!parsed.Succeeded)
         {
             Report(true, $"Importeren is niet gelukt. {parsed.Error}");

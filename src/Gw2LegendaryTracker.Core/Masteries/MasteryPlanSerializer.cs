@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -56,7 +57,17 @@ public static partial class MasteryPlanSerializer
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
     };
 
-    private static readonly JsonSerializerOptions WriteOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    // The file is read by people and AIs, never embedded in HTML: keep accents and arrows readable instead of \u-escaped.
+    private static readonly JsonSerializerOptions WriteOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    private static readonly JsonSerializerOptions CompactOptions = new(JsonSerializerDefaults.Web)
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     private static readonly Dictionary<string, MasteryStepType> TypeNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -92,10 +103,16 @@ public static partial class MasteryPlanSerializer
         return (match.Success ? match.Groups["body"].Value : text).Trim();
     }
 
+    /// <summary>
+    /// Writes the plan readably indented. A plan near the size limit is written compact instead,
+    /// so every plan the app accepted can be imported again.
+    /// </summary>
     public static string Serialize(MasteryPlan plan)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        return JsonSerializer.Serialize(ToDto(plan), WriteOptions) + "\n";
+        var dto = ToDto(plan);
+        var json = JsonSerializer.Serialize(dto, WriteOptions) + "\n";
+        return Encoding.UTF8.GetByteCount(json) <= MaxBytes ? json : JsonSerializer.Serialize(dto, CompactOptions) + "\n";
     }
 
     /// <param name="definitions">
