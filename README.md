@@ -358,8 +358,9 @@ description.
 
 ## Status and known limitations
 
-Version 1.0.0. All ten design phases have been implemented. The owner uses the app and overlay on Windows; the
-systematic overlay test plan and the installer on a clean computer have not yet been completed.
+Version 1.1.0. All ten design phases have been implemented, plus the Masteries tab and a first Fashion Studio. The
+owner uses the app and overlay on Windows; the systematic overlay test plan and the installer on a clean computer have
+not yet been completed.
 
 - Dutch language only; Windows 10 (1809) or later, x64 only. (English WIP)
 - The app and installer are not digitally signed, so Windows displays a warning.
