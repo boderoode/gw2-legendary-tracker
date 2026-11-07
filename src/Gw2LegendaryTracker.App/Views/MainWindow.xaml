@@ -562,13 +562,325 @@
             </TabItem>
 
             <TabItem Header="Masteries" AutomationProperties.Name="Masteries">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
-                    <StackPanel Margin="24,16,24,24" MaxWidth="640">
-                        <Border Style="{StaticResource CardBorder}">
-                            <TextBlock Text="Hier komt je masteryplan." Style="{StaticResource MutedText}" />
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
+                <Grid DataContext="{Binding Masteries}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                        <StackPanel Margin="24,16,24,24" MaxWidth="640">
+
+                            <!-- Without the "progression" permission the plan still works; say what is missing and why. -->
+                            <Border Margin="0,0,0,16" Padding="12" CornerRadius="8" Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                                    Visibility="{Binding NeedsProgressionPermission, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <StackPanel>
+                                    <TextBlock Text="Stappen vinken nog niet vanzelf af" FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,4,0,0">
+                                        <Run Text="Je API-key mist het optionele recht" />
+                                        <Run Text="progression" FontWeight="SemiBold" /><Run Text="." />
+                                        <Run Text="{Binding ProgressionReason, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Margin="0,8,0,0">
+                                        <Run Text="Maak op" />
+                                        <Hyperlink NavigateUri="https://account.arena.net/applications" RequestNavigate="OnLinkNavigate">account.arena.net/applications</Hyperlink>
+                                        <Run Text="een nieuwe key met account, inventories, characters, wallet én progression, en koppel die bij Account &amp; instellingen." />
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                               Text="Tot die tijd werkt je plan gewoon: je vinkt stappen zelf af." />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Empty state: what this tab is for and how to get a plan. -->
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16"
+                                    Visibility="{Binding HasNoPlan, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <StackPanel>
+                                    <TextBlock Text="Nog geen masteryplan" Style="{StaticResource HeadingText}" />
+                                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                               Text="Laat een AI een stappenplan voor je masteries maken. De app toont het als concrete stappen en vinkt ze vanzelf af zodra het spel laat zien dat ze klaar zijn." />
+                                    <TextBlock Text="1. Klik op AI-prompt kopiëren. Je actuele mastery-voortgang zit er al in; je API-key nooit." Margin="0,12,0,0" />
+                                    <TextBlock Text="2. Plak de prompt in een AI-chat en vul onderaan eventueel je wensen aan." Margin="0,2,0,0" />
+                                    <TextBlock Text="3. Kopieer het antwoord en klik op Plan plakken uit klembord (of bewaar het als bestand en importeer dat)." Margin="0,2,0,0" />
+                                    <WrapPanel Margin="0,12,0,0">
+                                        <Button Style="{StaticResource PrimaryButton}" Content="AI-prompt kopiëren" Command="{Binding CopyPromptCommand}" Margin="0,0,8,8" />
+                                        <Button Content="Plan plakken uit klembord" Click="OnPastePlanClick" Margin="0,0,8,8" />
+                                        <Button Content="Plan importeren uit bestand…" Click="OnImportPlanFileClick" Margin="0,0,8,8" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Visibility="{Binding HasPlan, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <!-- The plan at a glance. -->
+                                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding PlanTitle}" Style="{StaticResource HeadingText}" FontSize="18" />
+                                        <TextBlock Text="{Binding PlanSummary}" Margin="0,4,0,0"
+                                                   Visibility="{Binding HasPlanSummary, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                        <ProgressBar Value="{Binding Progress, Mode=OneWay}" Height="8" Margin="0,12,0,0" AutomationProperties.Name="Voortgang van het plan" />
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding ProgressText}" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Column="1" Text="{Binding RemainingText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding AssumptionsText}" Style="{StaticResource MutedText}" Margin="0,8,0,0"
+                                                   Visibility="{Binding HasAssumptions, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                        <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0" Text="{Binding SyncText}">
+                                            <TextBlock.Visibility>
+                                                <Binding Path="NeedsProgressionPermission" Converter="{x:Static local:InverseVisibilityConverter.Instance}" />
+                                            </TextBlock.Visibility>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Next step: the first available step, highest priority first. -->
+                                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" BorderBrush="{StaticResource AccentBrush}">
+                                    <StackPanel>
+                                        <TextBlock Text="Volgende stap" Style="{StaticResource MutedText}" />
+                                        <TextBlock Text="{Binding NextStepEmptyText}" Margin="0,4,0,0"
+                                                   Visibility="{Binding HasNextStep, Converter={x:Static local:InverseVisibilityConverter.Instance}}" />
+                                        <StackPanel DataContext="{Binding NextStep}"
+                                                    Visibility="{Binding DataContext.HasNextStep, RelativeSource={RelativeSource AncestorType=Border}, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource HeadingText}" Margin="0,4,0,0" />
+                                            <TextBlock Text="{Binding MetaText}" Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                                       Visibility="{Binding HasMeta, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                            <TextBlock Text="{Binding Description}" Margin="0,6,0,0"
+                                                       Visibility="{Binding HasDescription, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                            <WrapPanel Margin="0,10,0,0">
+                                                <Button Style="{StaticResource PrimaryButton}" Content="Klaar" Margin="0,0,8,4" ToolTip="Vink deze stap af"
+                                                        AutomationProperties.Name="{Binding CheckBoxName}"
+                                                        Command="{Binding DataContext.Masteries.MarkDoneCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                <Button Content="Kopieer waypoint" Margin="0,0,8,4"
+                                                        Visibility="{Binding HasWaypoint, Converter={x:Static local:VisibilityConverter.Instance}}"
+                                                        ToolTip="{Binding Waypoint}"
+                                                        Command="{Binding DataContext.Masteries.CopyWaypointCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Waypoint}" />
+                                                <ItemsControl ItemsSource="{Binding Links}" Focusable="False">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Content="{Binding Label}" Margin="0,0,8,4" ToolTip="{Binding Url}"
+                                                                    Command="{Binding DataContext.Masteries.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Url}" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- The plan's phases with their steps. -->
+                                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Stappenplan" Style="{StaticResource HeadingText}" VerticalAlignment="Center" />
+                                            <CheckBox Grid.Column="1" Content="Alleen open stappen" IsChecked="{Binding OnlyOpen, Mode=TwoWay}" VerticalAlignment="Center" Margin="12,0" />
+                                            <ComboBox Grid.Column="2" ItemsSource="{Binding RegionOptions}" SelectedItem="{Binding RegionFilter, Mode=TwoWay}"
+                                                      MinWidth="150" AutomationProperties.Name="Toon stappen van regio" />
+                                        </Grid>
+                                        <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,8"
+                                                   Text="Vink een stap af als je hem hebt gedaan. Stappen die de app in je account kan zien, vinken vanzelf af; je kunt dat altijd zelf overrulen." />
+                                        <TextBlock Text="Geen stappen die bij dit filter passen." Style="{StaticResource MutedText}" Margin="0,8,0,0"
+                                                   Visibility="{Binding HasNoVisibleSteps, Converter={x:Static local:VisibilityConverter.Instance}}" />
+
+                                        <ItemsControl ItemsSource="{Binding Phases}" Focusable="False">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,4,0,0" AutomationProperties.Name="{Binding AccessibleName}">
+                                                        <Expander.Header>
+                                                            <StackPanel>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                                    <TextBlock Grid.Column="1" Text="{Binding ProgressText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                                                </Grid>
+                                                                <TextBlock Text="{Binding Goal}" Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                                                           Visibility="{Binding HasGoal, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                <ProgressBar Value="{Binding Progress, Mode=OneWay}" Margin="0,6,0,0" AutomationProperties.Name="Voortgang van de fase" />
+                                                            </StackPanel>
+                                                        </Expander.Header>
+                                                        <ItemsControl ItemsSource="{Binding Steps}" Focusable="False" Margin="24,0,0,8">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Border Margin="0,6,0,0" Padding="10" CornerRadius="6" Background="{StaticResource BackgroundBrush}"
+                                                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" VerticalAlignment="Top" Margin="0,1,10,0"
+                                                                                      AutomationProperties.Name="{Binding CheckBoxName}" ToolTip="Afvinken" />
+                                                                            <StackPanel Grid.Column="1">
+                                                                                <Grid>
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="Auto" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                                                    <Border Grid.Column="1" Margin="8,0,0,0" Padding="6,1" CornerRadius="4" VerticalAlignment="Top"
+                                                                                            Background="{StaticResource AccentSoftBrush}"
+                                                                                            Visibility="{Binding IsHighPriority, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                                                                        <TextBlock Text="Belangrijk" FontSize="11" Foreground="{StaticResource AccentBrush}" />
+                                                                                    </Border>
+                                                                                </Grid>
+                                                                                <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                                                    <Path Style="{StaticResource StepStatusIcon}" Margin="0,0,6,0" />
+                                                                                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource StepStatusText}" />
+                                                                                </StackPanel>
+                                                                                <TextBlock Text="{Binding WaitingText}" Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                                                                           Visibility="{Binding HasWaitingText, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                                <TextBlock Text="{Binding Description}" Margin="0,6,0,0"
+                                                                                           Visibility="{Binding HasDescription, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                                <TextBlock Text="{Binding MetaText}" Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                                                                           Visibility="{Binding HasMeta, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                                <TextBlock Text="{Binding Notes}" Style="{StaticResource MutedText}" FontStyle="Italic" Margin="0,4,0,0"
+                                                                                           Visibility="{Binding HasNotes, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                                <WrapPanel Margin="0,6,0,0">
+                                                                                    <Button Content="Kopieer waypoint" Style="{StaticResource LinkButton}" Margin="0,0,6,4"
+                                                                                            Visibility="{Binding HasWaypoint, Converter={x:Static local:VisibilityConverter.Instance}}" ToolTip="{Binding Waypoint}"
+                                                                                            Command="{Binding DataContext.Masteries.CopyWaypointCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Waypoint}" />
+                                                                                    <ItemsControl ItemsSource="{Binding Links}" Focusable="False">
+                                                                                        <ItemsControl.ItemsPanel>
+                                                                                            <ItemsPanelTemplate>
+                                                                                                <WrapPanel />
+                                                                                            </ItemsPanelTemplate>
+                                                                                        </ItemsControl.ItemsPanel>
+                                                                                        <ItemsControl.ItemTemplate>
+                                                                                            <DataTemplate>
+                                                                                                <Button Content="{Binding Label}" Style="{StaticResource LinkButton}" Margin="0,0,6,4" ToolTip="{Binding Url}"
+                                                                                                        Command="{Binding DataContext.Masteries.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Url}" />
+                                                                                            </DataTemplate>
+                                                                                        </ItemsControl.ItemTemplate>
+                                                                                    </ItemsControl>
+                                                                                    <Button Content="Terug naar automatisch" Style="{StaticResource LinkButton}" Margin="0,0,6,4"
+                                                                                            Visibility="{Binding CanReset, Converter={x:Static local:VisibilityConverter.Instance}}"
+                                                                                            ToolTip="Laat de app deze stap weer zelf afvinken op basis van je account"
+                                                                                            Command="{Binding DataContext.Masteries.ResetCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                                                </WrapPanel>
+                                                                            </StackPanel>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Expander>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Points and tracks per region, from the account. -->
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16"
+                                    Visibility="{Binding HasRegions, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <Expander AutomationProperties.Name="Regio-overzicht">
+                                    <Expander.Header>
+                                        <StackPanel>
+                                            <TextBlock Text="Regio-overzicht" Style="{StaticResource HeadingText}" />
+                                            <TextBlock Text="Mastery-punten en getrainde levels per regio." Style="{StaticResource MutedText}" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <ItemsControl ItemsSource="{Binding Regions}" Focusable="False" Margin="24,0,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,8,0,0">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding Region}" FontWeight="SemiBold" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding PointsText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                    <ItemsControl ItemsSource="{Binding Tracks}" Focusable="False">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,4,0,0">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="120" />
+                                                                        <ColumnDefinition Width="44" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                                    <ProgressBar Grid.Column="1" Value="{Binding Progress, Mode=OneWay}" VerticalAlignment="Center" Margin="8,0" Focusable="False"
+                                                                                 AutomationProperties.Name="{Binding Name}" />
+                                                                    <TextBlock Grid.Column="2" Text="{Binding Text}" Style="{StaticResource MutedText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
+                            </Border>
+
+                            <!-- Import, export and the prompt, also when a plan is active (to update it). -->
+                            <Border Style="{StaticResource CardBorder}"
+                                    Visibility="{Binding HasPlan, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <StackPanel>
+                                    <TextBlock Text="Plan bijwerken" Style="{StaticResource HeadingText}" />
+                                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                               Text="Exporteer het plan en geef het samen met een nieuwe AI-prompt aan een AI om het bij te stellen. Bij het importeren van een nieuwe versie blijven je afvinkingen staan voor stappen met dezelfde id. Er wordt eerst een back-up gemaakt." />
+                                    <WrapPanel Margin="0,12,0,0">
+                                        <Button Content="AI-prompt kopiëren" Command="{Binding CopyPromptCommand}" Margin="0,0,8,8" />
+                                        <Button Content="Plan exporteren…" Click="OnExportPlanClick" Margin="0,0,8,8" />
+                                        <Button Content="Plan plakken uit klembord" Click="OnPastePlanClick" Margin="0,0,8,8" />
+                                        <Button Content="Plan importeren uit bestand…" Click="OnImportPlanFileClick" Margin="0,0,8,8" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Feedback on the last action stays in view, wherever the button was on the page. -->
+                    <Border Grid.Row="1" MaxWidth="640" Margin="24,0,24,16" Padding="12,10" CornerRadius="8"
+                            Background="{StaticResource SurfaceBrush}" BorderThickness="1"
+                            Visibility="{Binding HasMessage, Converter={x:Static local:VisibilityConverter.Instance}}"
+                            AutomationProperties.LiveSetting="Polite">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsError}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Message}" />
+                                <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Focusable="False"
+                                              Visibility="{Binding HasWarnings, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                    <TextBlock Text="{Binding Warnings}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                                </ScrollViewer>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Sluiten" Style="{StaticResource LinkButton}" VerticalAlignment="Top" Margin="12,0,0,0"
+                                    Command="{Binding DismissMessageCommand}" AutomationProperties.Name="Melding sluiten" />
+                        </Grid>
+                    </Border>
+                </Grid>
             </TabItem>
 
             <TabItem Header="Account &amp; instellingen" AutomationProperties.Name="Account en instellingen">

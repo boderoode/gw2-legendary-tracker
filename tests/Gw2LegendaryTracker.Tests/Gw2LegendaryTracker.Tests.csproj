@@ -19,6 +19,10 @@
     <Content Include="..\..\data\recipes\*.json" Link="data\recipes\%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- The documented AI prompt is checked against the one embedded in the app. -->
+    <Content Include="..\..\docs\mastery-plan-prompt.md" Link="docs\mastery-plan-prompt.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

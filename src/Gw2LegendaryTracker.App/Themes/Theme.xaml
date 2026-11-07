@@ -661,6 +661,107 @@
         </Setter>
     </Style>
 
+    <!-- Collapsible sections (plan phases): the whole header is one large, keyboard-focusable toggle with a turning chevron. -->
+    <Style TargetType="Expander">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <StackPanel>
+                        <ToggleButton x:Name="HeaderToggle" Cursor="Hand" FocusVisualStyle="{StaticResource FocusRing}"
+                                      IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                      AutomationProperties.Name="{TemplateBinding AutomationProperties.Name}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="6" Padding="6,8" SnapsToDevicePixels="True">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Path x:Name="Chevron" Data="M 0 0 L 4 4 L 0 8" Width="8" Height="10" Stretch="None" VerticalAlignment="Top" Margin="2,6,0,0"
+                                                  Stroke="{StaticResource MutedBrush}" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                  RenderTransformOrigin="0.5,0.5">
+                                                <Path.RenderTransform>
+                                                    <RotateTransform Angle="0" />
+                                                </Path.RenderTransform>
+                                            </Path>
+                                            <ContentPresenter Grid.Column="1" Margin="10,0,0,0" />
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource ButtonHoverBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="Chevron" Property="RenderTransform">
+                                                <Setter.Value>
+                                                    <RotateTransform Angle="90" />
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                            <ContentPresenter Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}" />
+                        </ToggleButton>
+                        <ContentPresenter x:Name="Body" Visibility="Collapsed" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="Body" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Status of a plan step: a drawn icon next to the status text. The text always states the status; colour and shape only support it. -->
+    <Style x:Key="StepStatusIcon" TargetType="Path">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+        <Setter Property="Stretch" Value="Uniform" />
+        <Setter Property="StrokeThickness" Value="2" />
+        <Setter Property="StrokeStartLineCap" Value="Round" />
+        <Setter Property="StrokeEndLineCap" Value="Round" />
+        <Setter Property="StrokeLineJoin" Value="Round" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Stroke" Value="{StaticResource AccentBrush}" />
+        <!-- Available: an open circle. -->
+        <Setter Property="Data" Value="M 6 1 A 5 5 0 1 1 5.99 1 Z" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding State}" Value="DoneAuto">
+                <Setter Property="Stroke" Value="{StaticResource SuccessBrush}" />
+                <Setter Property="Data" Value="M 1 6 L 4.5 9.5 L 11 2.5" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="DoneManual">
+                <Setter Property="Stroke" Value="{StaticResource SuccessBrush}" />
+                <Setter Property="Data" Value="M 1 6 L 4.5 9.5 L 11 2.5" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="Blocked">
+                <!-- Waiting: a pause sign. -->
+                <Setter Property="Stroke" Value="{StaticResource MutedBrush}" />
+                <Setter Property="Data" Value="M 4 1.5 L 4 10.5 M 8 1.5 L 8 10.5" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="StepStatusText" TargetType="TextBlock" BasedOn="{StaticResource MutedText}">
+        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding State}" Value="DoneAuto">
+                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="DoneManual">
+                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding State}" Value="Blocked">
+                <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- Sync status indicator. Colour is never the only signal: the adjacent text always states the status. -->
     <Style x:Key="SyncDot" TargetType="Ellipse">
         <Setter Property="Width" Value="10" />

@@ -49,10 +49,12 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         RecipeDataViewModel recipeData,
         DataTransferViewModel dataTransfer,
         AcquisitionsViewModel acquisitions,
+        MasteriesViewModel masteries,
         IAppLog log,
         Dispatcher dispatcher)
     {
         Inventory = inventory;
+        Masteries = masteries;
         Goals = goals;
         RecipeData = recipeData;
         DataTransfer = dataTransfer;
@@ -76,6 +78,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         ToggleExpandedCommand = new RelayCommand(() => IsExpanded = !IsExpanded);
         HideOverlayCommand = new RelayCommand(() => OverlayHideRequested?.Invoke(this, EventArgs.Empty));
         SyncNowCommand = new RelayCommand(() => _ = SyncAsync());
+        Masteries.SyncRequested += OnMasteriesSyncRequested;
         OpenAccountTabCommand = new RelayCommand(() => SelectedMainTabIndex = MainTabs.IndexOf(MainTabs.Account));
     }
 
@@ -128,6 +131,8 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     public DataTransferViewModel DataTransfer { get; }
 
     public AcquisitionsViewModel Acquisitions { get; }
+
+    public MasteriesViewModel Masteries { get; }
 
     /// <summary>Shown in the main window so a problem report can say which version it is about.</summary>
     public string AppVersion { get; } = AppInfo.Version;
@@ -318,6 +323,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         // The key state must be known before the first goal is selected, or the first selection would not fetch anything.
         await RecipeData.InitializeAsync();
         await Goals.InitializeAsync();
+        await Masteries.InitializeAsync();
         await _sync.RestoreStatusAsync();
         HasApiKey = await _connection.HasKeyAsync();
         if (HasApiKey)
@@ -387,6 +393,14 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void OnMasteriesSyncRequested(object? sender, EventArgs e)
+    {
+        if (HasApiKey)
+        {
+            _ = SyncAsync();
+        }
+    }
+
     private void SelectTab(bool selected, OverlayTab tab)
     {
         // A radio button reports "unchecked" for the tab being left; only the newly checked one changes the view.
@@ -406,6 +420,8 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         _opacityTimer.Stop();
         _state.SettingsChanged -= OnSettingsChanged;
         _state.SyncStatusChanged -= OnSyncStatusChanged;
+        Masteries.SyncRequested -= OnMasteriesSyncRequested;
+        Masteries.Dispose();
         Inventory.Dispose();
         Acquisitions.Dispose();
         RecipeData.Dispose();
