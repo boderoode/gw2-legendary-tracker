@@ -12,7 +12,8 @@ using Gw2LegendaryTracker.Infrastructure.Persistence;
 namespace Gw2LegendaryTracker.App.ViewModels;
 
 /// <summary>Text the view should put on the clipboard, and what to tell the user when that worked.</summary>
-public sealed record ClipboardRequest(string Text, string SuccessMessage);
+/// <param name="FromOverlay">Asked from the overlay: the answer belongs there, not in the main window.</param>
+public sealed record ClipboardRequest(string Text, string SuccessMessage, bool FromOverlay = false);
 
 public sealed record MasteryLinkRow(string Label, string Url);
 
@@ -76,6 +77,9 @@ public sealed class MasteryStepRow : ObservableObject
     public IReadOnlyList<MasteryLinkRow> Links { get; }
 
     public bool HasLinks => Links.Count > 0;
+
+    /// <summary>The overlay has room for one link: the first the plan gives.</summary>
+    public MasteryLinkRow? FirstLink => Links.Count > 0 ? Links[0] : null;
 
     public MasteryStepState State { get; private set; }
 
@@ -195,10 +199,18 @@ public sealed record MasteryTrackRow(string Name, string Text, double Progress);
 
 public sealed record MasteryRegionRow(string Region, string PointsText, IReadOnlyList<MasteryTrackRow> Tracks);
 
+/// <summary>A phase in the overlay's overview: how far along it is, and whether it is the one to work on now.</summary>
+public sealed record MasteryPhaseOverviewRow(string Title, string ProgressText, double Progress, bool IsCurrent)
+{
+    public string AccessibleName => IsCurrent ? $"Fase {Title}, {ProgressText}, huidige fase" : $"Fase {Title}, {ProgressText}";
+}
+
 /// <summary>The Masteries tab: the imported plan as steps, the progress per region, and import/export of the plan.</summary>
 public sealed class MasteriesViewModel : ObservableObject, IDisposable
 {
     public const string AllRegions = "Alle regio's";
+
+    private static readonly TimeSpan OverlayNoticeDuration = TimeSpan.FromSeconds(4);
 
     private readonly MasteryPlanService _plans;
     private readonly MasteryCatalog _catalog;
@@ -208,6 +220,7 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
     private readonly string _backupFolder;
     private readonly Dispatcher _dispatcher;
     private readonly TimeProvider _time;
+    private readonly DispatcherTimer _overlayNoticeTimer;
     private readonly Dictionary<string, bool> _expanded = new(StringComparer.Ordinal);
     private readonly Dictionary<string, MasteryStepRow> _stepRows = new(StringComparer.Ordinal);
     private readonly Dictionary<string, MasteryPhaseRow> _phaseRows = new(StringComparer.Ordinal);
@@ -224,6 +237,10 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
     private string? _message;
     private bool _isError;
     private string _warnings = string.Empty;
+    private IReadOnlyList<MasteryStepRow> _overlaySteps = [];
+    private IReadOnlyList<MasteryPhaseOverviewRow> _phaseOverview = [];
+    private MasteryPhaseView? _overlayPhase;
+    private string? _overlayNotice;
 
     public MasteriesViewModel(
         MasteryPlanService plans,
@@ -243,6 +260,10 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
         _backupFolder = backupFolder;
         _dispatcher = dispatcher;
         _time = time ?? TimeProvider.System;
+        _overlayNoticeTimer = new DispatcherTimer(OverlayNoticeDuration, DispatcherPriority.Background, OnOverlayNoticeTimerTick, dispatcher)
+        {
+            IsEnabled = false,
+        };
 
         _plans.Changed += OnDataChanged;
         _catalog.Changed += OnDataChanged;
@@ -252,6 +273,8 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
         CopyPromptCommand = new RelayCommand(CopyPrompt);
         CopyWaypointCommand = new RelayCommand<string>(waypoint =>
             ClipboardRequested?.Invoke(this, new ClipboardRequest(waypoint, $"Waypoint {waypoint} gekopieerd. Plak hem in de chat van het spel.")));
+        OverlayCopyWaypointCommand = new RelayCommand<string>(waypoint =>
+            ClipboardRequested?.Invoke(this, new ClipboardRequest(waypoint, $"Waypoint {waypoint} gekopieerd", FromOverlay: true)));
         OpenLinkCommand = new RelayCommand<string>(Services.LinkOpener.Open);
         ResetCommand = new RelayCommand<MasteryStepRow>(row => Run(() => _plans.SetOverrideAsync(row.Id, null)));
         MarkDoneCommand = new RelayCommand<MasteryStepRow>(row => row.IsDone = true);
@@ -276,6 +299,9 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
     public ICommand CopyPromptCommand { get; }
 
     public ICommand CopyWaypointCommand { get; }
+
+    /// <summary>Copies a waypoint from the overlay; the overlay confirms it briefly instead of the main window.</summary>
+    public ICommand OverlayCopyWaypointCommand { get; }
 
     public ICommand OpenLinkCommand { get; }
 
@@ -450,6 +476,59 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
 
     public bool HasWarnings => _warnings.Length > 0;
 
+    /// <summary>Overlay: the phase to work on now (the first with open steps).</summary>
+    public string OverlayPhaseTitle => _overlayPhase?.Phase.Title ?? string.Empty;
+
+    public string OverlayPhaseProgressText => _overlayPhase?.ProgressText ?? string.Empty;
+
+    public bool HasOverlayPhase => _overlayPhase is not null;
+
+    /// <summary>
+    /// Overlay: all steps of the current phase, open ones first. They are the same row objects as in the tab, so ticking
+    /// a step in either place stores the same manual choice and shows at once in both.
+    /// </summary>
+    public IReadOnlyList<MasteryStepRow> OverlaySteps
+    {
+        get => _overlaySteps;
+        private set
+        {
+            _overlaySteps = value;
+            RaisePropertyChanged(nameof(OverlaySteps));
+        }
+    }
+
+    /// <summary>Overlay: every phase of the plan with its progress, unaffected by the filters of the tab.</summary>
+    public IReadOnlyList<MasteryPhaseOverviewRow> PhaseOverview
+    {
+        get => _phaseOverview;
+        private set
+        {
+            _phaseOverview = value;
+            RaisePropertyChanged(nameof(PhaseOverview));
+        }
+    }
+
+    /// <summary>A short confirmation in the overlay, e.g. after copying a waypoint; it disappears by itself.</summary>
+    public string? OverlayNotice
+    {
+        get => _overlayNotice;
+        private set
+        {
+            _overlayNotice = value;
+            RaisePropertyChanged(nameof(OverlayNotice));
+            RaisePropertyChanged(nameof(HasOverlayNotice));
+        }
+    }
+
+    public bool HasOverlayNotice => _overlayNotice is not null;
+
+    public void ShowOverlayNotice(string text)
+    {
+        OverlayNotice = text;
+        _overlayNoticeTimer.Stop();
+        _overlayNoticeTimer.Start();
+    }
+
     /// <summary>Loads what is stored, then refreshes the public mastery tracks in the background when they are old.</summary>
     public async Task InitializeAsync()
     {
@@ -554,6 +633,7 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _overlayNoticeTimer.Stop();
         _plans.Changed -= OnDataChanged;
         _catalog.Changed -= OnDataChanged;
         _progress.Changed -= OnDataChanged;
@@ -585,6 +665,12 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void OnOverlayNoticeTimerTick(object? sender, EventArgs e)
+    {
+        _overlayNoticeTimer.Stop();
+        OverlayNotice = null;
+    }
+
     private void OnDataChanged(object? sender, EventArgs e) => _dispatcher.InvokeAsync(Rebuild);
 
     private void OnPlanReplaced(object? sender, EventArgs e) => SyncRequested?.Invoke(this, EventArgs.Empty);
@@ -612,6 +698,9 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
             _summary = null;
             Phases = [];
             NextStep = null;
+            _overlayPhase = null;
+            OverlaySteps = [];
+            PhaseOverview = [];
             RegionOptions = [AllRegions];
             _regionFilter = AllRegions;
         }
@@ -632,14 +721,26 @@ public sealed class MasteriesViewModel : ObservableObject, IDisposable
                 _regionFilter = AllRegions;
             }
 
+            // One row per step, shared by the tab, the next-step card and the overlay; each is updated once per rebuild.
+            var rows = _summary.Phases.SelectMany(p => p.Steps).ToDictionary(s => s.Step.Id, s => Row(s, overrides), StringComparer.Ordinal);
+
             var filtered = MasteryPlanPresenter.Filter(_summary.Phases, _onlyOpen, _regionCodes.GetValueOrDefault(_regionFilter));
-            var phases = filtered.Select(p => PhaseRow(p, [.. p.Steps.Select(s => Row(s, overrides))])).ToList();
+            var phases = filtered.Select(p => PhaseRow(p, [.. p.Steps.Select(s => rows[s.Step.Id])])).ToList();
             if (!_phases.SequenceEqual(phases))
             {
                 Phases = phases;
             }
 
-            NextStep = _summary.NextStep is { } next ? Row(next, overrides) : null;
+            NextStep = _summary.NextStep is { } next ? rows[next.Step.Id] : null;
+
+            _overlayPhase = MasteryPlanPresenter.CurrentPhase(_summary);
+            List<MasteryStepRow> overlaySteps = _overlayPhase is null ? [] : [.. MasteryPlanPresenter.OverlaySteps(_overlayPhase).Select(s => rows[s.Step.Id])];
+            if (!_overlaySteps.SequenceEqual(overlaySteps))
+            {
+                OverlaySteps = overlaySteps;
+            }
+
+            PhaseOverview = [.. _summary.Phases.Select(p => new MasteryPhaseOverviewRow(p.Phase.Title, p.ProgressText, p.Progress, ReferenceEquals(p, _overlayPhase)))];
         }
 
         RaiseAllPropertiesChanged();

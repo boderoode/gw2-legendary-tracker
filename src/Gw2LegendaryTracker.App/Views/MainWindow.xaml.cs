@@ -120,15 +120,30 @@ public partial class MainWindow : Window
 
     private void OnClipboardRequested(object? sender, ClipboardRequest request)
     {
+        // The main window lives as long as the app (also when hidden), so it serves the overlay's requests too.
         try
         {
             Clipboard.SetText(request.Text);
-            ViewModel.Masteries.Report(false, request.SuccessMessage);
+            if (request.FromOverlay)
+            {
+                ViewModel.Masteries.ShowOverlayNotice(request.SuccessMessage);
+            }
+            else
+            {
+                ViewModel.Masteries.Report(false, request.SuccessMessage);
+            }
         }
         catch (ExternalException ex)
         {
             // Another program can hold the clipboard for a moment.
-            ViewModel.Masteries.Report(true, $"Kopiëren naar het klembord is niet gelukt. Probeer het nog eens. ({ex.Message})");
+            if (request.FromOverlay)
+            {
+                ViewModel.Masteries.ShowOverlayNotice("Kopiëren mislukt, probeer het nog eens");
+            }
+            else
+            {
+                ViewModel.Masteries.Report(true, $"Kopiëren naar het klembord is niet gelukt. Probeer het nog eens. ({ex.Message})");
+            }
         }
     }
 
