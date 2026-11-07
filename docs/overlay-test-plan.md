@@ -91,6 +91,23 @@ Ondersteuning voor exclusive fullscreen wordt pas geclaimd als 1.3 aantoonbaar w
 | 6.8 | Alles op 125% en 150% schaling | Niets afgekapt; de ronde hoeken en de balken blijven scherp | |
 | 6.9 | Voortgangsbalk in het hoofdvenster bij een Legendary (zet er een op 0%, tussenin en 100%) | Dunne, volledig afgeronde balk, goud op een zachte baan; dezelfde als in de overlay | |
 
+## 7. Masteries in de overlay
+
+Importeer eerst in het hoofdvenster (tab Masteries) een plan met een paar fases, waypoints en wikilinks.
+
+| # | Test | Verwacht | Resultaat |
+| --- | --- | --- | --- |
+| 7.1 | Klik in de overlay op *Masteries* en daarna weer op *Legendaries*, terwijl je in het spel speelt | De inhoud wisselt; het spel houdt de focus | |
+| 7.2 | Kies *Masteries*, sluit de app en start hem opnieuw | De overlay toont nog steeds Masteries | |
+| 7.3 | Compact: kijk naar de kaart "Volgende stap" | Titel, regio/map/tijd en knoppen voor afvinken, waypoint (alleen als de stap er een heeft) en wiki (alleen met een link) | |
+| 7.4 | Klik op het waypoint-icoon en plak (Ctrl+V) in de chat van het spel | Onderin staat even "Waypoint … gekopieerd"; in de chat verschijnt de juiste waypoint-link | |
+| 7.5 | Klik op het wiki-icoon | De wikipagina opent in je browser | |
+| 7.6 | Vink de volgende stap af via het vinkje in de kaart | De voortgang stijgt, er komt een nieuwe volgende stap, en in het hoofdvenster is dezelfde stap afgevinkt | |
+| 7.7 | Uitgebreid, tab *Deze fase*: vink een stap af en weer uit | Afgevinkte stappen zakken gedimd naar onder en zijn terug te zetten; geblokkeerde stappen tonen "Wacht op: …" | |
+| 7.8 | Uitgebreid, tab *Fases* | Alle fases met "x/y" en een balk; de huidige fase is goud en heeft het label "nu" | |
+| 7.9 | Rond de laatste stap van een fase af | *Deze fase* springt naar de volgende fase met open stappen | |
+| 7.10 | Zonder geïmporteerd plan op *Masteries* (bijvoorbeeld na een nieuwe installatie) | Uitleg en de knop "Hoofdvenster openen", die het hoofdvenster op de tab Masteries opent | |
+
 ## Resultaten doorgeven
 
 Noteer per rij OK of niet OK, met wat je zag. Voeg bij problemen een screenshot toe en vermeld Windows-versie,

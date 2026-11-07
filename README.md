@@ -45,6 +45,9 @@ You need Windows 10 (version 1809) or later, 64-bit. You do not need to install 
 The overlay is designed to be glanced at while playing: in two seconds, you can see how far along you are, what
 you should do next, and what you are still missing.
 
+Two pills under the header switch what it shows: **Legendaries** or **Masteries** (your imported mastery plan). The
+overlay remembers your choice; the hotkey and all other settings work the same in both modes.
+
 - **Compact** (default): icon and name of the selected Legendary, your progress as a single percentage (with the count
   beside it and a thin bar), the **next step**, and **still needed**: the largest shortages, each shown as "120 / 250" with a
   mini bar (gold while something is missing, green when covered). The bottom-right shows when it was last updated. You
@@ -53,6 +56,12 @@ you should do next, and what you are still missing.
   everything together: **Needed** (all materials, with an *Shortage only* filter, currencies, and what higher-priority
   Legendaries in your list are already using), **Components** (checklist), and **Tree** (expandable crafting tree).
 - **No Legendary selected:** a short explanation and a button to open the main window.
+- **Masteries mode:** compact, the plan's progress (percentage, steps, remaining time) and the **next step** with its
+  region, map and time, plus three buttons: tick it off, copy its waypoint (the overlay confirms it at the bottom for a
+  few seconds) and open its first wiki link. Expanded, two tabs: **This phase** (*Deze fase*: every step of the first
+  phase that still has open steps, open ones first and done ones dimmed at the bottom, each with a check box) and
+  **Phases** (*Fases*: every phase with its progress; the current one is marked *nu*). Ticking a step here is the same
+  as ticking it in the main window. Without a plan, a button opens the main window on the Masteries tab.
 - **Controls:** drag by the header, lock it against dragging, adjust transparency, auto-hide, and use a
   *click-through* mode in which mouse clicks pass through the overlay to the game. The hotkey and all settings
   are in the main window, so you can always regain control.
@@ -167,6 +176,8 @@ The full example is in [docs/mastery-plan-prompt.md](docs/mastery-plan-prompt.md
   `https://wiki.guildwars2.com` are left out; an invalid waypoint and negative or unrealistic (over 1000 hours) minutes are cleared; texts that are too long
   are shortened. When the game's mastery tracks have not been fetched yet (offline), ids are kept and checked later.
 - **Export plan** writes the plan in the same format, so you can give it back to an AI to adjust it.
+- **While playing:** switch the overlay to *Masteries* to see the next step and tick steps off without leaving the game
+  (see [The overlay](#the-overlay)).
 
 ## Fashion Studio (in development)
 
