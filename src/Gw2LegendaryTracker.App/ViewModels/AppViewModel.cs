@@ -31,6 +31,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _opacityTimer;
     private double? _pendingOpacity;
+    private int? _pendingMainTab;
     private bool _isOverlayVisible;
     private string? _hotkeyError;
     private string? _errorMessage;
@@ -75,6 +76,27 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         ToggleExpandedCommand = new RelayCommand(() => IsExpanded = !IsExpanded);
         HideOverlayCommand = new RelayCommand(() => OverlayHideRequested?.Invoke(this, EventArgs.Empty));
         SyncNowCommand = new RelayCommand(() => _ = SyncAsync());
+        OpenAccountTabCommand = new RelayCommand(() => SelectedMainTabIndex = MainTabs.IndexOf(MainTabs.Account));
+    }
+
+    public ICommand OpenAccountTabCommand { get; }
+
+    /// <summary>The open main tab; remembered across restarts.</summary>
+    public int SelectedMainTabIndex
+    {
+        get => _pendingMainTab ?? MainTabs.IndexOf(_state.Settings.SelectedMainTab);
+        set
+        {
+            if (value < 0 || value >= MainTabs.All.Count || value == SelectedMainTabIndex)
+            {
+                return;
+            }
+
+            // Shown at once; the stored value follows when the save has landed.
+            _pendingMainTab = value;
+            RaisePropertyChanged(nameof(SelectedMainTabIndex));
+            Persist(s => s with { SelectedMainTab = MainTabs.All[value] });
+        }
     }
 
     public event EventHandler? OverlayToggleRequested;
@@ -466,6 +488,11 @@ public sealed class AppViewModel : ObservableObject, IDisposable
             if (!_opacityTimer.IsEnabled)
             {
                 _pendingOpacity = null;
+            }
+
+            if (_pendingMainTab is { } tab && MainTabs.IndexOf(settings.SelectedMainTab) == tab)
+            {
+                _pendingMainTab = null;
             }
 
             RaiseAllPropertiesChanged();

@@ -70,7 +70,8 @@ public sealed class UserDataTransferService
         {
             try
             {
-                await _state.UpdateAsync(_ => settings, cancellationToken).ConfigureAwait(false);
+                // The open tab is where the user is now, not something to restore from a file.
+                await _state.UpdateAsync(current => settings with { SelectedMainTab = current.SelectedMainTab }, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
             {
