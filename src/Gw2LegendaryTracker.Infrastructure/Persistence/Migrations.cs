@@ -188,5 +188,70 @@ internal static class Migrations
             updated_utc TEXT NOT NULL
         );
         """,
+
+        // v10: masteries. The tracks are public data (fetched time in public_data_meta under "masteries"); the account's
+        // mastery data is replaced on every mastery sync; the plan and its manual choices are user data (exported).
+        """
+        CREATE TABLE mastery (
+            id         INTEGER PRIMARY KEY NOT NULL,
+            name       TEXT NOT NULL,
+            region     TEXT NOT NULL,
+            sort_order INTEGER NOT NULL
+        );
+
+        CREATE TABLE mastery_level (
+            mastery_id  INTEGER NOT NULL REFERENCES mastery (id) ON DELETE CASCADE,
+            level_index INTEGER NOT NULL,
+            name        TEXT NOT NULL,
+            point_cost  INTEGER NOT NULL,
+            exp_cost    INTEGER NOT NULL,
+            PRIMARY KEY (mastery_id, level_index)
+        ) WITHOUT ROWID;
+
+        CREATE TABLE mastery_sync_state (
+            id               INTEGER PRIMARY KEY CHECK (id = 1),
+            state            TEXT NOT NULL,
+            last_success_utc TEXT NULL,
+            error            TEXT NULL
+        );
+
+        CREATE TABLE account_mastery_capture (
+            id           INTEGER PRIMARY KEY CHECK (id = 1),
+            captured_utc TEXT NOT NULL
+        );
+
+        CREATE TABLE account_mastery (
+            mastery_id INTEGER PRIMARY KEY NOT NULL,
+            level      INTEGER NOT NULL
+        );
+
+        CREATE TABLE account_mastery_points (
+            region TEXT PRIMARY KEY NOT NULL,
+            spent  INTEGER NOT NULL,
+            earned INTEGER NOT NULL
+        ) WITHOUT ROWID;
+
+        CREATE TABLE account_mastery_unlocked (
+            mastery_id INTEGER PRIMARY KEY NOT NULL
+        );
+
+        CREATE TABLE account_achievement (
+            achievement_id INTEGER PRIMARY KEY NOT NULL,
+            done           INTEGER NOT NULL,
+            current        INTEGER NOT NULL,
+            max            INTEGER NOT NULL
+        );
+
+        CREATE TABLE mastery_plan (
+            id           INTEGER PRIMARY KEY CHECK (id = 1),
+            plan_json    TEXT NOT NULL,
+            imported_utc TEXT NOT NULL
+        );
+
+        CREATE TABLE mastery_step_override (
+            step_id TEXT PRIMARY KEY NOT NULL,
+            done    INTEGER NOT NULL
+        ) WITHOUT ROWID;
+        """,
     ];
 }

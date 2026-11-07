@@ -1,8 +1,11 @@
 # GW2 Legendary Tracker
 
-A Windows app for tracking your Legendary crafting progress in Guild Wars 2. One program with two views:
-a regular **main window** and a compact **overlay** that can stay visible over the game. Both use the same
+A Windows app for tracking your progress in Guild Wars 2: your **Legendary** crafting and your **masteries**. One program
+with two views: a regular **main window** and a compact **overlay** that can stay visible over the game. Both use the same
 data and calculations, so a change in one window is immediately visible in the other.
+
+The main window has three tabs: **Legendaries**, **Masteries** and **Account & settings**. The sync status and the
+*Sync now* and *Fashion Studio* buttons are above the tabs, so they are always in reach. The app remembers the last tab you opened.
 
 The app only reads data through the official Guild Wars 2 API. Nothing in the game is modified: no DLL injection,
 no reading game memory, and no automation.
@@ -24,9 +27,13 @@ You need Windows 10 (version 1809) or later, 64-bit. You do not need to install 
 
 ## First use
 
-1. **Connect your account.** Create a key at <https://account.arena.net/applications> with only the permissions
-   **account**, **inventories**, **characters**, and **wallet**. Paste it into the main window and click *Connect*.
-   The app checks the key and rejects it if any permissions are missing.
+1. **Connect your account.** Create a key at <https://account.arena.net/applications> with the permissions
+   **account**, **inventories**, **characters**, and **wallet**. Paste it under *Account & settings* and click *Connect*.
+   The app checks the key and rejects it if any of these permissions are missing.
+
+   Two permissions are **optional**: **progression** lets the Masteries tab tick off steps by itself (see
+   [Masteries](#masteries-ai-plan-import)), and **unlocks** shows what you own in the Fashion Studio. Keys without them
+   keep working; those features then do less automatically.
 2. **Add your gw2treasures key** for Legendary recipes themselves (instructions are shown in the app; see also
    [Recipes](#recipes)).
 3. **Choose a Legendary** under *My Legendaries*. The order determines which ones get your materials first.
@@ -111,6 +118,56 @@ number results in a shortage you might trust.
 - **Form limitations:** one payment currency per offer, and Coin is not included (amounts are in copper, which leads to
   errors). Both are possible through a file.
 
+## Masteries (AI plan import)
+
+The *Masteries* tab turns a mastery plan written by an external AI (for example Claude) into concrete steps and tracks
+your progress on them.
+
+1. Click **Copy AI prompt** (*AI-prompt kopiëren*). The prompt describes the plan format and the rules, and includes your
+   current mastery progress from the API: trained levels per track, points per region and the real mastery ids.
+   **Your API key is never part of the prompt.** The prompt text is [docs/mastery-plan-prompt.md](docs/mastery-plan-prompt.md).
+2. Paste it into an AI chat, add your wishes at the bottom if you like, and copy the answer.
+3. Click **Paste plan from clipboard** (or save the answer to a file and import that). The app accepts plain JSON and JSON
+   inside a Markdown ```` ```json ```` code block. A preview shows the phases, steps and every correction before anything is
+   replaced; your current data is backed up first.
+
+**What you see:** the plan's title and summary, overall progress (percentage and steps) and estimated remaining time,
+the **next step** (the first available step, highest priority first), the phases as collapsible sections with their
+own progress bar, and per step its status, region/map, time, a *Copy waypoint* button, wiki links and notes. Blocked steps
+say which steps they wait for. You can show only open steps or one region. The **region overview** lists your mastery
+points per region and how far each track is trained.
+
+**Progress per step**
+
+| Status | When |
+| --- | --- |
+| Done (automatic) | A `mastery-level` step whose level your account has trained, or a step whose achievement is done. Needs the optional **progression** permission. |
+| Done (manual) | You ticked it off. |
+| Available | Not done, and every step it requires is done. |
+| Blocked | A step it requires is not done yet. |
+
+A manual choice always wins, also to reopen a step the account data marks as done; the step then says *handmatig aangepast*
+and offers *Back to automatic*. Manual ticks are stored per step id. When you import a new version of the plan, ticks on
+step ids that are still in the plan are kept. Without the progression permission the tab explains what is missing, and
+you tick off steps yourself.
+
+**Plan format** (`gw2-mastery-plan`, version 1, camelCase): an envelope with `format`, `version`, `title`, `createdUtc`,
+`author`, `summary`, `assumptions` and `phases`. Each phase has `id`, `title`, `goal` and `steps`. Each step has `id`,
+`title`, `description`, `type` (`mastery-point`, `mastery-level`, `experience`, `achievement`, `story`, `currency` or
+`other`), `region` (the region value from `/v2/masteries`), `masteryId`, `masteryLevel` (0-based index into the track's
+levels, the same meaning as `/v2/account/masteries`), `achievementId`, `map`, `waypoint` (a chat code like `[&BDgAAAA=]`),
+`estimatedMinutes`, `priority` (`high`, `normal` or `low`), `requires` (step ids), `links` (`label` and `url`) and `notes`.
+The full example is in [docs/mastery-plan-prompt.md](docs/mastery-plan-prompt.md).
+
+- **Refused as a whole:** an empty file, more than 1 MB (also once the app has written out every field), invalid JSON, another format, a newer version, no phases, more than
+  20 phases or 300 steps, a missing, too long (over 64 characters) or duplicate id, `requires` pointing to an unknown step,
+  or steps that wait for each other in a circle.
+- **Corrected with a warning:** an unknown `type` becomes `other` and an unknown `priority` becomes `normal`; a `masteryId`
+  that does not exist or a `masteryLevel` out of range is cleared (the step becomes manual); links outside
+  `https://wiki.guildwars2.com` are left out; an invalid waypoint and negative or unrealistic (over 1000 hours) minutes are cleared; texts that are too long
+  are shortened. When the game's mastery tracks have not been fetched yet (offline), ids are kept and checked later.
+- **Export plan** writes the plan in the same format, so you can give it back to an AI to adjust it.
+
 ## Fashion Studio (in development)
 
 Use *Open Fashion Studio* in the main window to put together a look. Browse all skins that fit the selected slot on the
@@ -187,21 +244,24 @@ telemetry, no analytics, and no other server. The GW2 key is only used for read 
 
 | File or folder | Contents |
 | --- | --- |
-| `tracker.db` | SQLite: settings, goals, checkmarks, notes, your custom source data, last inventory, cached item names, recipes, and Trading Post prices. The schema is versioned; updates migrate existing data. |
+| `tracker.db` | SQLite: settings, goals, checkmarks, notes, your custom source data, your mastery plan and its ticks, last inventory and mastery progress, cached item names, recipes, mastery tracks, and Trading Post prices. The schema is versioned; updates migrate existing data. |
 | `apikey.bin`, `forgekey.bin` | The two keys, encrypted with Windows DPAPI (only your Windows account on this PC can read them). **Never** stored in the database, settings, or logs. |
 | `logs\` | Log files, see below. |
-| `backups\` | Automatic backups immediately before an import (the last five). |
+| `backups\` | Automatic backups immediately before an import of user data or a mastery plan (the last five). |
 | `recipes\` | Your own recipe files (optional). |
 
 Previously retrieved data and your checkmarks remain available without internet.
 
 ### Export and import
 
-Under "Data and backup", you can export your Legendaries, their order, checkmarks, notes, source data, and settings to a
-file, and import them again, for example on another PC. **API keys are never included in an export.**
+Under "Data and backup" (tab *Account & settings*), you can export your Legendaries, their order, checkmarks, notes,
+source data, settings, and your mastery plan with its ticks to a file, and import them again, for example on another PC.
+**API keys are never included in an export.**
 
-- Importing replaces your current Legendaries and settings. The app validates the entire file first and asks for
-  confirmation; an invalid file changes nothing and does not create a backup either.
+- Exports are format version 2 since the mastery plan was added; version 1 files are still imported. A file without a
+  mastery plan keeps your current plan, and an unreadable plan in a file is skipped with a warning.
+- Importing replaces your current Legendaries and settings (the open tab stays as it is). The app validates the entire
+  file first and asks for confirmation; an invalid file changes nothing and does not create a backup either.
 - Immediately before an import, the app saves your current data in `backups\`, so you can undo a mistake.
 - Minor errors in an otherwise valid file are skipped and reported; a file that is not a valid export or comes from
   a newer version is rejected entirely.

@@ -6,6 +6,7 @@ using Gw2LegendaryTracker.Core.Crafting.Forge;
 using Gw2LegendaryTracker.Core.Goals;
 using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Items;
+using Gw2LegendaryTracker.Core.Masteries;
 using Gw2LegendaryTracker.Core.Trading;
 using Gw2LegendaryTracker.Core.Settings;
 using Gw2LegendaryTracker.Core.Sync;
@@ -178,6 +179,107 @@ internal sealed class FakeApiClient : IGw2ApiClient
         }
 
         return TestData.Snapshot(capturedUtc);
+    }
+
+    public List<MasteryDefinition> Masteries { get; set; } = [];
+
+    public int MasteryDefinitionCalls { get; private set; }
+
+    public Exception? MasteryDefinitionFailure { get; set; }
+
+    public List<AccountMastery> AccountMasteries { get; set; } = [];
+
+    public AccountMasteryPoints MasteryPoints { get; set; } = new([], []);
+
+    public List<AchievementProgress> Achievements { get; set; } = [];
+
+    /// <summary>Makes every call that needs the "progression" permission fail.</summary>
+    public Exception? MasteryFailure { get; set; }
+
+    public int AccountMasteryCalls { get; private set; }
+
+    public List<IReadOnlyCollection<int>> AchievementRequests { get; } = [];
+
+    /// <summary>When set, <see cref="GetMasteriesAsync"/> waits for it, to test overlapping refreshes.</summary>
+    public TaskCompletionSource? MasteryDefinitionGate { get; set; }
+
+    public async Task<IReadOnlyList<MasteryDefinition>> GetMasteriesAsync(CancellationToken cancellationToken = default)
+    {
+        MasteryDefinitionCalls++;
+        if (MasteryDefinitionGate is not null)
+        {
+            await MasteryDefinitionGate.Task;
+        }
+
+        return MasteryDefinitionFailure is null ? [.. Masteries] : throw MasteryDefinitionFailure;
+    }
+
+    public Task<IReadOnlyList<AccountMastery>> GetAccountMasteriesAsync(string apiKey, CancellationToken cancellationToken = default)
+    {
+        AccountMasteryCalls++;
+        return MasteryFailure is null
+            ? Task.FromResult<IReadOnlyList<AccountMastery>>([.. AccountMasteries])
+            : Task.FromException<IReadOnlyList<AccountMastery>>(MasteryFailure);
+    }
+
+    public Task<AccountMasteryPoints> GetAccountMasteryPointsAsync(string apiKey, CancellationToken cancellationToken = default) =>
+        MasteryFailure is null ? Task.FromResult(MasteryPoints) : Task.FromException<AccountMasteryPoints>(MasteryFailure);
+
+    public Task<IReadOnlyList<AchievementProgress>> GetAccountAchievementsAsync(string apiKey, IReadOnlyCollection<int> ids, CancellationToken cancellationToken = default)
+    {
+        AchievementRequests.Add(ids);
+        return MasteryFailure is null
+            ? Task.FromResult<IReadOnlyList<AchievementProgress>>([.. Achievements.Where(a => ids.Contains(a.Id))])
+            : Task.FromException<IReadOnlyList<AchievementProgress>>(MasteryFailure);
+    }
+}
+
+internal sealed class FakeMasteryDefinitionStore : IMasteryDefinitionStore
+{
+    public List<MasteryDefinition> Stored { get; set; } = [];
+
+    public DateTimeOffset? FetchedUtc { get; set; }
+
+    public Task<IReadOnlyList<MasteryDefinition>> LoadAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<MasteryDefinition>>([.. Stored]);
+
+    public Task<DateTimeOffset?> GetFetchedUtcAsync(CancellationToken cancellationToken = default) => Task.FromResult(FetchedUtc);
+
+    public Task SaveAsync(IReadOnlyCollection<MasteryDefinition> definitions, DateTimeOffset fetchedUtc, CancellationToken cancellationToken = default)
+    {
+        Stored = [.. definitions];
+        FetchedUtc = fetchedUtc;
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeMasteryProgressStore : IMasteryProgressStore
+{
+    public MasteryAccountProgress? Saved { get; set; }
+
+    public MasterySyncStatus Status { get; set; } = MasterySyncStatus.Initial;
+
+    public Exception? SaveFailure { get; set; }
+
+    public Task<MasteryAccountProgress?> LoadAsync(CancellationToken cancellationToken = default) => Task.FromResult(Saved);
+
+    public Task SaveAsync(MasteryAccountProgress progress, CancellationToken cancellationToken = default)
+    {
+        if (SaveFailure is not null)
+        {
+            return Task.FromException(SaveFailure);
+        }
+
+        Saved = progress;
+        return Task.CompletedTask;
+    }
+
+    public Task<MasterySyncStatus> LoadStatusAsync(CancellationToken cancellationToken = default) => Task.FromResult(Status);
+
+    public Task SaveStatusAsync(MasterySyncStatus status, CancellationToken cancellationToken = default)
+    {
+        Status = status;
+        return Task.CompletedTask;
     }
 }
 

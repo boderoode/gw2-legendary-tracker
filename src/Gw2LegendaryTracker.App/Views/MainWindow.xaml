@@ -3,398 +3,529 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Gw2LegendaryTracker.App.Views"
         Title="GW2 Legendary Tracker"
-        Width="720" Height="560" MinWidth="480" MinHeight="420"
+        Width="720" Height="640" MinWidth="480" MinHeight="420"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BackgroundBrush}">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24" MaxWidth="640">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
+        <!-- Shared by all tabs: what the app is, the sync status and the actions that are not tied to one tab. -->
+        <StackPanel Margin="24,24,24,12" MaxWidth="640">
             <TextBlock Text="Legendary Tracker" Style="{StaticResource HeadingText}" FontSize="24" />
             <TextBlock Margin="0,4,0,12" Style="{StaticResource MutedText}"
-                       Text="Houd je Legendary-voortgang bij, in dit venster of in de overlay boven Guild Wars 2." />
-            <Button Content="Fashion Studio openen" Command="{Binding OpenFashionStudioCommand}" HorizontalAlignment="Left" Margin="0,0,0,20" Padding="12,6"
-                    ToolTip="Bekijk alle skins en kleuren en stel een look samen" />
+                       Text="Houd je voortgang in Guild Wars 2 bij: je Legendaries en je masteries, in dit venster of in de overlay boven het spel." />
 
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Verbind je Guild Wars 2-account" Style="{StaticResource HeadingText}" />
-                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
-                               Text="De app leest alleen mee: zo weet hij welke materialen je al hebt. Er wordt niets in het spel gewijzigd." />
-
-                    <StackPanel x:Name="ConnectForm">
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding NeedsApiKey}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
-
-                        <TextBlock Margin="0,12,0,0">
-                            <Run Text="1. Open" />
-                            <Hyperlink NavigateUri="https://account.arena.net/applications" RequestNavigate="OnLinkNavigate">account.arena.net/applications</Hyperlink>
-                            <Run Text="en log in." />
-                        </TextBlock>
-                        <TextBlock Text="2. Klik op &quot;New Key&quot; en geef de key een naam, bijvoorbeeld &quot;Legendary Tracker&quot;." Margin="0,2,0,0" />
-                        <TextBlock Text="3. Zet een vinkje bij: account, inventories, characters en wallet. Meer is niet nodig." Margin="0,2,0,0" />
-                        <TextBlock Text="4. Kopieer de key en plak hem hieronder." Margin="0,2,0,8" />
-
-                        <PasswordBox x:Name="ApiKeyBox" Padding="8" FontSize="14" MaxLength="100"
-                                     AutomationProperties.Name="API-key" KeyDown="OnApiKeyBoxKeyDown" />
-                        <Button Style="{StaticResource PrimaryButton}" Content="Verbinden" Click="OnConnectClick" IsEnabled="{Binding IsNotBusy}"
-                                HorizontalAlignment="Left" Margin="0,8,0,0" />
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding HasApiKey}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
-                        <Button Content="Nu synchroniseren" Command="{Binding SyncNowCommand}" />
-                        <Button Content="Key verwijderen" Click="OnDisconnectClick" Margin="8,0,0,0" />
-                    </StackPanel>
-
-                    <TextBlock Text="{Binding ConnectMessage}" Margin="0,8,0,0">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding HasConnectMessage}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding ConnectMessageIsError}" Value="True">
-                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Recepten van de Legendaries" Style="{StaticResource HeadingText}" />
-                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
-                               Text="Het spel geeft de recepten van de Legendaries zelf (de Gifts en de Mystic Forge-stappen) niet vrij. De app haalt ze daarom op bij de website gw2treasures.com en controleert ze met de officiële gegevens. Daarvoor is een gratis key nodig." />
-
-                    <StackPanel>
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding RecipeData.NeedsKey}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
-
-                        <TextBlock Margin="0,12,0,0">
-                            <Run Text="1. Open" />
-                            <Hyperlink NavigateUri="https://en.gw2treasures.com/dev/api" RequestNavigate="OnLinkNavigate">en.gw2treasures.com/dev/api</Hyperlink>
-                            <Run Text="en log in (rechtsboven)." />
-                        </TextBlock>
-                        <TextBlock Text="2. Open in het menu bovenaan &quot;Developer&quot; en registreer een applicatie, bijvoorbeeld &quot;Legendary Tracker&quot;." Margin="0,2,0,0" />
-                        <TextBlock Text="3. Kopieer de key die je krijgt en plak hem hieronder." Margin="0,2,0,8" />
-
-                        <PasswordBox x:Name="ForgeKeyBox" Padding="8" FontSize="14" MaxLength="100"
-                                     AutomationProperties.Name="gw2treasures-key" KeyDown="OnForgeKeyBoxKeyDown" />
-                        <Button Style="{StaticResource PrimaryButton}" Content="Verbinden" Click="OnForgeConnectClick" IsEnabled="{Binding RecipeData.IsNotBusy}"
-                                HorizontalAlignment="Left" Margin="0,8,0,0" />
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding RecipeData.HasKey}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
-                        <Button Content="Recepten opnieuw ophalen" Command="{Binding RecipeData.RefreshCommand}"
-                                ToolTip="Haalt de recepten van de gekozen Legendary opnieuw op, ook als ze recent zijn opgehaald." />
-                        <Button Content="Key verwijderen" Click="OnForgeDisconnectClick" Margin="8,0,0,0" />
-                    </StackPanel>
-
-                    <TextBlock Text="{Binding RecipeData.ConnectMessage}" Margin="0,8,0,0">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding RecipeData.HasConnectMessage}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding RecipeData.ConnectMessageIsError}" Value="True">
-                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" Padding="12">
-                <StackPanel Orientation="Horizontal">
+            <Border Style="{StaticResource CardBorder}" Padding="12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
                     <Ellipse Style="{StaticResource SyncDot}" Margin="0,0,8,0" />
-                    <TextBlock Text="{Binding SyncText}" />
-                </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding SyncText}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                        <Button Content="Nu synchroniseren" Command="{Binding SyncNowCommand}" Padding="10,4"
+                                Visibility="{Binding HasApiKey, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                        <Button Content="Account koppelen" Command="{Binding OpenAccountTabCommand}" Padding="10,4"
+                                Visibility="{Binding NeedsApiKey, Converter={x:Static local:VisibilityConverter.Instance}}"
+                                ToolTip="Ga naar Account &amp; instellingen om je API-key toe te voegen" />
+                        <Button Content="Fashion Studio" Command="{Binding OpenFashionStudioCommand}" Padding="10,4" Margin="8,0,0,0"
+                                ToolTip="Bekijk alle skins en kleuren en stel een look samen" />
+                    </StackPanel>
+                </Grid>
             </Border>
 
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Mijn Legendaries" Style="{StaticResource HeadingText}" />
-                    <TextBlock Text="{Binding Goals.StatusText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
-                    <TextBlock Text="{Binding RecipeData.FetchText}" Style="{StaticResource MutedText}" Margin="0,2,0,0">
-                        <TextBlock.Visibility>
-                            <Binding Path="RecipeData.HasFetchText" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                        </TextBlock.Visibility>
-                    </TextBlock>
-                    <TextBlock Text="{Binding RecipeData.Notice}" Style="{StaticResource MutedText}" Margin="0,2,0,0">
-                        <TextBlock.Visibility>
-                            <Binding Path="RecipeData.HasNotice" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                        </TextBlock.Visibility>
-                    </TextBlock>
+            <Border Margin="0,12,0,0" Padding="12" CornerRadius="6" Background="#33E5605A" BorderBrush="{StaticResource DangerBrush}" BorderThickness="1"
+                    Visibility="{Binding HasError, Converter={x:Static local:VisibilityConverter.Instance}}">
+                <TextBlock Text="{Binding ErrorMessage}" />
+            </Border>
+        </StackPanel>
 
-                    <TextBlock Text="Voeg een Legendary toe" Style="{StaticResource MutedText}" Margin="0,12,0,4" />
-                    <TextBox Text="{Binding Goals.AddSearchText, UpdateSourceTrigger=PropertyChanged}"
-                             AutomationProperties.Name="Zoek een Legendary" ToolTip="Typ een deel van de naam, bijvoorbeeld Twilight" />
-                    <ListBox ItemsSource="{Binding Goals.Suggestions}" Background="Transparent" BorderThickness="0"
-                             Foreground="{StaticResource TextBrush}" ItemContainerStyle="{StaticResource PlainListBoxItem}"
-                             Margin="0,4,0,0" AutomationProperties.Name="Zoekresultaten">
-                        <ListBox.Style>
-                            <Style TargetType="ListBox">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Goals.HasSuggestions}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ListBox.Style>
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="32" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                    <Button Grid.Column="2" Content="Toevoegen" Padding="10,3"
-                                            Command="{Binding DataContext.Goals.AddCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                            CommandParameter="{Binding}" />
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+        <TabControl Grid.Row="1" Style="{StaticResource MainTabs}" SelectedIndex="{Binding SelectedMainTabIndex, Mode=TwoWay}"
+                    AutomationProperties.Name="Onderdelen van de app">
+            <TabItem Header="Legendaries" AutomationProperties.Name="Legendaries">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                    <StackPanel Margin="24,16,24,24" MaxWidth="640">
 
-                    <TextBlock Text="Je hebt nog geen Legendary gekozen. Zoek er hierboven een en klik op Toevoegen." Style="{StaticResource MutedText}" Margin="0,12,0,0">
-                        <TextBlock.Visibility>
-                            <Binding Path="Goals.HasNoGoals" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                        </TextBlock.Visibility>
-                    </TextBlock>
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Recepten van de Legendaries" Style="{StaticResource HeadingText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                           Text="Het spel geeft de recepten van de Legendaries zelf (de Gifts en de Mystic Forge-stappen) niet vrij. De app haalt ze daarom op bij de website gw2treasures.com en controleert ze met de officiële gegevens. Daarvoor is een gratis key nodig." />
 
-                    <TextBlock Text="Volgorde = voorrang: een Legendary bovenaan krijgt eerst jouw materialen." Style="{StaticResource MutedText}" Margin="0,12,0,4">
-                        <TextBlock.Visibility>
-                            <Binding Path="Goals.HasGoals" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                        </TextBlock.Visibility>
-                    </TextBlock>
-                    <ListBox ItemsSource="{Binding Goals.Rows}" SelectedValuePath="ItemId" SelectedValue="{Binding Goals.SelectedGoalId, Mode=TwoWay}"
-                             Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}"
-                             AutomationProperties.Name="Mijn Legendaries">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="32" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                    <TextBlock Grid.Column="2" Text="{Binding ProgressText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                    <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                        <Button Content="▲" Padding="6,2" ToolTip="Hogere voorrang" AutomationProperties.Name="Hogere voorrang"
-                                                Command="{Binding DataContext.Goals.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" />
-                                        <Button Content="▼" Padding="6,2" Margin="4,0,0,0" ToolTip="Lagere voorrang" AutomationProperties.Name="Lagere voorrang"
-                                                Command="{Binding DataContext.Goals.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" />
-                                        <Button Content="✕" Padding="6,2" Margin="4,0,0,0" ToolTip="Verwijderen" AutomationProperties.Name="Verwijderen"
-                                                Command="{Binding DataContext.Goals.RemoveCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" />
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RecipeData.NeedsKey}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
 
-                    <StackPanel Margin="0,16,0,0">
-                        <StackPanel.Visibility>
-                            <Binding Path="Goals.HasSelection" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                        </StackPanel.Visibility>
+                                    <TextBlock Margin="0,12,0,0">
+                                        <Run Text="1. Open" />
+                                        <Hyperlink NavigateUri="https://en.gw2treasures.com/dev/api" RequestNavigate="OnLinkNavigate">en.gw2treasures.com/dev/api</Hyperlink>
+                                        <Run Text="en log in (rechtsboven)." />
+                                    </TextBlock>
+                                    <TextBlock Text="2. Open in het menu bovenaan &quot;Developer&quot; en registreer een applicatie, bijvoorbeeld &quot;Legendary Tracker&quot;." Margin="0,2,0,0" />
+                                    <TextBlock Text="3. Kopieer de key die je krijgt en plak hem hieronder." Margin="0,2,0,8" />
 
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding Goals.SelectedName}" Style="{StaticResource HeadingText}" VerticalAlignment="Center" />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button Content="Wiki" Style="{StaticResource LinkButton}" Command="{Binding Goals.OpenLinkCommand}"
-                                        CommandParameter="{Binding Goals.SelectedWikiUrl}" ToolTip="Zoek deze Legendary op in de Guild Wars 2-wiki" />
-                                <Button Content="gw2treasures" Style="{StaticResource LinkButton}" Command="{Binding Goals.OpenLinkCommand}"
-                                        CommandParameter="{Binding Goals.SelectedTreasuresUrl}" ToolTip="Open de pagina van deze Legendary op gw2treasures" />
+                                    <PasswordBox x:Name="ForgeKeyBox" Padding="8" FontSize="14" MaxLength="100"
+                                                 AutomationProperties.Name="gw2treasures-key" KeyDown="OnForgeKeyBoxKeyDown" />
+                                    <Button Style="{StaticResource PrimaryButton}" Content="Verbinden" Click="OnForgeConnectClick" IsEnabled="{Binding RecipeData.IsNotBusy}"
+                                            HorizontalAlignment="Left" Margin="0,8,0,0" />
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RecipeData.HasKey}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <Button Content="Recepten opnieuw ophalen" Command="{Binding RecipeData.RefreshCommand}"
+                                            ToolTip="Haalt de recepten van de gekozen Legendary opnieuw op, ook als ze recent zijn opgehaald." />
+                                    <Button Content="Key verwijderen" Click="OnForgeDisconnectClick" Margin="8,0,0,0" />
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding RecipeData.ConnectMessage}" Margin="0,8,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RecipeData.HasConnectMessage}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding RecipeData.ConnectMessageIsError}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </StackPanel>
-                        </Grid>
-                        <ProgressBar Value="{Binding Goals.SelectedProgress, Mode=OneWay}" Height="8" Margin="0,8,0,0"
-                                     AutomationProperties.Name="Voortgang" />
-                        <TextBlock Text="{Binding Goals.SelectedProgressText}" FontWeight="SemiBold" Margin="0,4,0,0" />
-                        <TextBlock Style="{StaticResource MutedText}" Text="Een onderdeel telt mee als je er genoeg van hebt, of als je het nu zelf kunt maken met wat je bezit." />
-
-                        <Border Margin="0,10,0,0" Padding="10" CornerRadius="6" Background="#33E0A526" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1">
-                            <Border.Visibility>
-                                <Binding Path="Goals.HasRecipeNotice" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                            </Border.Visibility>
-                            <TextBlock Text="{Binding Goals.RecipeNotice}" />
                         </Border>
 
-                        <TextBlock Text="Volgende stap" Style="{StaticResource MutedText}" Margin="0,12,0,2" />
-                        <TextBlock Text="{Binding Goals.NextStepText}" FontWeight="SemiBold" />
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Mijn Legendaries" Style="{StaticResource HeadingText}" />
+                                <TextBlock Text="{Binding Goals.StatusText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RecipeData.FetchText}" Style="{StaticResource MutedText}" Margin="0,2,0,0">
+                                    <TextBlock.Visibility>
+                                        <Binding Path="RecipeData.HasFetchText" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </TextBlock.Visibility>
+                                </TextBlock>
+                                <TextBlock Text="{Binding RecipeData.Notice}" Style="{StaticResource MutedText}" Margin="0,2,0,0">
+                                    <TextBlock.Visibility>
+                                        <Binding Path="RecipeData.HasNotice" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </TextBlock.Visibility>
+                                </TextBlock>
 
-                        <TextBlock Text="Nog nodig" Style="{StaticResource MutedText}" Margin="0,12,0,2" />
-                        <ItemsControl ItemsSource="{Binding Goals.Shortages}" Focusable="False">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="0,2">
+                                <TextBlock Text="Voeg een Legendary toe" Style="{StaticResource MutedText}" Margin="0,12,0,4" />
+                                <TextBox Text="{Binding Goals.AddSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Zoek een Legendary" ToolTip="Typ een deel van de naam, bijvoorbeeld Twilight" />
+                                <ListBox ItemsSource="{Binding Goals.Suggestions}" Background="Transparent" BorderThickness="0"
+                                         Foreground="{StaticResource TextBrush}" ItemContainerStyle="{StaticResource PlainListBoxItem}"
+                                         Margin="0,4,0,0" AutomationProperties.Name="Zoekresultaten">
+                                    <ListBox.Style>
+                                        <Style TargetType="ListBox">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Goals.HasSuggestions}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ListBox.Style>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                <Button Grid.Column="2" Content="Toevoegen" Padding="10,3"
+                                                        Command="{Binding DataContext.Goals.AddCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <TextBlock Text="Je hebt nog geen Legendary gekozen. Zoek er hierboven een en klik op Toevoegen." Style="{StaticResource MutedText}" Margin="0,12,0,0">
+                                    <TextBlock.Visibility>
+                                        <Binding Path="Goals.HasNoGoals" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </TextBlock.Visibility>
+                                </TextBlock>
+
+                                <TextBlock Text="Volgorde = voorrang: een Legendary bovenaan krijgt eerst jouw materialen." Style="{StaticResource MutedText}" Margin="0,12,0,4">
+                                    <TextBlock.Visibility>
+                                        <Binding Path="Goals.HasGoals" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </TextBlock.Visibility>
+                                </TextBlock>
+                                <ListBox ItemsSource="{Binding Goals.Rows}" SelectedValuePath="ItemId" SelectedValue="{Binding Goals.SelectedGoalId, Mode=TwoWay}"
+                                         Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}"
+                                         AutomationProperties.Name="Mijn Legendaries">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                <TextBlock Grid.Column="2" Text="{Binding ProgressText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                                    <Button Content="▲" Padding="6,2" ToolTip="Hogere voorrang" AutomationProperties.Name="Hogere voorrang"
+                                                            Command="{Binding DataContext.Goals.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" />
+                                                    <Button Content="▼" Padding="6,2" Margin="4,0,0,0" ToolTip="Lagere voorrang" AutomationProperties.Name="Lagere voorrang"
+                                                            Command="{Binding DataContext.Goals.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" />
+                                                    <Button Content="✕" Padding="6,2" Margin="4,0,0,0" ToolTip="Verwijderen" AutomationProperties.Name="Verwijderen"
+                                                            Command="{Binding DataContext.Goals.RemoveCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <StackPanel Margin="0,16,0,0">
+                                    <StackPanel.Visibility>
+                                        <Binding Path="Goals.HasSelection" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </StackPanel.Visibility>
+
+                                    <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="32" />
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Style="{StaticResource MutedText}" />
-                                            <Button Content="Wiki" Style="{StaticResource LinkButton}" Margin="10,0,0,0"
-                                                    Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding WikiUrl}" ToolTip="Zoek dit item op in de Guild Wars 2-wiki" />
-                                            <Button Content="gw2treasures" Style="{StaticResource LinkButton}"
-                                                    Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding TreasuresUrl}" ToolTip="Open de pagina van dit item op gw2treasures" />
+                                        <TextBlock Text="{Binding Goals.SelectedName}" Style="{StaticResource HeadingText}" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button Content="Wiki" Style="{StaticResource LinkButton}" Command="{Binding Goals.OpenLinkCommand}"
+                                                    CommandParameter="{Binding Goals.SelectedWikiUrl}" ToolTip="Zoek deze Legendary op in de Guild Wars 2-wiki" />
+                                            <Button Content="gw2treasures" Style="{StaticResource LinkButton}" Command="{Binding Goals.OpenLinkCommand}"
+                                                    CommandParameter="{Binding Goals.SelectedTreasuresUrl}" ToolTip="Open de pagina van deze Legendary op gw2treasures" />
                                         </StackPanel>
                                     </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                    <ProgressBar Value="{Binding Goals.SelectedProgress, Mode=OneWay}" Height="8" Margin="0,8,0,0"
+                                                 AutomationProperties.Name="Voortgang" />
+                                    <TextBlock Text="{Binding Goals.SelectedProgressText}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                    <TextBlock Style="{StaticResource MutedText}" Text="Een onderdeel telt mee als je er genoeg van hebt, of als je het nu zelf kunt maken met wat je bezit." />
 
-                        <StackPanel Margin="0,16,0,0">
-                            <StackPanel.Visibility>
-                                <Binding Path="Goals.HasCosts" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                            </StackPanel.Visibility>
+                                    <Border Margin="0,10,0,0" Padding="10" CornerRadius="6" Background="#33E0A526" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1">
+                                        <Border.Visibility>
+                                            <Binding Path="Goals.HasRecipeNotice" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                        </Border.Visibility>
+                                        <TextBlock Text="{Binding Goals.RecipeNotice}" />
+                                    </Border>
 
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Kosten op de Trading Post" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
-                                <Button Grid.Column="1" Content="Prijzen verversen" Command="{Binding Goals.RefreshPricesCommand}" Padding="8,2"
-                                        ToolTip="Haalt de prijzen opnieuw op, ook als ze recent zijn opgehaald." />
-                            </Grid>
-                            <TextBlock Text="{Binding Goals.CostHeadline}" FontWeight="SemiBold" Margin="0,4,0,0" />
-                            <TextBlock Text="{Binding Goals.CoinText}" Margin="0,2,0,0">
-                                <TextBlock.Visibility>
-                                    <Binding Path="Goals.HasCoinText" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                </TextBlock.Visibility>
-                            </TextBlock>
+                                    <TextBlock Text="Volgende stap" Style="{StaticResource MutedText}" Margin="0,12,0,2" />
+                                    <TextBlock Text="{Binding Goals.NextStepText}" FontWeight="SemiBold" />
 
-                            <ItemsControl ItemsSource="{Binding Goals.CostRows}" Margin="0,8,0,0" Focusable="False">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,2">
+                                    <TextBlock Text="Nog nodig" Style="{StaticResource MutedText}" Margin="0,12,0,2" />
+                                    <ItemsControl ItemsSource="{Binding Goals.Shortages}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="32" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Text}" VerticalAlignment="Center" Style="{StaticResource MutedText}" />
+                                                        <Button Content="Wiki" Style="{StaticResource LinkButton}" Margin="10,0,0,0"
+                                                                Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding WikiUrl}" ToolTip="Zoek dit item op in de Guild Wars 2-wiki" />
+                                                        <Button Content="gw2treasures" Style="{StaticResource LinkButton}"
+                                                                Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding TreasuresUrl}" ToolTip="Open de pagina van dit item op gw2treasures" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <StackPanel Margin="0,16,0,0">
+                                        <StackPanel.Visibility>
+                                            <Binding Path="Goals.HasCosts" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                        </StackPanel.Visibility>
+
+                                        <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="32" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="110" />
                                             </Grid.ColumnDefinitions>
-                                            <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
-                                            <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
-                                                <TextBlock TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
-                                                    <Run Text="{Binding Quantity, Mode=OneWay, StringFormat={}{0:N0}×}" />
-                                                    <Run Text="{Binding Name, Mode=OneWay}" />
-                                                </TextBlock>
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="{Binding UnitText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                            <TextBlock Grid.Column="3" Text="{Binding TotalText}" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                            <TextBlock Text="Kosten op de Trading Post" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                                            <Button Grid.Column="1" Content="Prijzen verversen" Command="{Binding Goals.RefreshPricesCommand}" Padding="8,2"
+                                                    ToolTip="Haalt de prijzen opnieuw op, ook als ze recent zijn opgehaald." />
                                         </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                        <TextBlock Text="{Binding Goals.CostHeadline}" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                        <TextBlock Text="{Binding Goals.CoinText}" Margin="0,2,0,0">
+                                            <TextBlock.Visibility>
+                                                <Binding Path="Goals.HasCoinText" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                            </TextBlock.Visibility>
+                                        </TextBlock>
 
-                            <StackPanel Margin="0,12,0,0">
-                                <StackPanel.Visibility>
-                                    <Binding Path="Goals.HasSuggestionRows" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                </StackPanel.Visibility>
-                                <TextBlock Text="Slimmer kopen" FontWeight="SemiBold" />
-                                <ItemsControl ItemsSource="{Binding Goals.SuggestionRows}" Margin="0,4,0,0" Focusable="False">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" Margin="0,2" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                        <ItemsControl ItemsSource="{Binding Goals.CostRows}" Margin="0,8,0,0" Focusable="False">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="32" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="110" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                                        <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                                                            <TextBlock TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                                                                <Run Text="{Binding Quantity, Mode=OneWay, StringFormat={}{0:N0}×}" />
+                                                                <Run Text="{Binding Name, Mode=OneWay}" />
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="2" Text="{Binding UnitText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                                        <TextBlock Grid.Column="3" Text="{Binding TotalText}" FontWeight="SemiBold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <StackPanel Margin="0,12,0,0">
+                                            <StackPanel.Visibility>
+                                                <Binding Path="Goals.HasSuggestionRows" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                            </StackPanel.Visibility>
+                                            <TextBlock Text="Slimmer kopen" FontWeight="SemiBold" />
+                                            <ItemsControl ItemsSource="{Binding Goals.SuggestionRows}" Margin="0,4,0,0" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" Margin="0,2" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+
+                                        <StackPanel Margin="0,12,0,0">
+                                            <StackPanel.Visibility>
+                                                <Binding Path="Goals.HasVendorLines" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                            </StackPanel.Visibility>
+                                            <TextBlock Text="Bij een verkoper" FontWeight="SemiBold" />
+                                            <ItemsControl ItemsSource="{Binding Goals.VendorLines}" Margin="0,4,0,0" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" Margin="0,2" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+
+                                        <StackPanel Margin="0,12,0,0">
+                                            <StackPanel.Visibility>
+                                                <Binding Path="Goals.HasCurrencyLines" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                            </StackPanel.Visibility>
+                                            <TextBlock Text="Valuta" FontWeight="SemiBold" />
+                                            <ItemsControl ItemsSource="{Binding Goals.CurrencyLines}" Margin="0,4,0,0" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" Margin="0,2" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+
+                                        <StackPanel Margin="0,12,0,0">
+                                            <StackPanel.Visibility>
+                                                <Binding Path="Goals.HasUnbuyable" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                            </StackPanel.Visibility>
+                                            <TextBlock Text="Niet te koop op de Trading Post" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Goals.UnbuyableText}" Style="{StaticResource MutedText}" Margin="0,2,0,4" />
+                                            <ItemsControl ItemsSource="{Binding Goals.UnbuyableRows}" Focusable="False">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,3">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="32" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                                                                <Run Text="{Binding Quantity, Mode=OneWay, StringFormat={}{0:N0}×}" />
+                                                                <Run Text="{Binding Name, Mode=OneWay}" />
+                                                            </TextBlock>
+                                                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                                <Button Content="Wiki" Style="{StaticResource LinkButton}"
+                                                                        Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding WikiUrl}" ToolTip="Zoek dit item op in de Guild Wars 2-wiki" />
+                                                                <Button Content="gw2treasures" Style="{StaticResource LinkButton}"
+                                                                        Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding TreasuresUrl}" ToolTip="Open de pagina van dit item op gw2treasures" />
+                                                                <Button Content="Herkomst vastleggen…" Style="{StaticResource LinkButton}"
+                                                                        Command="{Binding DataContext.Goals.AddSourceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}" ToolTip="Leg vast waar en waarvoor je dit kunt kopen" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+
+                                        <TextBlock Text="{Binding Goals.CostDisclaimer}" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+                                        <TextBlock Text="{Binding Goals.PriceStatusText}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                                    </StackPanel>
+
+                                    <StackPanel>
+                                        <StackPanel.Visibility>
+                                            <Binding Path="Goals.HasChecklist" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                        </StackPanel.Visibility>
+                                        <TextBlock Text="Onderdelen" Style="{StaticResource MutedText}" Margin="0,12,0,2" />
+                                        <TextBlock Style="{StaticResource MutedText}"
+                                                   Text="Vink een onderdeel aan als je het al hebt gemaakt of gekregen, ook als de app het niet in je inventaris ziet." />
+                                        <ItemsControl ItemsSource="{Binding Goals.Checklist}" Focusable="False">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="32" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}" />
+                                                        <Image Grid.Column="1" Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" Margin="6,0,0,0" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                        <TextBlock Grid.Column="3" Text="{Binding StatusText}" VerticalAlignment="Center" Style="{StaticResource MutedText}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Notitie" Style="{StaticResource MutedText}" Margin="0,12,0,4" />
+                                    <TextBox Text="{Binding Goals.SelectedNote, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                             MinHeight="48" MaxLength="2000" AutomationProperties.Name="Notitie bij deze Legendary" />
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding Goals.ErrorText}" Foreground="{StaticResource DangerBrush}" Margin="0,8,0,0">
+                                    <TextBlock.Visibility>
+                                        <Binding Path="Goals.HasError" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </TextBlock.Visibility>
+                                </TextBlock>
                             </StackPanel>
+                        </Border>
 
-                            <StackPanel Margin="0,12,0,0">
-                                <StackPanel.Visibility>
-                                    <Binding Path="Goals.HasVendorLines" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                </StackPanel.Visibility>
-                                <TextBlock Text="Bij een verkoper" FontWeight="SemiBold" />
-                                <ItemsControl ItemsSource="{Binding Goals.VendorLines}" Margin="0,4,0,0" Focusable="False">
-                                    <ItemsControl.ItemTemplate>
+
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Wat heb ik?" Style="{StaticResource HeadingText}" />
+                                <TextBlock Text="{Binding Inventory.StatusText}" Style="{StaticResource MutedText}" Margin="0,4,0,8" />
+                                <TextBox Text="{Binding Inventory.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Zoek in je spullen" ToolTip="Typ een deel van een itemnaam" />
+                                <ListBox ItemsSource="{Binding Inventory.VisibleRows}" MaxHeight="320" Margin="0,8,0,0"
+                                         Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}"
+                                         ItemContainerStyle="{StaticResource PlainListBoxItem}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         AutomationProperties.Name="Lijst met je spullen">
+                                    <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding}" Margin="0,2" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
+                                                <StackPanel Grid.Column="1" Margin="8,0">
+                                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                    <TextBlock Text="{Binding WhereText}" Style="{StaticResource MutedText}"
+                                                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="{Binding TotalText}" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" />
+                                            </Grid>
                                         </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
                             </StackPanel>
+                        </Border>
 
-                            <StackPanel Margin="0,12,0,0">
-                                <StackPanel.Visibility>
-                                    <Binding Path="Goals.HasCurrencyLines" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                </StackPanel.Visibility>
-                                <TextBlock Text="Valuta" FontWeight="SemiBold" />
-                                <ItemsControl ItemsSource="{Binding Goals.CurrencyLines}" Margin="0,4,0,0" Focusable="False">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" Margin="0,2" />
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                        <Border Style="{StaticResource CardBorder}">
+                            <StackPanel>
+                                <TextBlock Text="Overlay" Style="{StaticResource HeadingText}" />
+
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
+                                    <Button Content="Overlay tonen/verbergen" Command="{Binding ToggleOverlayCommand}" />
+                                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource MutedText}">
+                                        <Run Text="Sneltoets:" />
+                                        <Run Text="{Binding HotkeyText, Mode=OneWay}" />
+                                    </TextBlock>
+                                </StackPanel>
+                                <TextBlock Text="{Binding HotkeyError, StringFormat=Sneltoets niet beschikbaar: {0}}"
+                                           Foreground="{StaticResource DangerBrush}" Margin="0,4,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasHotkeyError}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <TextBlock Text="Transparantie" Margin="0,16,0,4" Style="{StaticResource MutedText}" />
+                                <Slider Minimum="0.2" Maximum="1" LargeChange="0.1" SmallChange="0.05" TickFrequency="0.1"
+                                        Value="{Binding Opacity, Mode=TwoWay}" AutomationProperties.Name="Transparantie van de overlay" />
+
+                                <CheckBox Content="Overlay uitgebreid weergeven" IsChecked="{Binding IsExpanded, Mode=TwoWay}" Margin="0,12,0,4" />
+                                <TextBlock Margin="0,12,0,4" Style="{StaticResource MutedText}">
+                                    <Run Text="Aantal materialen in de compacte overlay:" />
+                                    <Run Text="{Binding VisibleMaterialCount, Mode=OneWay}" FontWeight="SemiBold" />
+                                </TextBlock>
+                                <Slider Minimum="1" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3"
+                                        Value="{Binding VisibleMaterialCount, Mode=TwoWay}"
+                                        AutomationProperties.Name="Aantal materialen in de compacte overlay" />
+                                <CheckBox Content="Uitgebreide overlay: alleen ontbrekende materialen tonen" IsChecked="{Binding OverlayShowOnlyMissing, Mode=TwoWay}" Margin="0,8,0,0" />
+                                <CheckBox Content="Overlay vergrendelen tegen verslepen" IsChecked="{Binding IsLocked, Mode=TwoWay}" />
+                                <CheckBox Content="Overlay automatisch tonen bij het starten" IsChecked="{Binding ShowOverlayOnStartup, Mode=TwoWay}" />
+                                <CheckBox Content="Overlay automatisch verbergen na 10 seconden" IsChecked="{Binding AutoHideEnabled, Mode=TwoWay}" />
+                                <CheckBox Content="Click-through: muisklikken gaan door de overlay heen" IsChecked="{Binding IsClickThrough, Mode=TwoWay}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="24,0,0,0"
+                                           Text="Met click-through aan kun je de overlay niet aanklikken. Zet het hier weer uit, of verberg de overlay met de sneltoets." />
                             </StackPanel>
+                        </Border>
 
-                            <StackPanel Margin="0,12,0,0">
-                                <StackPanel.Visibility>
-                                    <Binding Path="Goals.HasUnbuyable" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                                </StackPanel.Visibility>
-                                <TextBlock Text="Niet te koop op de Trading Post" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Goals.UnbuyableText}" Style="{StaticResource MutedText}" Margin="0,2,0,4" />
-                                <ItemsControl ItemsSource="{Binding Goals.UnbuyableRows}" Focusable="False">
+                        <Border Style="{StaticResource CardBorder}" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Herkomst en eigen gegevens" Style="{StaticResource HeadingText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                           Text="Sommige onderdelen koop je niet op de Trading Post maar bij een verkoper, bijvoorbeeld met Karma. Dat staat in geen enkele bron die de app kan lezen, dus leg je het zelf vast: kies bij een onderdeel dat niet te koop is op Herkomst vastleggen. De app rekent er dan mee en laat zien hoeveel Karma je nodig hebt." />
+
+                                <TextBlock Text="Nog niets vastgelegd." Style="{StaticResource MutedText}" Margin="0,12,0,0">
+                                    <TextBlock.Visibility>
+                                        <Binding Path="Acquisitions.HasNoRows" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </TextBlock.Visibility>
+                                </TextBlock>
+                                <ItemsControl ItemsSource="{Binding Acquisitions.Rows}" Margin="0,12,0,0" Focusable="False">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Grid Margin="0,3">
@@ -404,257 +535,475 @@
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
-                                                    <Run Text="{Binding Quantity, Mode=OneWay, StringFormat={}{0:N0}×}" />
-                                                    <Run Text="{Binding Name, Mode=OneWay}" />
-                                                </TextBlock>
-                                                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                    <Button Content="Wiki" Style="{StaticResource LinkButton}"
-                                                            Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding WikiUrl}" ToolTip="Zoek dit item op in de Guild Wars 2-wiki" />
-                                                    <Button Content="gw2treasures" Style="{StaticResource LinkButton}"
-                                                            Command="{Binding DataContext.Goals.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding TreasuresUrl}" ToolTip="Open de pagina van dit item op gw2treasures" />
-                                                    <Button Content="Herkomst vastleggen…" Style="{StaticResource LinkButton}"
-                                                            Command="{Binding DataContext.Goals.AddSourceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            CommandParameter="{Binding}" ToolTip="Leg vast waar en waarvoor je dit kunt kopen" />
+                                                <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                    <TextBlock Text="{Binding Text}" Style="{StaticResource MutedText}" />
                                                 </StackPanel>
+                                                <Button Grid.Column="2" Content="Verwijderen" Style="{StaticResource LinkButton}" VerticalAlignment="Center"
+                                                        Command="{Binding DataContext.Acquisitions.RemoveCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" />
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <TextBlock Text="{Binding Acquisitions.Error}" Foreground="{StaticResource DangerBrush}" Margin="0,8,0,0">
+                                    <TextBlock.Visibility>
+                                        <Binding Path="Acquisitions.HasError" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </TextBlock.Visibility>
+                                </TextBlock>
+
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,12,0,0"
+                                           Text="Handiger met veel gegevens, of een aanbod met meerdere kosten? Zet een receptbestand (.json) in de map met eigen gegevens. De uitleg staat in de README." />
+                                <Button Content="Map met eigen gegevens openen" Click="OnOpenCustomDataFolderClick" HorizontalAlignment="Left" Margin="0,8,0,0" />
                             </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
 
-                            <TextBlock Text="{Binding Goals.CostDisclaimer}" Style="{StaticResource MutedText}" Margin="0,8,0,0" />
-                            <TextBlock Text="{Binding Goals.PriceStatusText}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
-                        </StackPanel>
+            <TabItem Header="Masteries" AutomationProperties.Name="Masteries">
+                <Grid DataContext="{Binding Masteries}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                        <StackPanel Margin="24,16,24,24" MaxWidth="640">
 
-                        <StackPanel>
-                            <StackPanel.Visibility>
-                                <Binding Path="Goals.HasChecklist" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                            </StackPanel.Visibility>
-                            <TextBlock Text="Onderdelen" Style="{StaticResource MutedText}" Margin="0,12,0,2" />
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Vink een onderdeel aan als je het al hebt gemaakt of gekregen, ook als de app het niet in je inventaris ziet." />
-                            <ItemsControl ItemsSource="{Binding Goals.Checklist}" Focusable="False">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,2">
+                            <!-- Without the "progression" permission the plan still works; say what is missing and why. -->
+                            <Border Margin="0,0,0,16" Padding="12" CornerRadius="8" Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                                    Visibility="{Binding NeedsProgressionPermission, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <StackPanel>
+                                    <TextBlock Text="Stappen vinken nog niet vanzelf af" FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,4,0,0">
+                                        <Run Text="Je API-key mist het optionele recht" />
+                                        <Run Text="progression" FontWeight="SemiBold" /><Run Text="." />
+                                        <Run Text="{Binding ProgressionReason, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Margin="0,8,0,0">
+                                        <Run Text="Maak op" />
+                                        <Hyperlink NavigateUri="https://account.arena.net/applications" RequestNavigate="OnLinkNavigate">account.arena.net/applications</Hyperlink>
+                                        <Run Text="een nieuwe key met account, inventories, characters, wallet én progression, en koppel die bij Account &amp; instellingen." />
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                               Text="Tot die tijd werkt je plan gewoon: je vinkt stappen zelf af." />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Empty state: what this tab is for and how to get a plan. -->
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16"
+                                    Visibility="{Binding HasNoPlan, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <StackPanel>
+                                    <TextBlock Text="Nog geen masteryplan" Style="{StaticResource HeadingText}" />
+                                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                               Text="Laat een AI een stappenplan voor je masteries maken. De app toont het als concrete stappen en vinkt ze vanzelf af zodra het spel laat zien dat ze klaar zijn." />
+                                    <TextBlock Text="1. Klik op AI-prompt kopiëren. Je actuele mastery-voortgang zit er al in; je API-key nooit." Margin="0,12,0,0" />
+                                    <TextBlock Text="2. Plak de prompt in een AI-chat en vul onderaan eventueel je wensen aan." Margin="0,2,0,0" />
+                                    <TextBlock Text="3. Kopieer het antwoord en klik op Plan plakken uit klembord (of bewaar het als bestand en importeer dat)." Margin="0,2,0,0" />
+                                    <WrapPanel Margin="0,12,0,0">
+                                        <Button Style="{StaticResource PrimaryButton}" Content="AI-prompt kopiëren" Command="{Binding CopyPromptCommand}" Margin="0,0,8,8" />
+                                        <Button Content="Plan plakken uit klembord" Click="OnPastePlanClick" Margin="0,0,8,8" />
+                                        <Button Content="Plan importeren uit bestand…" Click="OnImportPlanFileClick" Margin="0,0,8,8" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Visibility="{Binding HasPlan, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <!-- The plan at a glance. -->
+                                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding PlanTitle}" Style="{StaticResource HeadingText}" FontSize="18" />
+                                        <TextBlock Text="{Binding PlanSummary}" Margin="0,4,0,0"
+                                                   Visibility="{Binding HasPlanSummary, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                        <ProgressBar Value="{Binding Progress, Mode=OneWay}" Height="8" Margin="0,12,0,0" AutomationProperties.Name="Voortgang van het plan" />
+                                        <Grid Margin="0,4,0,0">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="32" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}" />
-                                            <Image Grid.Column="1" Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" Margin="6,0,0,0" />
-                                            <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" Margin="8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                            <TextBlock Grid.Column="3" Text="{Binding StatusText}" VerticalAlignment="Center" Style="{StaticResource MutedText}" />
+                                            <TextBlock Text="{Binding ProgressText}" FontWeight="SemiBold" />
+                                            <TextBlock Grid.Column="1" Text="{Binding RemainingText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" />
                                         </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                        <TextBlock Text="{Binding AssumptionsText}" Style="{StaticResource MutedText}" Margin="0,8,0,0"
+                                                   Visibility="{Binding HasAssumptions, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                        <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0" Text="{Binding SyncText}">
+                                            <TextBlock.Visibility>
+                                                <Binding Path="NeedsProgressionPermission" Converter="{x:Static local:InverseVisibilityConverter.Instance}" />
+                                            </TextBlock.Visibility>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Next step: the first available step, highest priority first. -->
+                                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16" BorderBrush="{StaticResource AccentBrush}">
+                                    <StackPanel>
+                                        <TextBlock Text="Volgende stap" Style="{StaticResource MutedText}" />
+                                        <TextBlock Text="{Binding NextStepEmptyText}" Margin="0,4,0,0"
+                                                   Visibility="{Binding HasNextStep, Converter={x:Static local:InverseVisibilityConverter.Instance}}" />
+                                        <StackPanel DataContext="{Binding NextStep}"
+                                                    Visibility="{Binding DataContext.HasNextStep, RelativeSource={RelativeSource AncestorType=Border}, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource HeadingText}" Margin="0,4,0,0" />
+                                            <TextBlock Text="{Binding MetaText}" Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                                       Visibility="{Binding HasMeta, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                            <TextBlock Text="{Binding Description}" Margin="0,6,0,0"
+                                                       Visibility="{Binding HasDescription, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                            <WrapPanel Margin="0,10,0,0">
+                                                <Button Style="{StaticResource PrimaryButton}" Content="Klaar" Margin="0,0,8,4" ToolTip="Vink deze stap af"
+                                                        AutomationProperties.Name="{Binding CheckBoxName}"
+                                                        Command="{Binding DataContext.Masteries.MarkDoneCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                <Button Content="Kopieer waypoint" Margin="0,0,8,4"
+                                                        Visibility="{Binding HasWaypoint, Converter={x:Static local:VisibilityConverter.Instance}}"
+                                                        ToolTip="{Binding Waypoint}"
+                                                        Command="{Binding DataContext.Masteries.CopyWaypointCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Waypoint}" />
+                                                <ItemsControl ItemsSource="{Binding Links}" Focusable="False">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Content="{Binding Label}" Margin="0,0,8,4" ToolTip="{Binding Url}"
+                                                                    Command="{Binding DataContext.Masteries.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Url}" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- The plan's phases with their steps. -->
+                                <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="Stappenplan" Style="{StaticResource HeadingText}" VerticalAlignment="Center" />
+                                            <CheckBox Grid.Column="1" Content="Alleen open stappen" IsChecked="{Binding OnlyOpen, Mode=TwoWay}" VerticalAlignment="Center" Margin="12,0" />
+                                            <ComboBox Grid.Column="2" ItemsSource="{Binding RegionOptions}" SelectedItem="{Binding RegionFilter, Mode=TwoWay}"
+                                                      MinWidth="150" AutomationProperties.Name="Toon stappen van regio" />
+                                        </Grid>
+                                        <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,8"
+                                                   Text="Vink een stap af als je hem hebt gedaan. Stappen die de app in je account kan zien, vinken vanzelf af; je kunt dat altijd zelf overrulen." />
+                                        <TextBlock Text="Geen stappen die bij dit filter passen." Style="{StaticResource MutedText}" Margin="0,8,0,0"
+                                                   Visibility="{Binding HasNoVisibleSteps, Converter={x:Static local:VisibilityConverter.Instance}}" />
+
+                                        <ItemsControl ItemsSource="{Binding Phases}" Focusable="False">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,4,0,0" AutomationProperties.Name="{Binding AccessibleName}">
+                                                        <Expander.Header>
+                                                            <StackPanel>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                                    <TextBlock Grid.Column="1" Text="{Binding ProgressText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                                                </Grid>
+                                                                <TextBlock Text="{Binding Goal}" Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                                                           Visibility="{Binding HasGoal, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                <ProgressBar Value="{Binding Progress, Mode=OneWay}" Margin="0,6,0,0" AutomationProperties.Name="Voortgang van de fase" />
+                                                            </StackPanel>
+                                                        </Expander.Header>
+                                                        <ItemsControl ItemsSource="{Binding Steps}" Focusable="False" Margin="24,0,0,8">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Border Margin="0,6,0,0" Padding="10" CornerRadius="6" Background="{StaticResource BackgroundBrush}"
+                                                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <CheckBox IsChecked="{Binding IsDone, Mode=TwoWay}" VerticalAlignment="Top" Margin="0,1,10,0"
+                                                                                      AutomationProperties.Name="{Binding CheckBoxName}" ToolTip="Afvinken" />
+                                                                            <StackPanel Grid.Column="1">
+                                                                                <Grid>
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="Auto" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                                                                    <Border Grid.Column="1" Margin="8,0,0,0" Padding="6,1" CornerRadius="4" VerticalAlignment="Top"
+                                                                                            Background="{StaticResource AccentSoftBrush}"
+                                                                                            Visibility="{Binding IsHighPriority, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                                                                        <TextBlock Text="Belangrijk" FontSize="11" Foreground="{StaticResource AccentBrush}" />
+                                                                                    </Border>
+                                                                                </Grid>
+                                                                                <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                                                    <Path Style="{StaticResource StepStatusIcon}" Margin="0,0,6,0" />
+                                                                                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource StepStatusText}" />
+                                                                                </StackPanel>
+                                                                                <TextBlock Text="{Binding WaitingText}" Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                                                                                           Visibility="{Binding HasWaitingText, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                                <TextBlock Text="{Binding Description}" Margin="0,6,0,0"
+                                                                                           Visibility="{Binding HasDescription, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                                <TextBlock Text="{Binding MetaText}" Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                                                                           Visibility="{Binding HasMeta, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                                <TextBlock Text="{Binding Notes}" Style="{StaticResource MutedText}" FontStyle="Italic" Margin="0,4,0,0"
+                                                                                           Visibility="{Binding HasNotes, Converter={x:Static local:VisibilityConverter.Instance}}" />
+                                                                                <WrapPanel Margin="0,6,0,0">
+                                                                                    <Button Content="Kopieer waypoint" Style="{StaticResource LinkButton}" Margin="0,0,6,4"
+                                                                                            Visibility="{Binding HasWaypoint, Converter={x:Static local:VisibilityConverter.Instance}}" ToolTip="{Binding Waypoint}"
+                                                                                            Command="{Binding DataContext.Masteries.CopyWaypointCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Waypoint}" />
+                                                                                    <ItemsControl ItemsSource="{Binding Links}" Focusable="False">
+                                                                                        <ItemsControl.ItemsPanel>
+                                                                                            <ItemsPanelTemplate>
+                                                                                                <WrapPanel />
+                                                                                            </ItemsPanelTemplate>
+                                                                                        </ItemsControl.ItemsPanel>
+                                                                                        <ItemsControl.ItemTemplate>
+                                                                                            <DataTemplate>
+                                                                                                <Button Content="{Binding Label}" Style="{StaticResource LinkButton}" Margin="0,0,6,4" ToolTip="{Binding Url}"
+                                                                                                        Command="{Binding DataContext.Masteries.OpenLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Url}" />
+                                                                                            </DataTemplate>
+                                                                                        </ItemsControl.ItemTemplate>
+                                                                                    </ItemsControl>
+                                                                                    <Button Content="Terug naar automatisch" Style="{StaticResource LinkButton}" Margin="0,0,6,4"
+                                                                                            Visibility="{Binding CanReset, Converter={x:Static local:VisibilityConverter.Instance}}"
+                                                                                            ToolTip="Laat de app deze stap weer zelf afvinken op basis van je account"
+                                                                                            Command="{Binding DataContext.Masteries.ResetCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                                                                </WrapPanel>
+                                                                            </StackPanel>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Expander>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Points and tracks per region, from the account. -->
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16"
+                                    Visibility="{Binding HasRegions, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <Expander AutomationProperties.Name="Regio-overzicht">
+                                    <Expander.Header>
+                                        <StackPanel>
+                                            <TextBlock Text="Regio-overzicht" Style="{StaticResource HeadingText}" />
+                                            <TextBlock Text="Mastery-punten en getrainde levels per regio." Style="{StaticResource MutedText}" />
+                                        </StackPanel>
+                                    </Expander.Header>
+                                    <ItemsControl ItemsSource="{Binding Regions}" Focusable="False" Margin="24,0,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,8,0,0">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding Region}" FontWeight="SemiBold" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding PointsText}" Style="{StaticResource MutedText}" VerticalAlignment="Center" />
+                                                    </Grid>
+                                                    <ItemsControl ItemsSource="{Binding Tracks}" Focusable="False">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,4,0,0">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="120" />
+                                                                        <ColumnDefinition Width="44" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                                    <ProgressBar Grid.Column="1" Value="{Binding Progress, Mode=OneWay}" VerticalAlignment="Center" Margin="8,0" Focusable="False"
+                                                                                 AutomationProperties.Name="{Binding Name}" />
+                                                                    <TextBlock Grid.Column="2" Text="{Binding Text}" Style="{StaticResource MutedText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
+                            </Border>
+
+                            <!-- Import, export and the prompt, also when a plan is active (to update it). -->
+                            <Border Style="{StaticResource CardBorder}"
+                                    Visibility="{Binding HasPlan, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                <StackPanel>
+                                    <TextBlock Text="Plan bijwerken" Style="{StaticResource HeadingText}" />
+                                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                               Text="Exporteer het plan en geef het samen met een nieuwe AI-prompt aan een AI om het bij te stellen. Bij het importeren van een nieuwe versie blijven je afvinkingen staan voor stappen met dezelfde id. Er wordt eerst een back-up gemaakt." />
+                                    <WrapPanel Margin="0,12,0,0">
+                                        <Button Content="AI-prompt kopiëren" Command="{Binding CopyPromptCommand}" Margin="0,0,8,8" />
+                                        <Button Content="Plan exporteren…" Click="OnExportPlanClick" Margin="0,0,8,8" />
+                                        <Button Content="Plan plakken uit klembord" Click="OnPastePlanClick" Margin="0,0,8,8" />
+                                        <Button Content="Plan importeren uit bestand…" Click="OnImportPlanFileClick" Margin="0,0,8,8" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
                         </StackPanel>
+                    </ScrollViewer>
 
-                        <TextBlock Text="Notitie" Style="{StaticResource MutedText}" Margin="0,12,0,4" />
-                        <TextBox Text="{Binding Goals.SelectedNote, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                 MinHeight="48" MaxLength="2000" AutomationProperties.Name="Notitie bij deze Legendary" />
-                    </StackPanel>
-
-                    <TextBlock Text="{Binding Goals.ErrorText}" Foreground="{StaticResource DangerBrush}" Margin="0,8,0,0">
-                        <TextBlock.Visibility>
-                            <Binding Path="Goals.HasError" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                        </TextBlock.Visibility>
-                    </TextBlock>
-                </StackPanel>
-            </Border>
-
-
-            <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Wat heb ik?" Style="{StaticResource HeadingText}" />
-                    <TextBlock Text="{Binding Inventory.StatusText}" Style="{StaticResource MutedText}" Margin="0,4,0,8" />
-                    <TextBox Text="{Binding Inventory.SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             AutomationProperties.Name="Zoek in je spullen" ToolTip="Typ een deel van een itemnaam" />
-                    <ListBox ItemsSource="{Binding Inventory.VisibleRows}" MaxHeight="320" Margin="0,8,0,0"
-                             Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}"
-                             ItemContainerStyle="{StaticResource PlainListBoxItem}"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             AutomationProperties.Name="Lijst met je spullen">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="32" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
-                                    <StackPanel Grid.Column="1" Margin="8,0">
-                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                        <TextBlock Text="{Binding WhereText}" Style="{StaticResource MutedText}"
-                                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                    </StackPanel>
-                                    <TextBlock Grid.Column="2" Text="{Binding TotalText}" FontWeight="SemiBold"
-                                               VerticalAlignment="Center" />
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource CardBorder}">
-                <StackPanel>
-                    <TextBlock Text="Overlay" Style="{StaticResource HeadingText}" />
-
-                    <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
-                        <Button Content="Overlay tonen/verbergen" Command="{Binding ToggleOverlayCommand}" />
-                        <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource MutedText}">
-                            <Run Text="Sneltoets:" />
-                            <Run Text="{Binding HotkeyText, Mode=OneWay}" />
-                        </TextBlock>
-                    </StackPanel>
-                    <TextBlock Text="{Binding HotkeyError, StringFormat=Sneltoets niet beschikbaar: {0}}"
-                               Foreground="{StaticResource DangerBrush}" Margin="0,4,0,0">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                <Setter Property="Visibility" Value="Collapsed" />
+                    <!-- Feedback on the last action stays in view, wherever the button was on the page. -->
+                    <Border Grid.Row="1" MaxWidth="640" Margin="24,0,24,16" Padding="12,10" CornerRadius="8"
+                            Background="{StaticResource SurfaceBrush}" BorderThickness="1"
+                            Visibility="{Binding HasMessage, Converter={x:Static local:VisibilityConverter.Instance}}"
+                            AutomationProperties.LiveSetting="Polite">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderBrush" Value="{StaticResource SuccessBrush}" />
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding HasHotkeyError}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
+                                    <DataTrigger Binding="{Binding IsError}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                        </Border.Style>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Message}" />
+                                <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto" Focusable="False"
+                                              Visibility="{Binding HasWarnings, Converter={x:Static local:VisibilityConverter.Instance}}">
+                                    <TextBlock Text="{Binding Warnings}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                                </ScrollViewer>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Sluiten" Style="{StaticResource LinkButton}" VerticalAlignment="Top" Margin="12,0,0,0"
+                                    Command="{Binding DismissMessageCommand}" AutomationProperties.Name="Melding sluiten" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
 
-                    <TextBlock Text="Transparantie" Margin="0,16,0,4" Style="{StaticResource MutedText}" />
-                    <Slider Minimum="0.2" Maximum="1" LargeChange="0.1" SmallChange="0.05" TickFrequency="0.1"
-                            Value="{Binding Opacity, Mode=TwoWay}" AutomationProperties.Name="Transparantie van de overlay" />
+            <TabItem Header="Account &amp; instellingen" AutomationProperties.Name="Account en instellingen">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                    <StackPanel Margin="24,16,24,24" MaxWidth="640">
 
-                    <CheckBox Content="Overlay uitgebreid weergeven" IsChecked="{Binding IsExpanded, Mode=TwoWay}" Margin="0,12,0,4" />
-                    <TextBlock Margin="0,12,0,4" Style="{StaticResource MutedText}">
-                        <Run Text="Aantal materialen in de compacte overlay:" />
-                        <Run Text="{Binding VisibleMaterialCount, Mode=OneWay}" FontWeight="SemiBold" />
-                    </TextBlock>
-                    <Slider Minimum="1" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True" SmallChange="1" LargeChange="3"
-                            Value="{Binding VisibleMaterialCount, Mode=TwoWay}"
-                            AutomationProperties.Name="Aantal materialen in de compacte overlay" />
-                    <CheckBox Content="Uitgebreide overlay: alleen ontbrekende materialen tonen" IsChecked="{Binding OverlayShowOnlyMissing, Mode=TwoWay}" Margin="0,8,0,0" />
-                    <CheckBox Content="Overlay vergrendelen tegen verslepen" IsChecked="{Binding IsLocked, Mode=TwoWay}" />
-                    <CheckBox Content="Overlay automatisch tonen bij het starten" IsChecked="{Binding ShowOverlayOnStartup, Mode=TwoWay}" />
-                    <CheckBox Content="Overlay automatisch verbergen na 10 seconden" IsChecked="{Binding AutoHideEnabled, Mode=TwoWay}" />
-                    <CheckBox Content="Click-through: muisklikken gaan door de overlay heen" IsChecked="{Binding IsClickThrough, Mode=TwoWay}" />
-                    <TextBlock Style="{StaticResource MutedText}" Margin="24,0,0,0"
-                               Text="Met click-through aan kun je de overlay niet aanklikken. Zet het hier weer uit, of verberg de overlay met de sneltoets." />
-                </StackPanel>
-            </Border>
+                        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="Verbind je Guild Wars 2-account" Style="{StaticResource HeadingText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                           Text="De app leest alleen mee: zo weet hij welke materialen je al hebt. Er wordt niets in het spel gewijzigd." />
 
-            <Border Style="{StaticResource CardBorder}" Margin="0,16,0,0">
-                <StackPanel>
-                    <TextBlock Text="Herkomst en eigen gegevens" Style="{StaticResource HeadingText}" />
-                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
-                               Text="Sommige onderdelen koop je niet op de Trading Post maar bij een verkoper, bijvoorbeeld met Karma. Dat staat in geen enkele bron die de app kan lezen, dus leg je het zelf vast: kies bij een onderdeel dat niet te koop is op Herkomst vastleggen. De app rekent er dan mee en laat zien hoeveel Karma je nodig hebt." />
+                                <StackPanel x:Name="ConnectForm">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding NeedsApiKey}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
 
-                    <TextBlock Text="Nog niets vastgelegd." Style="{StaticResource MutedText}" Margin="0,12,0,0">
-                        <TextBlock.Visibility>
-                            <Binding Path="Acquisitions.HasNoRows" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                        </TextBlock.Visibility>
-                    </TextBlock>
-                    <ItemsControl ItemsSource="{Binding Acquisitions.Rows}" Margin="0,12,0,0" Focusable="False">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="32" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Image Source="{Binding IconUrl}" Width="24" Height="24" VerticalAlignment="Center" />
-                                    <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                        <TextBlock Text="{Binding Text}" Style="{StaticResource MutedText}" />
-                                    </StackPanel>
-                                    <Button Grid.Column="2" Content="Verwijderen" Style="{StaticResource LinkButton}" VerticalAlignment="Center"
-                                            Command="{Binding DataContext.Acquisitions.RemoveCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding}" />
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Text="{Binding Acquisitions.Error}" Foreground="{StaticResource DangerBrush}" Margin="0,8,0,0">
-                        <TextBlock.Visibility>
-                            <Binding Path="Acquisitions.HasError" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                        </TextBlock.Visibility>
-                    </TextBlock>
+                                    <TextBlock Margin="0,12,0,0">
+                                        <Run Text="1. Open" />
+                                        <Hyperlink NavigateUri="https://account.arena.net/applications" RequestNavigate="OnLinkNavigate">account.arena.net/applications</Hyperlink>
+                                        <Run Text="en log in." />
+                                    </TextBlock>
+                                    <TextBlock Text="2. Klik op &quot;New Key&quot; en geef de key een naam, bijvoorbeeld &quot;Legendary Tracker&quot;." Margin="0,2,0,0" />
+                                    <TextBlock Text="3. Zet een vinkje bij: account, inventories, characters en wallet. Meer is niet nodig." Margin="0,2,0,0" />
+                                    <TextBlock Style="{StaticResource MutedText}" Margin="16,2,0,0"
+                                               Text="Optioneel: progression (Masteries vinken vanzelf af) en unlocks (Fashion Studio ziet wat je al hebt). Zonder deze rechten werkt alles, alleen met minder automatisch." />
+                                    <TextBlock Text="4. Kopieer de key en plak hem hieronder." Margin="0,2,0,8" />
 
-                    <TextBlock Style="{StaticResource MutedText}" Margin="0,12,0,0"
-                               Text="Handiger met veel gegevens, of een aanbod met meerdere kosten? Zet een receptbestand (.json) in de map met eigen gegevens. De uitleg staat in de README." />
-                    <Button Content="Map met eigen gegevens openen" Click="OnOpenCustomDataFolderClick" HorizontalAlignment="Left" Margin="0,8,0,0" />
-                </StackPanel>
-            </Border>
+                                    <PasswordBox x:Name="ApiKeyBox" Padding="8" FontSize="14" MaxLength="100"
+                                                 AutomationProperties.Name="API-key" KeyDown="OnApiKeyBoxKeyDown" />
+                                    <Button Style="{StaticResource PrimaryButton}" Content="Verbinden" Click="OnConnectClick" IsEnabled="{Binding IsNotBusy}"
+                                            HorizontalAlignment="Left" Margin="0,8,0,0" />
+                                </StackPanel>
 
-            <Border Style="{StaticResource CardBorder}" Margin="0,16,0,0">
-                <StackPanel>
-                    <TextBlock Text="Gegevens en back-up" Style="{StaticResource HeadingText}" />
-                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
-                               Text="Sla je Legendaries, hun volgorde, afvinkingen, notities en instellingen op in een bestand, bijvoorbeeld om ze op een andere pc te gebruiken. API-keys zitten er nooit in. Bij het importeren maakt de app eerst zelf een back-up van wat je nu hebt." />
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasApiKey}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <Button Content="Nu synchroniseren" Command="{Binding SyncNowCommand}" />
+                                    <Button Content="Key verwijderen" Click="OnDisconnectClick" Margin="8,0,0,0" />
+                                </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                        <Button Content="Exporteren…" Click="OnExportClick" />
-                        <Button Content="Importeren…" Click="OnImportClick" Margin="8,0,0,0" />
+                                <TextBlock Text="{Binding ConnectMessage}" Margin="0,8,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasConnectMessage}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ConnectMessageIsError}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardBorder}">
+                            <StackPanel>
+                                <TextBlock Text="Gegevens en back-up" Style="{StaticResource HeadingText}" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,0"
+                                           Text="Sla je Legendaries, hun volgorde, afvinkingen, notities, je masteryplan en instellingen op in een bestand, bijvoorbeeld om ze op een andere pc te gebruiken. API-keys zitten er nooit in. Bij het importeren maakt de app eerst zelf een back-up van wat je nu hebt." />
+
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button Content="Exporteren…" Click="OnExportClick" />
+                                    <Button Content="Importeren…" Click="OnImportClick" Margin="8,0,0,0" />
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding DataTransfer.Message}" Margin="0,8,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataTransfer.HasMessage}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding DataTransfer.IsError}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding DataTransfer.Warnings}" Style="{StaticResource MutedText}" Margin="0,4,0,0">
+                                    <TextBlock.Visibility>
+                                        <Binding Path="DataTransfer.HasWarnings" Converter="{x:Static local:VisibilityConverter.Instance}" />
+                                    </TextBlock.Visibility>
+                                </TextBlock>
+
+                                <TextBlock Text="Problemen" Style="{StaticResource MutedText}" Margin="0,16,0,2" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="De app schrijft een logbestand zonder API-keys of je Windows-gebruikersnaam. Je kunt zo'n bestand veilig delen als er iets misgaat." />
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Button Content="Logmap openen" Click="OnOpenLogFolderClick" />
+                                    <Button Content="Back-upmap openen" Click="OnOpenBackupFolderClick" Margin="8,0,0,0" />
+                                </StackPanel>
+
+                                <TextBlock Margin="0,12,0,0" Style="{StaticResource MutedText}">
+                                    <Run Text="Versie" />
+                                    <Run Text="{Binding AppVersion, Mode=OneWay}" />
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
-
-                    <TextBlock Text="{Binding DataTransfer.Message}" Margin="0,8,0,0">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding DataTransfer.HasMessage}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding DataTransfer.IsError}" Value="True">
-                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <TextBlock Text="{Binding DataTransfer.Warnings}" Style="{StaticResource MutedText}" Margin="0,4,0,0">
-                        <TextBlock.Visibility>
-                            <Binding Path="DataTransfer.HasWarnings" Converter="{x:Static local:VisibilityConverter.Instance}" />
-                        </TextBlock.Visibility>
-                    </TextBlock>
-
-                    <TextBlock Text="Problemen" Style="{StaticResource MutedText}" Margin="0,16,0,2" />
-                    <TextBlock Style="{StaticResource MutedText}"
-                               Text="De app schrijft een logbestand zonder API-keys of je Windows-gebruikersnaam. Je kunt zo'n bestand veilig delen als er iets misgaat." />
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button Content="Logmap openen" Click="OnOpenLogFolderClick" />
-                        <Button Content="Back-upmap openen" Click="OnOpenBackupFolderClick" Margin="8,0,0,0" />
-                    </StackPanel>
-
-                    <TextBlock Margin="0,12,0,0" Style="{StaticResource MutedText}">
-                        <Run Text="Versie" />
-                        <Run Text="{Binding AppVersion, Mode=OneWay}" />
-                    </TextBlock>
-                </StackPanel>
-            </Border>
-
-            <Border Margin="0,16,0,0" Padding="12" CornerRadius="6" Background="#33E5605A" BorderBrush="{StaticResource DangerBrush}" BorderThickness="1">
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding HasError}" Value="True">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <TextBlock Text="{Binding ErrorMessage}" />
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </Grid>
 </Window>

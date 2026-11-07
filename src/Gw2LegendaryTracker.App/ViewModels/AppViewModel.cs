@@ -31,6 +31,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _opacityTimer;
     private double? _pendingOpacity;
+    private int? _pendingMainTab;
     private bool _isOverlayVisible;
     private string? _hotkeyError;
     private string? _errorMessage;
@@ -48,10 +49,12 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         RecipeDataViewModel recipeData,
         DataTransferViewModel dataTransfer,
         AcquisitionsViewModel acquisitions,
+        MasteriesViewModel masteries,
         IAppLog log,
         Dispatcher dispatcher)
     {
         Inventory = inventory;
+        Masteries = masteries;
         Goals = goals;
         RecipeData = recipeData;
         DataTransfer = dataTransfer;
@@ -75,6 +78,28 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         ToggleExpandedCommand = new RelayCommand(() => IsExpanded = !IsExpanded);
         HideOverlayCommand = new RelayCommand(() => OverlayHideRequested?.Invoke(this, EventArgs.Empty));
         SyncNowCommand = new RelayCommand(() => _ = SyncAsync());
+        Masteries.SyncRequested += OnMasteriesSyncRequested;
+        OpenAccountTabCommand = new RelayCommand(() => SelectedMainTabIndex = MainTabs.IndexOf(MainTabs.Account));
+    }
+
+    public ICommand OpenAccountTabCommand { get; }
+
+    /// <summary>The open main tab; remembered across restarts.</summary>
+    public int SelectedMainTabIndex
+    {
+        get => _pendingMainTab ?? MainTabs.IndexOf(_state.Settings.SelectedMainTab);
+        set
+        {
+            if (value < 0 || value >= MainTabs.All.Count || value == SelectedMainTabIndex)
+            {
+                return;
+            }
+
+            // Shown at once; the stored value follows when the save has landed.
+            _pendingMainTab = value;
+            RaisePropertyChanged(nameof(SelectedMainTabIndex));
+            Persist(s => s with { SelectedMainTab = MainTabs.All[value] });
+        }
     }
 
     public event EventHandler? OverlayToggleRequested;
@@ -106,6 +131,8 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     public DataTransferViewModel DataTransfer { get; }
 
     public AcquisitionsViewModel Acquisitions { get; }
+
+    public MasteriesViewModel Masteries { get; }
 
     /// <summary>Shown in the main window so a problem report can say which version it is about.</summary>
     public string AppVersion { get; } = AppInfo.Version;
@@ -296,6 +323,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         // The key state must be known before the first goal is selected, or the first selection would not fetch anything.
         await RecipeData.InitializeAsync();
         await Goals.InitializeAsync();
+        await Masteries.InitializeAsync();
         await _sync.RestoreStatusAsync();
         HasApiKey = await _connection.HasKeyAsync();
         if (HasApiKey)
@@ -365,6 +393,28 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void OnMasteriesSyncRequested(object? sender, EventArgs e)
+    {
+        if (HasApiKey)
+        {
+            _ = RefreshMasteriesAsync();
+        }
+    }
+
+    /// <summary>Only the mastery data, not the whole account: a new plan may use achievements whose progress is unknown.</summary>
+    private async Task RefreshMasteriesAsync()
+    {
+        try
+        {
+            await _sync.RefreshMasteriesAsync();
+        }
+        catch (Exception ex)
+        {
+            // MasteryProgressService reports API and storage failures itself; this catches anything unforeseen (e.g. the key store).
+            _log.Failure("Mastery-gegevens verversen mislukt", ex);
+        }
+    }
+
     private void SelectTab(bool selected, OverlayTab tab)
     {
         // A radio button reports "unchecked" for the tab being left; only the newly checked one changes the view.
@@ -384,6 +434,8 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         _opacityTimer.Stop();
         _state.SettingsChanged -= OnSettingsChanged;
         _state.SyncStatusChanged -= OnSyncStatusChanged;
+        Masteries.SyncRequested -= OnMasteriesSyncRequested;
+        Masteries.Dispose();
         Inventory.Dispose();
         Acquisitions.Dispose();
         RecipeData.Dispose();
@@ -466,6 +518,11 @@ public sealed class AppViewModel : ObservableObject, IDisposable
             if (!_opacityTimer.IsEnabled)
             {
                 _pendingOpacity = null;
+            }
+
+            if (_pendingMainTab is { } tab && MainTabs.IndexOf(settings.SelectedMainTab) == tab)
+            {
+                _pendingMainTab = null;
             }
 
             RaiseAllPropertiesChanged();

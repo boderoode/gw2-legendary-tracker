@@ -1,5 +1,6 @@
 using Gw2LegendaryTracker.Core.Acquisition;
 using Gw2LegendaryTracker.Core.Goals;
+using Gw2LegendaryTracker.Core.Masteries;
 using Gw2LegendaryTracker.Core.State;
 
 namespace Gw2LegendaryTracker.Core.Export;
@@ -12,17 +13,35 @@ public sealed class UserDataTransferService
     private readonly AppState _state;
     private readonly GoalService _goals;
     private readonly AcquisitionService? _acquisitions;
+    private readonly MasteryPlanService? _masteryPlans;
+    private readonly MasteryCatalog? _masteryCatalog;
     private readonly TimeProvider _time;
 
-    public UserDataTransferService(AppState state, GoalService goals, TimeProvider? time = null, AcquisitionService? acquisitions = null)
+    public UserDataTransferService(
+        AppState state,
+        GoalService goals,
+        TimeProvider? time = null,
+        AcquisitionService? acquisitions = null,
+        MasteryPlanService? masteryPlans = null,
+        MasteryCatalog? masteryCatalog = null)
     {
         _state = state;
         _goals = goals;
         _acquisitions = acquisitions;
+        _masteryPlans = masteryPlans;
+        _masteryCatalog = masteryCatalog;
         _time = time ?? TimeProvider.System;
     }
 
-    public string Export() => UserDataSerializer.Serialize(_state.Settings, _goals.Goals, _time.GetUtcNow(), _acquisitions?.Offers);
+    public string Export() => UserDataSerializer.Serialize(
+        _state.Settings,
+        _goals.Goals,
+        _time.GetUtcNow(),
+        _acquisitions?.Offers,
+        _masteryPlans?.Plan is { } plan ? new MasteryPlanBackup(plan, _masteryPlans.Overrides) : null);
+
+    /// <summary>Validates a file without changing anything, with the same checks as <see cref="ImportAsync"/>.</summary>
+    public ImportResult Validate(string? json) => UserDataSerializer.Parse(json, _masteryCatalog?.Definitions);
 
     /// <summary>
     /// Replaces the goals and settings with the contents of the file. Nothing changes when the file is invalid.
@@ -30,7 +49,7 @@ public sealed class UserDataTransferService
     /// </summary>
     public async Task<ImportOutcome> ImportAsync(string json, CancellationToken cancellationToken = default)
     {
-        var parsed = UserDataSerializer.Parse(json);
+        var parsed = Validate(json);
         if (!parsed.Succeeded)
         {
             return new ImportOutcome(false, parsed.Error!, []);
@@ -41,11 +60,18 @@ public sealed class UserDataTransferService
         {
             await _acquisitions.ReplaceAsync(parsed.Acquisitions, cancellationToken).ConfigureAwait(false);
         }
+
+        var masteryPlan = parsed.MasteryPlan is not null && _masteryPlans is not null;
+        if (masteryPlan)
+        {
+            await _masteryPlans!.ReplaceAsync(parsed.MasteryPlan!.Plan, parsed.MasteryPlan.ManualChoices, cancellationToken).ConfigureAwait(false);
+        }
         if (parsed.Settings is { } settings)
         {
             try
             {
-                await _state.UpdateAsync(_ => settings, cancellationToken).ConfigureAwait(false);
+                // The open tab is where the user is now, not something to restore from a file.
+                await _state.UpdateAsync(current => settings with { SelectedMainTab = current.SelectedMainTab }, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or System.Data.Common.DbException)
             {
@@ -55,6 +81,7 @@ public sealed class UserDataTransferService
 
         var count = parsed.Goals.Count;
         var offers = parsed.Acquisitions is { Count: > 0 } && _acquisitions is not null ? $", {parsed.Acquisitions.Count} eigen herkomstgegeven(s)" : string.Empty;
-        return new ImportOutcome(true, $"Geïmporteerd: {count} doel(en){offers}{(parsed.Settings is null ? string.Empty : " en je instellingen")}.", parsed.Warnings);
+        var plan = masteryPlan ? ", je masteryplan" : string.Empty;
+        return new ImportOutcome(true, $"Geïmporteerd: {count} doel(en){offers}{plan}{(parsed.Settings is null ? string.Empty : " en je instellingen")}.", parsed.Warnings);
     }
 }

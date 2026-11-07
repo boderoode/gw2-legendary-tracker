@@ -33,7 +33,17 @@ public sealed class ConnectionService
             }
 
             await _keys.SaveAsync(key, cancellationToken).ConfigureAwait(false);
-            return new ConnectionResult(true, "Verbonden met je Guild Wars 2-account.", token.Name);
+
+            // An optional permission is never a reason to refuse a key; it is only mentioned.
+            var optional = ApiPermissions.MissingOptional(token.Permissions);
+            var names = string.Join(" en ", optional.Select(p => $"'{p.Name}' ({p.Feature})"));
+            var message = optional.Count switch
+            {
+                0 => "Verbonden met je Guild Wars 2-account.",
+                1 => $"Verbonden met je Guild Wars 2-account. De key heeft het optionele recht {names} niet; dat onderdeel werkt dan beperkt.",
+                _ => $"Verbonden met je Guild Wars 2-account. De key heeft de optionele rechten {names} niet; die onderdelen werken dan beperkt.",
+            };
+            return new ConnectionResult(true, message, token.Name);
         }
         catch (Gw2ApiException ex)
         {

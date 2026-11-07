@@ -15,6 +15,7 @@ using Gw2LegendaryTracker.Core.Gw2;
 using Gw2LegendaryTracker.Core.Inventory;
 using Gw2LegendaryTracker.Core.Items;
 using Gw2LegendaryTracker.Core.Logging;
+using Gw2LegendaryTracker.Core.Masteries;
 using Gw2LegendaryTracker.Core.State;
 using Gw2LegendaryTracker.Core.Sync;
 using Gw2LegendaryTracker.Core.Trading;
@@ -40,6 +41,8 @@ public partial class App : Application
     private GoalService? _goalService;
     private PlanningService? _planning;
     private AcquisitionService? _acquisitions;
+    private MasteryPlanService? _masteryPlans;
+    private MasteryProgressService? _masteryProgress;
     private HotkeyService? _hotkey;
     private OverlayController? _overlay;
     private FashionStudioWindow? _fashionStudio;
@@ -90,6 +93,8 @@ public partial class App : Application
         _acquisitions?.Dispose();
         _planning?.Dispose();
         _goalService?.Dispose();
+        _masteryProgress?.Dispose();
+        _masteryPlans?.Dispose();
         _http?.Dispose();
         _forgeHttp?.Dispose();
         _state?.Dispose();
@@ -175,7 +180,10 @@ public partial class App : Application
         var api = new Gw2ApiClient(_http);
         var keys = new DpapiApiKeyStore(DataPath("apikey.bin"));
         var inventory = new InventoryProvider();
-        var sync = new SyncService(api, keys, new SqliteSnapshotStore(database), _state, inventory);
+        var masteryCatalog = new MasteryCatalog(api, new SqliteMasteryDefinitionStore(database));
+        var masteryPlans = _masteryPlans = new MasteryPlanService(new SqliteMasteryPlanStore(database), masteryCatalog);
+        var masteryProgress = _masteryProgress = new MasteryProgressService(api, new SqliteMasteryProgressStore(database), masteryCatalog, () => masteryPlans.AchievementIds);
+        var sync = new SyncService(api, keys, new SqliteSnapshotStore(database), _state, inventory, masteries: masteryProgress);
         var catalog = new ItemCatalog(api, new SqliteItemInfoStore(database));
 
         _goalService = new GoalService(new SqliteGoalStore(database));
@@ -202,7 +210,8 @@ public partial class App : Application
         var forge = new ForgeRecipeCatalog(forgeClient, forgeKeys, new SqliteForgeRecipeStore(database), api);
         var provider = new RecipeBookProvider(recipes, forge, token => LocalRecipeFiles.LoadAsync(RecipeFolders(), token), _acquisitions);
         var recipeData = new RecipeDataViewModel(new ForgeConnectionService(forgeClient, forgeKeys), forge, provider, _planning, goals, _acquisitions, log, Dispatcher);
-        var transfer = new DataTransferViewModel(new UserDataTransferService(_state, _goalService, acquisitions: _acquisitions), log, DataPath("backups"), log is FileAppLog file ? file.Directory : DataPath("logs"));
+        var userData = new UserDataTransferService(_state, _goalService, acquisitions: _acquisitions, masteryPlans: masteryPlans, masteryCatalog: masteryCatalog);
+        var transfer = new DataTransferViewModel(userData, log, DataPath("backups"), log is FileAppLog file ? file.Directory : DataPath("logs"));
 
         _viewModel = new AppViewModel(
             _state,
@@ -213,6 +222,7 @@ public partial class App : Application
             recipeData,
             transfer,
             new AcquisitionsViewModel(_acquisitions, currencyCatalog, catalog, DataPath("recipes"), Dispatcher),
+            new MasteriesViewModel(masteryPlans, masteryCatalog, masteryProgress, userData, log, DataPath("backups"), Dispatcher),
             log,
             Dispatcher);
         _overlay = new OverlayController(_viewModel);

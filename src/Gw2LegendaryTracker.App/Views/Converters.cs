@@ -27,6 +27,18 @@ public sealed class VisibilityConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>Collapsed when the value is <c>true</c>, visible otherwise.</summary>
+public sealed class InverseVisibilityConverter : IValueConverter
+{
+    public static InverseVisibilityConverter Instance { get; } = new();
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is true ? Visibility.Collapsed : Visibility.Visible;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>Visible only when every bound value is <c>true</c>.</summary>
 public sealed class AllTrueVisibilityConverter : IMultiValueConverter
 {
