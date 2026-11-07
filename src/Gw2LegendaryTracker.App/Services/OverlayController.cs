@@ -12,7 +12,7 @@ public sealed class OverlayController : IDisposable
     private static readonly TimeSpan BoundsPersistDelay = TimeSpan.FromMilliseconds(500);
     private const double DefaultMargin = 24;
     private const double CompactWidth = 300;
-    private const double CompactHeight = 280;
+    private const double CompactHeight = 300;
     private const double ExpandedWidth = 360;
     private const double ExpandedHeight = 520;
 
@@ -35,6 +35,8 @@ public sealed class OverlayController : IDisposable
 
         _window.LocationChanged += OnBoundsChanged;
         _window.SizeChanged += OnBoundsChanged;
+        // Using the overlay (ticking a step, copying a waypoint, switching tabs) counts as activity for auto-hide.
+        _window.PreviewMouseDown += (_, _) => RestartAutoHide();
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.OverlayToggleRequested += (_, _) => Toggle();
         _viewModel.OverlayHideRequested += (_, _) => Hide();

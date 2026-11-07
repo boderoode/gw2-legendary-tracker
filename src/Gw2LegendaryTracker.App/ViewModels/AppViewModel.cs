@@ -20,6 +20,13 @@ public enum OverlayTab
     Tree,
 }
 
+/// <summary>The sections of the expanded overlay in Masteries mode.</summary>
+public enum OverlayMasteryTab
+{
+    Phase,
+    Phases,
+}
+
 public sealed class AppViewModel : ObservableObject, IDisposable
 {
     private static readonly TimeSpan OpacityPersistDelay = TimeSpan.FromMilliseconds(300);
@@ -32,6 +39,7 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     private readonly DispatcherTimer _opacityTimer;
     private double? _pendingOpacity;
     private int? _pendingMainTab;
+    private string? _pendingMode;
     private bool _isOverlayVisible;
     private string? _hotkeyError;
     private string? _errorMessage;
@@ -80,9 +88,17 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         SyncNowCommand = new RelayCommand(() => _ = SyncAsync());
         Masteries.SyncRequested += OnMasteriesSyncRequested;
         OpenAccountTabCommand = new RelayCommand(() => SelectedMainTabIndex = MainTabs.IndexOf(MainTabs.Account));
+        ShowMasteriesInMainWindowCommand = new RelayCommand(() =>
+        {
+            SelectedMainTabIndex = MainTabs.IndexOf(MainTabs.Masteries);
+            MainWindowRequested?.Invoke(this, EventArgs.Empty);
+        });
     }
 
     public ICommand OpenAccountTabCommand { get; }
+
+    /// <summary>From the overlay: open the main window on the Masteries tab, where a plan is imported.</summary>
+    public ICommand ShowMasteriesInMainWindowCommand { get; }
 
     /// <summary>The open main tab; remembered across restarts.</summary>
     public int SelectedMainTabIndex
@@ -200,6 +216,34 @@ public sealed class AppViewModel : ObservableObject, IDisposable
     {
         get => _overlayTab == OverlayTab.Tree;
         set => SelectTab(value, OverlayTab.Tree);
+    }
+
+    /// <summary>The overlay shows the Legendaries (the default).</summary>
+    public bool IsLegendaryMode
+    {
+        get => !IsMasteryMode;
+        set => SelectMode(value, OverlayModes.Legendaries);
+    }
+
+    /// <summary>The overlay shows the mastery plan. Remembered across restarts.</summary>
+    public bool IsMasteryMode
+    {
+        get => OverlayModes.IsMasteries(_pendingMode ?? Overlay.Mode);
+        set => SelectMode(value, OverlayModes.Masteries);
+    }
+
+    private OverlayMasteryTab _masteryTab = OverlayMasteryTab.Phase;
+
+    public bool IsPhaseTab
+    {
+        get => _masteryTab == OverlayMasteryTab.Phase;
+        set => SelectMasteryTab(value, OverlayMasteryTab.Phase);
+    }
+
+    public bool IsPhasesTab
+    {
+        get => _masteryTab == OverlayMasteryTab.Phases;
+        set => SelectMasteryTab(value, OverlayMasteryTab.Phases);
     }
 
     /// <summary>In the expanded overlay: only list what is still missing.</summary>
@@ -415,6 +459,35 @@ public sealed class AppViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void SelectMode(bool selected, string mode)
+    {
+        // As with the tabs: only the newly checked radio button counts.
+        if (!selected || OverlayModes.IsMasteries(mode) == IsMasteryMode)
+        {
+            return;
+        }
+
+        // Shown at once, like the main tab; the stored value follows when the save has landed, and a quick second
+        // click is compared with what is shown, not with what is still being saved.
+        _pendingMode = mode;
+        Masteries.ClearOverlayNotice();
+        RaisePropertyChanged(nameof(IsMasteryMode));
+        RaisePropertyChanged(nameof(IsLegendaryMode));
+        Persist(s => s with { Overlay = s.Overlay with { Mode = mode } });
+    }
+
+    private void SelectMasteryTab(bool selected, OverlayMasteryTab tab)
+    {
+        if (!selected || _masteryTab == tab)
+        {
+            return;
+        }
+
+        _masteryTab = tab;
+        RaisePropertyChanged(nameof(IsPhaseTab));
+        RaisePropertyChanged(nameof(IsPhasesTab));
+    }
+
     private void SelectTab(bool selected, OverlayTab tab)
     {
         // A radio button reports "unchecked" for the tab being left; only the newly checked one changes the view.
@@ -523,6 +596,11 @@ public sealed class AppViewModel : ObservableObject, IDisposable
             if (_pendingMainTab is { } tab && MainTabs.IndexOf(settings.SelectedMainTab) == tab)
             {
                 _pendingMainTab = null;
+            }
+
+            if (_pendingMode is { } mode && OverlayModes.IsMasteries(settings.Overlay.Mode) == OverlayModes.IsMasteries(mode))
+            {
+                _pendingMode = null;
             }
 
             RaiseAllPropertiesChanged();

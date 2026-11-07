@@ -120,16 +120,20 @@ public partial class MainWindow : Window
 
     private void OnClipboardRequested(object? sender, ClipboardRequest request)
     {
+        // The main window lives as long as the app (also when hidden), so it serves the overlay's requests too.
+        // The requester tells the user where it fits: the tab's message strip or the overlay's footer.
+        string? error = null;
         try
         {
             Clipboard.SetText(request.Text);
-            ViewModel.Masteries.Report(false, request.SuccessMessage);
         }
         catch (ExternalException ex)
         {
             // Another program can hold the clipboard for a moment.
-            ViewModel.Masteries.Report(true, $"Kopiëren naar het klembord is niet gelukt. Probeer het nog eens. ({ex.Message})");
+            error = ex.Message;
         }
+
+        request.Completed(error);
     }
 
     private async void OnPastePlanClick(object sender, RoutedEventArgs e)

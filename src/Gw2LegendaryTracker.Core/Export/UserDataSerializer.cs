@@ -191,7 +191,8 @@ public static class UserDataSerializer
 
         var raw = settings.Overlay ?? new OverlaySettings();
         var overlay = raw.Normalize();
-        if (overlay != raw)
+        // An unknown overlay mode quietly becomes the Legendaries, like an unknown main tab; it is not worth a warning.
+        if (overlay != raw with { Mode = overlay.Mode })
         {
             // e.g. a transparency outside the allowed range, or a hotkey without modifier key.
             warnings.Add("Sommige overlay-instellingen in het bestand waren ongeldig en zijn aangepast.");

@@ -22,6 +22,7 @@ public class UserDataSerializerTests
             ShowOnlyMissing = false,
             AutoHideSeconds = 15,
             ToggleHotkey = new HotkeyGesture(HotkeyModifiers.Shift | HotkeyModifiers.Alt, 0x4F),
+            Mode = OverlayModes.Masteries,
         },
     };
 
@@ -180,6 +181,19 @@ public class UserDataSerializerTests
         Assert.Equal(OverlaySettings.MaxVisibleMaterials, settings.Overlay.VisibleMaterialCount);
         Assert.Equal(HotkeyGesture.Default, settings.Overlay.ToggleHotkey);
         Assert.Equal(3, result.Warnings.Count);
+    }
+
+    [Fact]
+    public void An_unknown_overlay_mode_quietly_shows_the_legendaries()
+    {
+        var result = UserDataSerializer.Parse("""
+            {"format":"gw2-legendary-tracker-export","version":2,"goals":[],
+             "settings":{"overlay":{"mode":"achievements"}}}
+            """);
+
+        Assert.True(result.Succeeded);
+        Assert.Null(result.Settings!.Overlay.Mode);
+        Assert.Empty(result.Warnings);
     }
 
     [Fact]

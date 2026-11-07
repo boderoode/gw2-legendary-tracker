@@ -23,10 +23,15 @@ public sealed record MasteryTrackView(int Id, string Name, int Trained, int Max,
 /// <param name="Earned">Points earned in the region; <c>null</c> when unknown.</param>
 public sealed record MasteryRegionView(string Region, string DisplayName, int? Earned, int? Spent, string PointsText, IReadOnlyList<MasteryTrackView> Tracks);
 
+/// <param name="PercentText">E.g. "42%"; the overlay shows it large.</param>
+/// <param name="CountText">E.g. "21/50 stappen".</param>
+/// <param name="ProgressText">Both together, e.g. "42% · 21/50 stappen".</param>
 public sealed record MasteryPlanSummary(
     int DoneCount,
     int TotalCount,
     double Progress,
+    string PercentText,
+    string CountText,
     string ProgressText,
     string RemainingText,
     MasteryStepView? NextStep,
@@ -75,13 +80,16 @@ public static class MasteryPlanPresenter
         var all = phases.SelectMany(p => p.Steps).ToList();
         var done = all.Count(s => s.Status.IsDone);
         var progress = Fraction(done, all.Count);
-        var percent = (progress * 100).ToString("0", culture);
+        var percent = (progress * 100).ToString("0", culture) + "%";
+        var count = CountText(done, all.Count, culture);
 
         return new MasteryPlanSummary(
             done,
             all.Count,
             progress,
-            $"{percent}% · {CountText(done, all.Count, culture)}",
+            percent,
+            count,
+            $"{percent} · {count}",
             RemainingText(all, culture),
             NextStep(all),
             phases,
@@ -94,6 +102,31 @@ public static class MasteryPlanPresenter
             .OrderBy(s => s.Step.Priority)
             .ThenBy(s => s.Order)
             .FirstOrDefault();
+
+    /// <summary>
+    /// The phase to work on now: the phase of the next step, so the overlay never points at two phases at once. When no
+    /// step is available (everything open waits on something), the first phase with open steps; <c>null</c> when all is done.
+    /// </summary>
+    public static MasteryPhaseView? CurrentPhase(MasteryPlanSummary summary)
+    {
+        ArgumentNullException.ThrowIfNull(summary);
+        if (summary.NextStep is { } next)
+        {
+            return summary.Phases.First(p => p.Phase.Id == next.PhaseId);
+        }
+
+        return summary.Phases.FirstOrDefault(p => p.DoneCount < p.TotalCount);
+    }
+
+    /// <summary>
+    /// The order in which the overlay lists the steps of a phase: open steps first in the plan's order, then the done ones.
+    /// The overlay fixes this order when a phase becomes current, so a ticked step stays where it is under the mouse.
+    /// </summary>
+    public static IReadOnlyList<string> OverlayOrder(MasteryPhaseView phase)
+    {
+        ArgumentNullException.ThrowIfNull(phase);
+        return [.. phase.Steps.OrderBy(s => s.Status.IsDone).ThenBy(s => s.Order).Select(s => s.Step.Id)];
+    }
 
     /// <summary>Applies the filters of the tab. Phases without visible steps are left out; their progress stays that of the whole phase.</summary>
     /// <param name="region"><c>null</c> for all regions.</param>

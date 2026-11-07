@@ -33,6 +33,9 @@ public sealed record OverlaySettings
 
     public HotkeyGesture ToggleHotkey { get; init; } = HotkeyGesture.Default;
 
+    /// <summary>What the overlay shows (see <see cref="OverlayModes"/>); <c>null</c> for Legendaries.</summary>
+    public string? Mode { get; init; }
+
     /// <summary>Returns a copy with all numeric values clamped to their supported ranges.</summary>
     public OverlaySettings Normalize() => this with
     {
@@ -40,7 +43,21 @@ public sealed record OverlaySettings
         VisibleMaterialCount = Math.Clamp(VisibleMaterialCount, MinVisibleMaterials, MaxVisibleMaterials),
         AutoHideSeconds = AutoHideSeconds is > 0 ? AutoHideSeconds : null,
         ToggleHotkey = ToggleHotkey is { IsValid: true } ? ToggleHotkey : HotkeyGesture.Default,
+        Mode = OverlayModes.IsKnown(Mode) ? Mode : null,
     };
 }
 
 public sealed record OverlayBounds(double Left, double Top, double Width, double Height);
+
+/// <summary>What the overlay shows, by the name stored in <see cref="OverlaySettings.Mode"/>.</summary>
+public static class OverlayModes
+{
+    public const string Legendaries = "legendaries";
+
+    public const string Masteries = "masteries";
+
+    public static bool IsKnown(string? mode) => mode is Legendaries or Masteries;
+
+    /// <summary>True when the overlay shows the mastery plan; anything else shows the Legendaries.</summary>
+    public static bool IsMasteries(string? mode) => mode == Masteries;
+}
